@@ -1,5 +1,5 @@
 #pragma once
-
+#include <memory>
 #include "iosb.h"
 #include "types.h"
 
@@ -38,10 +38,16 @@ namespace eroil {
         int signal_mode;
     };
 
-    struct RecvHandle {
-        handle_uid uid;
+    struct RecvTarget {
         OpenReceiveData data;
 
-        RecvHandle(int id, OpenReceiveData data) : uid(id), data(data) {}
+        RecvTarget(OpenReceiveData data) : data(data) {}
+    };
+
+    struct RecvHandle {
+        handle_uid uid;
+        std::shared_ptr<RecvTarget> target;
+
+        RecvHandle(int id, OpenReceiveData data) : uid(id), target(std::make_shared<RecvTarget>(data)) {}
     };
 }

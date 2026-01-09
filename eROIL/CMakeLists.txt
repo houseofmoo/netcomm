@@ -17,7 +17,10 @@ target_sources(eROIL PRIVATE
     ${CMAKE_CURRENT_SOURCE_DIR}/src/broadcast/broadcast.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/src/config/config.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/src/manager/manager.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/src/router/dispatcher.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/src/router/route_table.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/src/router/router.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/src/router/transport_registry.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/src/workers/send_worker.cpp
 )
 
@@ -26,11 +29,13 @@ target_sources(eROIL PRIVATE
     $<$<PLATFORM_ID:Windows>:
         ${CMAKE_CURRENT_SOURCE_DIR}/src/events/win/win_named_event.cpp
         ${CMAKE_CURRENT_SOURCE_DIR}/src/events/win/win_semaphore.cpp
+
         ${CMAKE_CURRENT_SOURCE_DIR}/src/net/win/win_context.cpp
         ${CMAKE_CURRENT_SOURCE_DIR}/src/net/win/win_socket_tcp.cpp
         ${CMAKE_CURRENT_SOURCE_DIR}/src/net/win/win_socket_udp.cpp
         ${CMAKE_CURRENT_SOURCE_DIR}/src/net/win/win_socket_udpm.cpp
         ${CMAKE_CURRENT_SOURCE_DIR}/src/net/win/win_socket.cpp
+
         ${CMAKE_CURRENT_SOURCE_DIR}/src/shm/win/win_shm_recv.cpp
         ${CMAKE_CURRENT_SOURCE_DIR}/src/shm/win/win_shm_send.cpp
         ${CMAKE_CURRENT_SOURCE_DIR}/src/shm/win/win_shm.cpp
@@ -55,8 +60,8 @@ target_include_directories(eROIL
         ${CMAKE_CURRENT_SOURCE_DIR}/src/address
         ${CMAKE_CURRENT_SOURCE_DIR}/src/broadcast
         ${CMAKE_CURRENT_SOURCE_DIR}/src/config/
-        ${CMAKE_CURRENT_SOURCE_DIR}/src/manager
         ${CMAKE_CURRENT_SOURCE_DIR}/src/events
+        ${CMAKE_CURRENT_SOURCE_DIR}/src/manager
         ${CMAKE_CURRENT_SOURCE_DIR}/src/net
         ${CMAKE_CURRENT_SOURCE_DIR}/src/router
         ${CMAKE_CURRENT_SOURCE_DIR}/src/shm

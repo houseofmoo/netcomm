@@ -12,6 +12,7 @@
 #include "router/router.h"
 #include "types/handles.h"
 #include "types/types.h"
+#include "workers/send_worker.h"
 
 #include "shm/shm.h"
 
@@ -23,6 +24,8 @@ namespace eroil {
             Address m_address_book;
             Router m_router;
             Broadcast m_broadcast;
+
+            worker::SendWorker m_send_worker;
 
         public:
             Manager(int id, std::vector<NodeInfo> nodes);

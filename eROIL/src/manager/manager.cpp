@@ -150,10 +150,15 @@ namespace eroil {
             switch (addr.kind) {
                 case RouteKind::Shm: {
                     m_router.set_local_recv_publisher(info.label, info.size, m_id);
+                    // for each new local recv publisher, we need a new thread to listen to for
+                    // that label
                     break;
                 }
                 case RouteKind::Socket: {
                     m_router.set_remote_recv_publisher(info.label, info.size, msg.id);
+                    // should already have 1 thread per socket connection that listens for data from that peer
+                    // that thread recv's data, then passes it to the router 
+                    // m_router.recv_from_publisher(Label label, const void* buf, size_t size);
                     break;
                 }
                 default: {
