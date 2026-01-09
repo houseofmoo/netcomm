@@ -189,16 +189,16 @@ namespace eroil {
         auto shm = std::make_shared<shm::ShmSend>(label, size);
 
         // open block (5 tries)
-        auto shm_open_err = shm->open_new_rety(5, 100);
+        auto shm_open_err = shm->create_or_open();
         if (shm_open_err != shm::ShmErr::None) {
-            ERR_PRINT("Error opening new send shared memory block for label: ", label);
+            ERR_PRINT("Error opening send shared memory block for label: ", label);
             return;
         }
 
         // add recvr for event
         auto shm_evt_err = shm->add_send_event(to_id);
         if (shm_evt_err != shm::ShmOpErr::None) {
-            ERR_PRINT("Error adding send event to new shared memory block for label: ", label);
+            ERR_PRINT("Error adding send event to shared memory block for label: ", label);
             return;
         }
         
@@ -262,16 +262,16 @@ namespace eroil {
         auto shm = std::make_shared<shm::ShmRecv>(label, size);
 
         // open block (5 tries)
-        auto shm_open_err = shm->open_existing_rety(5, 100);
+        auto shm_open_err = shm->create_or_open();
         if (shm_open_err != shm::ShmErr::None) {
-            ERR_PRINT("Error opening new recv shared memory block for label: ", label);
+            ERR_PRINT("Error opening recv shared memory block for label: ", label);
             return;
         }
 
         // set event
         auto shm_evt_err = shm->set_recv_event(my_id);
         if (shm_evt_err != shm::ShmOpErr::None) {
-            ERR_PRINT("Error adding send event to new shared memory block for label: ", label);
+            ERR_PRINT("Error adding send event to shared memory block for label: ", label);
             return;
         }
         

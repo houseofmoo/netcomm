@@ -5,7 +5,7 @@
 
 namespace eroil::net::tcp {
     SOCKET to_native(socket::TCPClient s) {
-        return reinterpret_cast<SOCKET>(s.handle);
+        return static_cast<SOCKET>(s.handle);
     }
 
     socket::TCPClient open_tcp_socket() {
@@ -36,6 +36,16 @@ namespace eroil::net::tcp {
         return true;
     }
 
+    bool shutdown_recv(socket::TCPClient sock) {
+        if (!is_valid(sock)) return false;
+        return ::shutdown(to_native(sock), SD_RECEIVE) == 0;
+    }
+
+    bool shutdown_both(socket::TCPClient sock) {
+        if (!is_valid(sock)) return false;
+        return ::shutdown(to_native(sock), SD_BOTH) == 0;
+    }
+
     void close(socket::TCPClient sock) {
         if (is_valid(sock)) {
             SOCKET s = to_native(sock);
@@ -43,7 +53,7 @@ namespace eroil::net::tcp {
         }
     }
 
-    IoOp send(socket::TCPClient sock, const void* data, size_t len) {
+    SocketOp send(socket::TCPClient sock, const void* data, size_t len) {
         SOCKET s = to_native(sock);
 
         if (len > static_cast<size_t>(INT32_MAX)) {
@@ -52,21 +62,21 @@ namespace eroil::net::tcp {
 
         int rc = ::send(s, static_cast<const char*>(data), static_cast<int>(len), 0);
         if (rc > 0) {
-            return IoOp{ IoResult::Ok, rc, 0 };
+            return SocketOp{ SocketIoResult::Ok, rc, 0 };
         }
 
         if (rc == 0) {
-            return IoOp{ IoResult::Ok, 0, 0 };
+            return SocketOp{ SocketIoResult::Ok, 0, 0 };
         }
 
-        int err = WSAGetLastError();
+        int err = ::WSAGetLastError();
         if (err == WSAEWOULDBLOCK) {
-            return IoOp{ IoResult::WouldBlock, 0, err };
+            return SocketOp{ SocketIoResult::WouldBlock, 0, err };
         }
         return make_err(err);
     }
 
-    IoOp recv(socket::TCPClient sock, void* out, size_t len) {
+    SocketOp recv(socket::TCPClient sock, void* out, size_t len) {
         SOCKET s = to_native(sock);
 
         if (len > static_cast<size_t>(INT32_MAX)) {
@@ -75,16 +85,16 @@ namespace eroil::net::tcp {
 
         int rc = ::recv(s, static_cast<char*>(out), static_cast<int>(len), 0);
         if (rc > 0) {
-            return IoOp{ IoResult::Ok, rc, 0 };
+            return SocketOp{ SocketIoResult::Ok, rc, 0 };
         }
 
         if (rc == 0) {
-            return IoOp{ IoResult::Closed, 0, 0 };
+            return SocketOp{ SocketIoResult::Closed, 0, 0 };
         }
 
-        int err = WSAGetLastError();
+        int err = ::WSAGetLastError();
         if (err == WSAEWOULDBLOCK) {
-            return IoOp{ IoResult::WouldBlock, 0, err };
+            return SocketOp{ SocketIoResult::WouldBlock, 0, err };
         }
         return make_err(err);
     }

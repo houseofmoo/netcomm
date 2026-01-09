@@ -1,6 +1,7 @@
 #pragma once
 #include <string>
 #include <vector>
+#include <atomic>
 #include "events/named_event.h"
 #include "types/types.h"
 
@@ -13,6 +14,7 @@ namespace eroil::shm {
         DoesNotExist,
         FileMapFailed,
         LayoutMismatch,
+        NotInitialized,
         UnknownError,
     };
 
@@ -30,16 +32,18 @@ namespace eroil::shm {
     static constexpr uint32_t kShmMagic   = 0x314D4853u; // 'SHM1'
     static constexpr uint16_t kShmVersion = 1;
 
-    #pragma pack(push, 1)
-    struct ShmHeader {
-        uint32_t magic;        // 'SHM1' little-endian
-        uint16_t version;      // bump when layout changes
-        uint16_t header_size;  // sizeof(ShmHeader)
-        uint32_t label_size;    // size of data stored here
+    enum : uint32_t {
+        SHM_INITING = 0,
+        SHM_READY   = 1,
     };
-    #pragma pack(pop)
 
-    bool shm_exists(std::string name);
+    struct ShmHeader {
+        uint32_t magic;              // 'SHM1' little-endian
+        uint16_t version;            // bump when layout changes
+        uint16_t header_size;        // sizeof(ShmHeader)
+        uint32_t label_size;         // size of data stored here
+        std::atomic<uint32_t> state; // readiness of shm block
+    };
 
     class Shm {
         private:
@@ -62,6 +66,7 @@ namespace eroil::shm {
             ShmErr open_new_rety(const uint32_t attempts = 5, const uint32_t wait_ms = 100);
             ShmErr open_existing();
             ShmErr open_existing_rety(const uint32_t attempts = 5, const uint32_t wait_ms = 100);
+            ShmErr create_or_open(const uint32_t attempts = 10, const uint32_t wait_ms = 100);
             ShmOpErr read(void* buf, const size_t size) const noexcept;
             ShmOpErr write(const void* buf, const size_t size) noexcept;
             virtual void close() noexcept;
@@ -96,5 +101,6 @@ namespace eroil::shm {
             bool has_recv_event(const Label label, const NodeId my_id) const;
             ShmOpErr recv(void* buf, const size_t size);
             ShmOpErr recv_nonblocking(void* buf, const size_t size);
+            void interrupt_wait();
     };
 }

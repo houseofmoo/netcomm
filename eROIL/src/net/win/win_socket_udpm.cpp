@@ -85,7 +85,7 @@ namespace eroil::net::udpm {
         }
     }
 
-    IoOp send_to(socket::UDPMulti sock, const void* data, size_t len, const char* ip, uint16_t port) {
+    SocketOp send_to(socket::UDPMulti sock, const void* data, size_t len, const char* ip, uint16_t port) {
         SOCKET s = to_native(sock);
 
         if (len > static_cast<size_t>(INT32_MAX)) return make_err(WSAEINVAL);
@@ -107,14 +107,14 @@ namespace eroil::net::udpm {
             sizeof(to)
         );
 
-        if (rc >= 0) return IoOp{ IoResult::Ok, rc, 0 };
+        if (rc >= 0) return SocketOp{ SocketIoResult::Ok, rc, 0 };
 
         int err = WSAGetLastError();
-        if (err == WSAEWOULDBLOCK) return IoOp{ IoResult::WouldBlock, 0, err };
+        if (err == WSAEWOULDBLOCK) return SocketOp{ SocketIoResult::WouldBlock, 0, err };
         return make_err(err);
     }
 
-    IoOp recv_from(socket::UDPMulti sock, void* out, size_t len, UdpEndpoint* from) {
+    SocketOp recv_from(socket::UDPMulti sock, void* out, size_t len, UdpEndpoint* from) {
         SOCKET s = to_native(sock);
 
         if (len > static_cast<size_t>(INT32_MAX)) {
@@ -138,11 +138,11 @@ namespace eroil::net::udpm {
                 from->addr_be = src.sin_addr.s_addr; // already network order
                 from->port_be = src.sin_port;        // already network order
             }
-            return IoOp{ IoResult::Ok, rc, 0 };
+            return SocketOp{ SocketIoResult::Ok, rc, 0 };
         }
 
         int err = WSAGetLastError();
-        if (err == WSAEWOULDBLOCK) return IoOp{ IoResult::WouldBlock, 0, err };
+        if (err == WSAEWOULDBLOCK) return SocketOp{ SocketIoResult::WouldBlock, 0, err };
         return make_err(err);
     }
 }

@@ -8,29 +8,28 @@
 #include "types/handles.h"
 
 namespace eroil {
-
+ 
     struct SendRoute {
         Label label{};
         size_t label_size{};
         std::vector<handle_uid> publishers;
-        std::vector<NodeId> remote_subscribers;   // NodeIds only (no sockets)
-        bool has_local_subscribers = false;       // transport registry decides shm details
+        std::vector<NodeId> remote_subscribers;
+        bool has_local_subscribers = false;
     };
 
     struct RecvRoute {
         Label label{};
         size_t label_size{};
         std::vector<handle_uid> subscribers;
-        std::optional<NodeId> remote_publisher;   // NodeId only
-        bool has_local_publisher = false;         // transport registry decides shm details
+        std::optional<NodeId> remote_publisher;
+        bool has_local_publisher = false;
     };
 
-    // Plans are "what should happen", not "how"
     struct SendPlan {
         Label label{};
         size_t label_size{};
         bool want_local = false;
-        std::vector<NodeId> remote_node_ids;      // who to send to over socket
+        std::vector<NodeId> remote_node_ids;
         bool empty() const { return !want_local && remote_node_ids.empty(); }
     };
 

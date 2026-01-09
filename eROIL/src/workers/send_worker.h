@@ -6,6 +6,7 @@
 #include <atomic>
 #include <thread>
 #include <functional>
+
 #include "types/types.h"
 #include "types/handles.h"
 #include "events/semaphore.h"

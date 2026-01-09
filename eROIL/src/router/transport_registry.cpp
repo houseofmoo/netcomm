@@ -48,9 +48,9 @@ namespace eroil {
         }
 
         auto shm_block = std::make_shared<shm::ShmSend>(label, size);
-        auto open_err = shm_block->open_new_rety(5, 100);
+        auto open_err = shm_block->create_or_open();
         if (open_err != shm::ShmErr::None) {
-            ERR_PRINT("ensure_send_shm(): open_new_rety failed label=", label);
+            ERR_PRINT("ensure_send_shm(): create_or_open failed label=", label);
             return nullptr;
         }
 
@@ -82,9 +82,9 @@ namespace eroil {
         }
 
         auto shm_block = std::make_shared<shm::ShmRecv>(label, size);
-        auto open_err = shm_block->open_existing_rety(5, 100);
+        auto open_err = shm_block->create_or_open();
         if (open_err != shm::ShmErr::None) {
-            ERR_PRINT("ensure_recv_shm(): open_existing_rety failed label=", label);
+            ERR_PRINT("ensure_recv_shm(): create_or_open failed label=", label);
             return nullptr;
         }
 

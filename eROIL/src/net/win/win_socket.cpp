@@ -3,24 +3,30 @@
 #include "net/socket.h"
 
 namespace eroil::net {
-    IoOp make_err(int wsa_err) {
-        IoOp op;
-        op.result = IoResult::Error;
+    SocketOp make_err(int wsa_err) {
+        SocketOp op;
+        op.result = SocketIoResult::Error;
         op.bytes = 0;
         op.sys_error = wsa_err;
         return op;
     }
 
     bool is_valid(socket::TCPClient s) {
-        return s.handle != 0 && s.handle != INVALID_SOCKET;
+        if (s.handle == 0) return false;
+        SOCKET native = static_cast<SOCKET>(s.handle);
+        return native != INVALID_SOCKET;
     }
 
     bool is_valid(socket::UDP s) {
-        return s.handle != 0 && s.handle != INVALID_SOCKET;
+        if (s.handle == 0) return false;
+        SOCKET native = static_cast<SOCKET>(s.handle);
+        return native != INVALID_SOCKET;
     }
 
     bool is_valid(socket::UDPMulti s) {
-        return s.handle != 0 && s.handle != INVALID_SOCKET;
+        if (s.handle == 0) return false;
+        SOCKET native = static_cast<SOCKET>(s.handle);
+        return native != INVALID_SOCKET;
     }
 
     bool init() {

@@ -17,7 +17,7 @@
 
 //     while (true) {
 //         auto r = udpm::recv_from(udp, buf, sizeof(buf)-1, &from);
-//         if (r.result == IoResult::Ok) {
+//         if (r.result == SocketIoResult::Ok) {
 //             buf[r.bytes] = 0;
 //             std::cout << "1 got: " << buf << "\n";
 //         } else {
@@ -54,7 +54,7 @@
 
 //     while (true) {
 //         auto r = udpm::recv_from(udp, buf, sizeof(buf)-1, &from);
-//         if (r.result == IoResult::Ok) {
+//         if (r.result == SocketIoResult::Ok) {
 //             buf[r.bytes] = 0;
 //             std::cout << "3 got: " << buf << "\n";
 //         } else {
@@ -103,16 +103,16 @@ int main() {
 
     //     // const char msg[] = "hello\n";
     //     // auto w = eROIL::net::tcp::send(s, msg, std::strlen(msg));
-    //     // if (w.result != eROIL::net::IoResult::Ok) {
+    //     // if (w.result != eROIL::net::SocketIoResult::Ok) {
     //     //     std::cerr << "send failed, err=" << w.sys_error << "\n";
     //     // }
 
     //     // char buf[1024];
     //     // auto r = eROIL::net::tcp::recv(s, buf, sizeof(buf) - 1);
-    //     // if (r.result == eROIL::net::IoResult::Ok) {
+    //     // if (r.result == eROIL::net::SocketIoResult::Ok) {
     //     //     buf[r.bytes] = '\0';
     //     //     std::cout << "recv: " << buf;
-    //     // } else if (r.result == eROIL::net::IoResult::Closed) {
+    //     // } else if (r.result == eROIL::net::SocketIoResult::Closed) {
     //     //     std::cout << "peer closed\n";
     //     // } else {
     //     //     std::cerr << "recv failed/wouldblock, err=" << r.sys_error << "\n";

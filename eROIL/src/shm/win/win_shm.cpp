@@ -3,6 +3,7 @@
 #include <cstring>
 #include <thread>
 #include <chrono>
+#include <eROIL/print.h>
 
 namespace eroil::shm {
     static std::wstring to_windows_wstring(const std::string& s) {
@@ -14,29 +15,6 @@ namespace eroil::shm {
         std::wstring out((size_t)len, L'\0');
         ::MultiByteToWideChar(CP_UTF8, 0, s.data(), (int)s.size(), out.data(), len);
         return out;
-    }
-
-    bool shm_exists(std::string name) {
-        if (name.empty()) return false;
-
-        auto wname = to_windows_wstring(name);
-        HANDLE handle = ::CreateFileMappingW(
-            INVALID_HANDLE_VALUE,
-            nullptr,
-            PAGE_READWRITE,
-            0,
-            1,
-            wname.c_str()
-        );
-
-        if (!handle)  {
-            DWORD e = GetLastError();
-            return e == ERROR_ACCESS_DENIED; 
-        }
-
-        bool exists = (GetLastError() == ERROR_ALREADY_EXISTS);
-        ::CloseHandle(handle);
-        return exists;
     }
 
     std::byte* Shm::data_ptr() const noexcept {
@@ -52,6 +30,10 @@ namespace eroil::shm {
     }
 
     std::string Shm::name() const noexcept {
+        // cross session, but need admin rights
+        //return "Global\\eroil.label." + std::to_string(m_label);
+
+        // local session only
         return "Local\\eroil.label." + std::to_string(m_label);
     }
 
@@ -93,13 +75,18 @@ namespace eroil::shm {
         }
 
         // write header to block
-        auto hdr = ShmHeader{
-            kShmMagic,
-            kShmVersion,
-            static_cast<uint16_t>(sizeof(ShmHeader)),
-            static_cast<uint32_t>(m_label_size)
-        };
-        *static_cast<ShmHeader*>(m_view) = hdr;
+        auto* hdr = static_cast<ShmHeader*>(m_view);
+        hdr->state.store(SHM_INITING, std::memory_order_relaxed);
+        hdr->magic = kShmMagic;
+        hdr->version = kShmVersion;
+        hdr->header_size = static_cast<uint16_t>(sizeof(ShmHeader));
+        hdr->label_size = static_cast<uint32_t>(m_label_size);
+
+        // zero data block
+        std::memset(data_ptr(), 0, m_label_size);
+
+        // publish readiness
+        hdr->state.store(SHM_READY, std::memory_order_release);
  
         m_valid = true;
         return ShmErr::None;
@@ -145,6 +132,19 @@ namespace eroil::shm {
 
         // read header and validate
         const auto* hdr = static_cast<const ShmHeader*>(m_view);
+
+        // wait for initialization
+        constexpr uint32_t tries = 100;
+        for (uint32_t i = 0; i < tries; ++i) {
+            if (hdr->state.load(std::memory_order_acquire) == SHM_READY) break;
+            ::Sleep(0); // yield to any ready thread and come back to me later
+        }
+
+        if (hdr->state.load(std::memory_order_acquire) != SHM_READY) {
+            close();
+            return ShmErr::NotInitialized; 
+        }
+
         if (hdr->magic != kShmMagic ||
             hdr->version != kShmVersion ||
             hdr->header_size != sizeof(ShmHeader) ||
@@ -165,6 +165,31 @@ namespace eroil::shm {
             std::this_thread::sleep_for(std::chrono::milliseconds(wait_ms));
         }
         return error;
+    }
+
+    ShmErr Shm::create_or_open(const uint32_t attempts, const uint32_t wait_ms) {
+        if (m_valid) return ShmErr::DoubleOpen;
+        ShmErr err = ShmErr::None;
+
+        for (uint32_t i = 0; i < attempts; ++i) {
+            err = open_new();
+            if (err == ShmErr::None) {
+                return err;
+            }
+
+            if (err != ShmErr::AlreadyExists) {
+                ERR_PRINT("shm::create_or_open() got unexpected error from open_new(): ", static_cast<int>(err));
+                return err; // some other failure state
+            }
+
+            err = open_existing();
+            if (err == ShmErr::None) return err;
+
+            // wait and try again
+            std::this_thread::sleep_for(std::chrono::milliseconds(wait_ms));
+        }
+
+        return err;
     }
 
     ShmOpErr Shm::read(void* buf, const size_t size) const noexcept {

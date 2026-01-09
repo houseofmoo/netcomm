@@ -78,4 +78,11 @@ namespace eroil::shm {
         
         return ShmOpErr::None;
     }
+
+    void ShmRecv::interrupt_wait() {
+        // since a recv event is unique to us for a given label
+        // we can safely post this event which will only wake up
+        // ourselves
+        m_recv_event.post(); 
+    }
 }

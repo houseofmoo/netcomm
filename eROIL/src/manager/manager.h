@@ -25,8 +25,6 @@ namespace eroil {
             Router m_router;
             Broadcast m_broadcast;
 
-            worker::SendWorker m_send_worker;
-
         public:
             Manager(int id, std::vector<NodeInfo> nodes);
             ~Manager() = default;

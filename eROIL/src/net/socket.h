@@ -17,15 +17,15 @@ namespace eroil::net {
         };
     }
 
-    enum class IoResult : uint8_t {
+    enum class SocketIoResult : uint8_t {
         Ok,
         WouldBlock,
         Closed,
         Error
     };
 
-    struct IoOp {
-        IoResult result = IoResult::Error;
+    struct SocketOp {
+        SocketIoResult result = SocketIoResult::Error;
         int bytes = 0;          // number of bytes sent/received (0 allowed)
         int sys_error = 0;      // platform error code
     };
@@ -55,7 +55,7 @@ namespace eroil::net {
 
     bool init();
     void shutdown();
-    IoOp make_err(int wsa_err);
+    SocketOp make_err(int wsa_err);
 
     bool is_valid(socket::TCPClient s);
     bool is_valid(socket::UDP s);
@@ -63,47 +63,51 @@ namespace eroil::net {
 
     namespace tcp {
         socket::TCPClient open_tcp_socket();
-        bool set_nonblocking(socket::TCPClient sock, bool enabled);
+        //bool set_nonblocking(socket::TCPClient sock, bool enabled);
         bool connect(socket::TCPClient sock, const char* ip, uint16_t port);
+        bool shutdown_recv(socket::TCPClient sock);
+        bool shutdown_both(socket::TCPClient sock);
         void close(socket::TCPClient sock);
-        IoOp send(socket::TCPClient sock, const void* data, size_t len);
-        IoOp recv(socket::TCPClient sock, void* out, size_t len);
+        SocketOp send(socket::TCPClient sock, const void* data, size_t len);
+        SocketOp recv(socket::TCPClient sock, void* out, size_t len);
     }
 
     namespace udp {
         socket::UDP open_udp_socket();
-        bool set_nonblocking(socket::UDP sock, bool enabled);
+        //bool set_nonblocking(socket::UDP sock, bool enabled);
         bool bind(socket::UDP sock, const char* ip, uint16_t port);
         bool set_default_peer(socket::UDP sock, const char* ip, uint16_t port);
         void close(socket::UDP sock);
-        IoOp send_to(socket::UDP sock, const void* data, size_t len, const char* ip, uint16_t port);
-        IoOp send(socket::UDP sock, const void* data, size_t len);
-        IoOp recv_from(socket::UDP sock, void* out, size_t len, UdpEndpoint* from);
-        IoOp recv(socket::UDP sock, void* out, size_t len);
+        SocketOp send_to(socket::UDP sock, const void* data, size_t len, const char* ip, uint16_t port);
+        SocketOp send(socket::UDP sock, const void* data, size_t len);
+        SocketOp recv_from(socket::UDP sock, void* out, size_t len, UdpEndpoint* from);
+        SocketOp recv(socket::UDP sock, void* out, size_t len);
     }
 
     namespace udpm {
         socket::UDPMulti open_udp_socket();
-        bool set_nonblocking(socket::UDPMulti sock, bool enabled);
+        //bool set_nonblocking(socket::UDPMulti sock, bool enabled);
         bool bind(socket::UDPMulti sock, const char* ip, uint16_t port);
         bool join_multicast(socket::UDPMulti sock, const char* group_ip);
         void close(socket::UDPMulti sock);
-        IoOp send_to(socket::UDPMulti sock, const void* data, size_t len, const char* ip, uint16_t port);
-        IoOp recv_from(socket::UDPMulti sock, void* out, size_t len, UdpEndpoint* from);
+        SocketOp send_to(socket::UDPMulti sock, const void* data, size_t len, const char* ip, uint16_t port);
+        SocketOp recv_from(socket::UDPMulti sock, void* out, size_t len, UdpEndpoint* from);
     }
 
     class ClientSocket {
         private:
             NodeId m_connected_to;
-            const char* ip;
-            uint16_t port;
-            socket::TCPClient client;
+            const char* m_ip;
+            uint16_t m_port;
+            socket::TCPClient m_client;
 
         public:
             ClientSocket();
             ~ClientSocket();
 
-            void send(const void* buf, const size_t size);
-            void recv(void* buf, const size_t size);
+            SocketOp send(const void* buf, const size_t size);
+            SocketOp recv(void* buf, const size_t size);
+            void shutdown_read();
+            void close();
     };
 }
