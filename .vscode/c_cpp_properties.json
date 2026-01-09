@@ -1,0 +1,20 @@
+{
+    "configurations": [
+        {
+            "name": "Win32",
+            "includePath": [
+                "${default}",
+                "${workspaceFolder}/**",
+                "${workspaceFolder}/eROIL/**",
+                "${workspaceFolder}/eROIL/src/**",
+                "${workspaceFolder}/eROIL/include/**",
+                "${workspaceFolder}/Tests/**",
+                "${workspaceFolder}/Tests/src/**"
+            ],
+            "windowsSdkVersion": "10.0.26100.0",
+            "intelliSenseMode": "windows-msvc-x64",
+            "defines": ["EROIL_WIN32"]
+        }
+    ],
+    "version": 4
+}
