@@ -7,8 +7,6 @@ namespace eroil::shm {
     ShmRecv::ShmRecv(Label label, const size_t label_size) 
         : Shm(label, label_size), m_recv_event(label, 0) {}
 
-    ShmRecv::~ShmRecv() = default;
-
     ShmOpErr ShmRecv::set_recv_event(NodeId my_id) {
         m_recv_event.close(); // close the temp event we set up on construction
 
@@ -34,7 +32,7 @@ namespace eroil::shm {
     }
 
     ShmOpErr ShmRecv::recv(void* buf, const size_t size) {
-        if (!m_valid) return ShmOpErr::NotOpen;
+        if (!is_valid()) return ShmOpErr::NotOpen;
         if (size > m_label_size) return ShmOpErr::TooLarge;
 
         // block until signaled
@@ -56,7 +54,7 @@ namespace eroil::shm {
     }
 
     ShmOpErr ShmRecv::recv_nonblocking(void* buf, const size_t size) {
-        if (!m_valid) return ShmOpErr::NotOpen;
+        if (!is_valid()) return ShmOpErr::NotOpen;
         if (size > m_label_size) return ShmOpErr::TooLarge;
 
         // if no data, return

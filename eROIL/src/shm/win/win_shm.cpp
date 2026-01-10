@@ -24,10 +24,43 @@ namespace eroil::shm {
     }
 
     Shm::Shm(const Label label, const size_t label_size) : 
-        m_label(label), m_label_size(label_size), m_handle(nullptr), m_view(nullptr), m_valid(false) {}
+        m_label(label), m_label_size(label_size), m_handle(nullptr), m_view(nullptr) {}
 
     Shm::~Shm() {
         close();
+    }
+
+    Shm::Shm(Shm&& other) noexcept : 
+        m_label(other.m_label),
+        m_label_size(other.m_label_size),
+        m_handle(other.m_handle),
+        m_view(other.m_view) {
+
+        other.m_handle = nullptr;
+        other.m_view   = nullptr;
+        other.m_label  = 0;
+        other.m_label_size = 0;
+    }
+
+    Shm& Shm::operator=(Shm&& other) noexcept {
+        if (this != &other) {
+            close();
+
+            m_label = other.m_label;
+            m_label_size = other.m_label_size;
+            m_handle = other.m_handle;
+            m_view = other.m_view;
+
+            other.m_handle = nullptr;
+            other.m_view = nullptr;
+            other.m_label = 0;
+            other.m_label_size = 0;
+        }
+        return *this;
+    }
+
+    bool Shm::is_valid() const noexcept {
+        return m_handle != nullptr && m_view != nullptr;
     }
 
     std::string Shm::name() const noexcept {
@@ -43,7 +76,7 @@ namespace eroil::shm {
     }
 
     ShmErr Shm::open_new() {
-        if (m_valid) return ShmErr::DoubleOpen;
+        if (is_valid()) return ShmErr::DoubleOpen;
 
         auto wname = to_windows_wstring(name());
         if (wname.empty()) {
@@ -89,7 +122,6 @@ namespace eroil::shm {
         // publish readiness
         hdr->state.store(SHM_READY, std::memory_order_release);
  
-        m_valid = true;
         return ShmErr::None;
     }
 
@@ -104,7 +136,7 @@ namespace eroil::shm {
     }
 
     ShmErr Shm::open_existing() {
-        if (m_valid) return ShmErr::DoubleOpen;
+        if (is_valid()) return ShmErr::DoubleOpen;
 
         auto wname = to_windows_wstring(name());
         if (wname.empty()) {
@@ -119,15 +151,14 @@ namespace eroil::shm {
 
         if (m_handle == nullptr) {
             DWORD e = GetLastError();
-            m_valid = false;
             if (e == ERROR_FILE_NOT_FOUND) return ShmErr::DoesNotExist;
             return ShmErr::UnknownError;
         }
 
         m_view = MapViewOfFile(m_handle, FILE_MAP_ALL_ACCESS, 0, 0, 0);
         if (m_view == nullptr) {
-            CloseHandle(m_handle);
-            m_valid = false;
+            close();
+            m_handle = nullptr;
             return ShmErr::FileMapFailed;
         }
 
@@ -138,7 +169,7 @@ namespace eroil::shm {
         constexpr uint32_t tries = 100;
         for (uint32_t i = 0; i < tries; ++i) {
             if (hdr->state.load(std::memory_order_acquire) == SHM_READY) break;
-            ::Sleep(0); // yield to any ready thread and come back to me later
+            ::Sleep(1); // yield to any ready thread and come back to me later
         }
 
         if (hdr->state.load(std::memory_order_acquire) != SHM_READY) {
@@ -154,7 +185,6 @@ namespace eroil::shm {
             return ShmErr::LayoutMismatch;
         }
 
-        m_valid = true;
         return ShmErr::None;
     }
 
@@ -169,7 +199,7 @@ namespace eroil::shm {
     }
 
     ShmErr Shm::create_or_open(const uint32_t attempts, const uint32_t wait_ms) {
-        if (m_valid) return ShmErr::DoubleOpen;
+        if (is_valid()) return ShmErr::DoubleOpen;
         ShmErr err = ShmErr::None;
 
         for (uint32_t i = 0; i < attempts; ++i) {
@@ -194,7 +224,7 @@ namespace eroil::shm {
     }
 
     ShmOpErr Shm::read(void* buf, const size_t size) const noexcept {
-        if (!m_valid || m_view == nullptr) return ShmOpErr::NotOpen;
+        if (!is_valid()) return ShmOpErr::NotOpen;
         if (size > m_label_size) return ShmOpErr::TooLarge;
 
         std::memcpy(buf, data_ptr(), size);
@@ -202,7 +232,7 @@ namespace eroil::shm {
     }
     
     ShmOpErr Shm::write(const void* buf, const size_t size) noexcept {
-        if (!m_valid || m_view == nullptr) return ShmOpErr::NotOpen;
+        if (!is_valid()) return ShmOpErr::NotOpen;
         if (size > m_label_size) return ShmOpErr::TooLarge;
 
         std::memcpy(data_ptr(), buf, size);
@@ -219,7 +249,5 @@ namespace eroil::shm {
             ::CloseHandle(m_handle);
             m_handle = nullptr;
         }
-
-        m_valid = false;
     }
 }

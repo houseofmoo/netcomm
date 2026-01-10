@@ -18,7 +18,7 @@ namespace eroil {
 
     bool Broadcast::start_broadcast(uint16_t port) {
         m_port = port;
-        sock::UdpMcastConfig cfg; // default config other than port
+        sock::UdpMcastConfig cfg; // default config
         cfg.port = m_port;
         
         auto result = m_udp.open_and_join(cfg);
@@ -102,10 +102,12 @@ namespace eroil {
             const auto addr = m_address_book.get(msg.id);
             switch (addr.kind) {
                 case RouteKind::Shm: {
+                    PRINT(m_id, " adding to local send subs, nodeid=", msg.id, " label=", info.label);
                     m_router.add_local_send_subscriber(info.label, info.size, msg.id);
                     break;
                 }
                 case RouteKind::Socket: {
+                    PRINT(m_id, " adding to remote send subs, nodeid=", msg.id, " label=", info.label);
                     m_router.add_remote_send_subscriber(info.label, info.size, msg.id);
                     break;
                 }
@@ -130,12 +132,14 @@ namespace eroil {
             const auto addr = m_address_book.get(msg.id);
             switch (addr.kind) {
                 case RouteKind::Shm: {
+                    PRINT(m_id, " adding to local recv publisher, nodeid=", msg.id, " label=", info.label);
                     m_router.set_local_recv_publisher(info.label, info.size, m_id);
                     // for each new local recv publisher, we need a new thread to listen to for
                     // that label
                     break;
                 }
                 case RouteKind::Socket: {
+                    PRINT(m_id, " adding to remote recv publisher, nodeid=", msg.id, " label=", info.label);
                     m_router.set_remote_recv_publisher(info.label, info.size, msg.id);
                     // should already have 1 thread per socket connection that listens for data from that peer
                     // that thread recv's data, then passes it to the router 

@@ -29,6 +29,9 @@ namespace eroil::evt {
         public:
             NamedEvent(Label label, NodeId dest_node_id);
             ~NamedEvent();
+
+            NamedEvent(NamedEvent&& other) noexcept;
+            NamedEvent& operator=(NamedEvent&& other) noexcept;
             
             std::string name() const;
             NamedEventErr open();

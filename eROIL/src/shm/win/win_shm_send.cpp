@@ -5,8 +5,6 @@
 
 namespace eroil::shm {
     ShmSend::ShmSend(const Label label, const size_t label_size) : Shm(label, label_size) {}
-    
-    ShmSend::~ShmSend() = default;
 
     ShmOpErr ShmSend::add_send_event(const NodeId to_id) {
         // check if event already exists
@@ -21,8 +19,8 @@ namespace eroil::shm {
         if (exists != m_send_events.end()) return ShmOpErr::DuplicateSendEvent;
 
         // attempt to open new event
-        evt::NamedEvent e(m_label, to_id);
-        auto error = e.open();
+        evt::NamedEvent evt(m_label, to_id);
+        auto error = evt.open();
         if (error != evt::NamedEventErr::None) {
             using err = evt::NamedEventErr;
             switch (error) {
@@ -34,7 +32,7 @@ namespace eroil::shm {
             return ShmOpErr::AddSendEventError;
         }
 
-        m_send_events.emplace_back(std::move(e));
+        m_send_events.emplace_back(std::move(evt));
         return ShmOpErr::None;
     }
     
@@ -66,7 +64,7 @@ namespace eroil::shm {
     }
 
     ShmOpErr ShmSend::send(const void* buf, const size_t size) {
-        if (!m_valid) return ShmOpErr::NotOpen;
+        if (!is_valid()) return ShmOpErr::NotOpen;
         if (size > m_label_size) return ShmOpErr::TooLarge;
 
         if (auto err = write(buf, size); err != ShmOpErr::None) {

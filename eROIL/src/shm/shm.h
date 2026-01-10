@@ -38,12 +38,19 @@ namespace eroil::shm {
             size_t m_label_size;
             shm_handle m_handle;
             shm_view m_view;
-            bool m_valid;
+            // bool m_valid;
 
         public:
             Shm(const Label label, const size_t label_size);
             virtual ~Shm();
+
+            Shm(const Shm&) = delete;
+            Shm& operator=(const Shm&) = delete;
+
+            Shm(Shm&& other) noexcept;
+            Shm& operator=(Shm&& other) noexcept;
             
+            bool is_valid() const noexcept;
             std::string name() const noexcept;
             size_t size_bytes_total() const noexcept;
             ShmErr open_new();
@@ -53,7 +60,7 @@ namespace eroil::shm {
             ShmErr create_or_open(const uint32_t attempts = 10, const uint32_t wait_ms = 100);
             ShmOpErr read(void* buf, const size_t size) const noexcept;
             ShmOpErr write(const void* buf, const size_t size) noexcept;
-            virtual void close() noexcept;
+            void close() noexcept;
 
             template <typename T>
             T* map_to_data() const { return reinterpret_cast<T*>(data_ptr()); }
@@ -65,7 +72,13 @@ namespace eroil::shm {
 
         public:
             ShmSend(const Label label, const size_t label_size);
-            ~ShmSend() override;
+            ~ShmSend() = default;
+
+            ShmSend(const ShmSend&) = delete;
+            ShmSend& operator=(const ShmSend&) = delete;
+
+            ShmSend(ShmSend&& other) noexcept = default;
+            ShmSend& operator=(ShmSend&& other) noexcept = default;
 
             ShmOpErr add_send_event(const NodeId to_id);
             bool has_send_event(const Label label, const NodeId to_id) const;
@@ -79,7 +92,13 @@ namespace eroil::shm {
 
         public:
             ShmRecv(const Label label, const size_t label_size);
-            ~ShmRecv() override;
+            ~ShmRecv() = default;
+
+            ShmRecv(const ShmRecv&) = delete;
+            ShmRecv& operator=(const ShmRecv&) = delete;
+
+            ShmRecv(ShmRecv&& other) noexcept = default;
+            ShmRecv& operator=(ShmRecv&& other) noexcept = default;
 
             ShmOpErr set_recv_event(NodeId my_id);
             bool has_recv_event(const Label label, const NodeId my_id) const;

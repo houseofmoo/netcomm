@@ -1,10 +1,13 @@
 #include <iostream>
 #include <cstring>
+#include <memory>
 #include <eROIL/print.h>
 #include <eROIL/eroil.h>
 
 #include <thread>
 #include <chrono>
+
+#include <windows.h>
 
 // void RunThread1() {
 //     using namespace eroil::net;
@@ -73,8 +76,27 @@ int main(int argc, char** argv) {
 
     std::cout << "init_manager(" << id << ")" << std::endl;
     init_manager(id);
+    
+    auto buf = std::make_unique<uint8_t[]>(1024);
 
-    std::this_thread::sleep_for(std::chrono::milliseconds(1000 * 20));
+    if (id % 2 == 0) {
+        auto handle = open_send(5, buf.get(), 1024);
+        while (true) {
+            send_label(handle, buf.get(), 1024, 0);
+            std::this_thread::sleep_for(std::chrono::seconds(1));
+        }
+
+    } else {
+        auto sem = ::CreateSemaphoreW(nullptr, 0, 1000, nullptr);
+        open_recv(5, buf.get(), 1024, sem);
+
+        while (true) {
+            ::WaitForSingleObject(sem, INFINITE);
+            PRINT("signaled");
+        }
+    }
+
+    std::this_thread::sleep_for(std::chrono::milliseconds(1000 * 2000));
     std::cout << "sleep ends" << std::endl;
     return 0;
 }

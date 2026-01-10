@@ -1,13 +1,14 @@
 #include "events/named_event.h"
 #include "windows_hdr.h"
+#include <eROIL/print.h>
 
 namespace eroil::evt {
     static HANDLE as_native(sem_handle p) noexcept {
-        return reinterpret_cast<HANDLE>(p);
+        return static_cast<HANDLE>(p);
     }
 
     static sem_handle as_sem_handle(HANDLE h) noexcept {
-        return reinterpret_cast<sem_handle>(h);
+        return static_cast<sem_handle>(h);
     }
 
     static std::wstring to_windows_wstring(const std::string& s) {
@@ -41,6 +42,29 @@ namespace eroil::evt {
 
     NamedEvent::~NamedEvent() {
         close();
+    }
+
+    NamedEvent::NamedEvent(NamedEvent&& other) noexcept : 
+        m_label_id(other.m_label_id),
+        m_destination_id(other.m_destination_id),
+        m_sem(other.m_sem) {
+        other.m_label_id = -1;
+        other.m_destination_id = -1;
+        other.m_sem = nullptr;
+    }
+
+    NamedEvent& NamedEvent::operator=(NamedEvent&& other) noexcept {
+        if (this != &other) {
+            close();
+            m_label_id = other.m_label_id;
+            m_destination_id = other.m_destination_id;
+            m_sem = other.m_sem;
+
+            other.m_label_id = -1;
+            other.m_destination_id = -1;
+            other.m_sem = nullptr;
+        }
+        return *this;
     }
 
     std::string NamedEvent::name() const {
@@ -77,7 +101,9 @@ namespace eroil::evt {
 
     NamedEventErr NamedEvent::post() const {
         if (m_sem == nullptr) return NamedEventErr::NotInitialized;
-        if (!::SetEvent(as_native(m_sem))) return NamedEventErr::SignalFailed;
+        if (!::SetEvent(as_native(m_sem))) {
+            return NamedEventErr::SignalFailed;
+        }
         return NamedEventErr::None;
     }
 

@@ -45,7 +45,6 @@ namespace eroil::evt {
 
     SemOpErr Semaphore::wait() {
         return do_wait(m_sem, INFINITE);
-
     }
 
     SemOpErr Semaphore::timed_wait(uint32_t milliseconds) {

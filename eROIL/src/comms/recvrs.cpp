@@ -90,7 +90,7 @@ namespace eroil {
 
         LOG(m_id, " seraching for peers...");
         for (const auto& [id, info] : m_address_book.addresses) {
-            //if (info.kind == RouteKind::Shm) continue;
+            if (info.kind == RouteKind::Shm) continue;
             if (id >= m_id) continue;
 
             LOG(m_id, " attempt connection to id=", id, " ip=", info.ip, ":", info.port);
