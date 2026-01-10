@@ -9,65 +9,6 @@
 
 #include <windows.h>
 
-// void RunThread1() {
-//     using namespace eroil::net;
-
-//     socket::UDPMulti udp = udpm::open_udp_socket();
-//     udpm::bind(udp, "0.0.0.0", 8080);
-//     udpm::join_multicast(udp, "239.255.0.1");
-
-//     char buf[1024];
-//     UdpEndpoint from{};
-
-//     while (true) {
-//         auto r = udpm::recv_from(udp, buf, sizeof(buf)-1, &from);
-//         if (r.result == SocketIoResult::Ok) {
-//             buf[r.bytes] = 0;
-//             std::cout << "1 got: " << buf << "\n";
-//         } else {
-//             std::cout << "1 recv err=" << r.sys_error << "\n";
-//         }
-//         std::this_thread::sleep_for(std::chrono::milliseconds(100));
-//     }
-// }
-
-
-// void RunThread2() {
-//     using namespace eroil::net;
-
-//     socket::UDPMulti udp = udpm::open_udp_socket();
-//     //udpm::join_multicast(udp, "127.0.0.1");
-
-//     const char msg[] = "hello over udp\n";
-//     while (true) {
-//         auto w = udpm::send_to(udp, msg, std::strlen(msg), "239.255.0.1", 8080);
-//         std::cout << "send results: " << (int)w.result << std::endl;
-//         std::this_thread::sleep_for(std::chrono::milliseconds(1000));
-//     }
-// }
-
-// void RunThread3() {
-//     using namespace eroil::net;
-
-//     socket::UDPMulti udp = udpm::open_udp_socket();
-//     udpm::bind(udp, "0.0.0.0", 8080);
-//     udpm::join_multicast(udp, "239.255.0.1");
-
-//     char buf[1024];
-//     UdpEndpoint from{};
-
-//     while (true) {
-//         auto r = udpm::recv_from(udp, buf, sizeof(buf)-1, &from);
-//         if (r.result == SocketIoResult::Ok) {
-//             buf[r.bytes] = 0;
-//             std::cout << "3 got: " << buf << "\n";
-//         } else {
-//             std::cout << "3 recv err=" << r.sys_error << "\n";
-//         }
-//         std::this_thread::sleep_for(std::chrono::milliseconds(100));
-//     }
-// }
-
 int main(int argc, char** argv) {
     int id = 0;
     if (argc >= 2) {
@@ -81,18 +22,30 @@ int main(int argc, char** argv) {
 
     if (id % 2 == 0) {
         auto handle = open_send(5, buf.get(), 1024);
+        int count = 0;
+        std::this_thread::sleep_for(std::chrono::milliseconds(3000));
         while (true) {
+            //PRINT("sending ", count);
+            std::memcpy(buf.get(), &count, sizeof(count));
             send_label(handle, buf.get(), 1024, 0);
-            std::this_thread::sleep_for(std::chrono::seconds(1));
+            count += 1;
+            std::this_thread::sleep_for(std::chrono::microseconds(100));
         }
 
     } else {
         auto sem = ::CreateSemaphoreW(nullptr, 0, 1000, nullptr);
+        PRINT("sem handle: ", sem);
         open_recv(5, buf.get(), 1024, sem);
-
+        int count = 0;
+        int prev_count = 0;
         while (true) {
             ::WaitForSingleObject(sem, INFINITE);
-            PRINT("signaled");
+            std::memcpy(&count, buf.get(), sizeof(count));
+            //PRINT("recvd :", count);
+            if (prev_count + 1 != count) {
+                PRINT("got count out of order expected=", prev_count + 1, " got=", count);
+            }
+            prev_count = count;
         }
     }
 

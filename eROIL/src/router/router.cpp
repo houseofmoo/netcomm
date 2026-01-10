@@ -276,20 +276,6 @@ namespace eroil {
         m_dispatch.dispatch_recv_targets(label, label_size, buf, size, targets);
     }
 
-    SendHandle* Router::get_send_handle(handle_uid uid) const {
-        std::shared_lock lock(m_router_mtx);
-        auto it = m_send_handles.find(uid);
-        if (it == m_send_handles.end()) return nullptr;
-        return it->second.get();
-    }
-
-    RecvHandle* Router::get_recv_handle(handle_uid uid) const {
-        std::shared_lock lock(m_router_mtx);
-        auto it = m_recv_handles.find(uid);
-        if (it == m_recv_handles.end()) return nullptr;
-        return it->second.get();
-    }
-
     std::vector<std::pair<Label, size_t>> Router::get_send_labels() const {
         std::shared_lock lock(m_router_mtx);
         return m_routes.get_send_labels();
@@ -330,12 +316,24 @@ namespace eroil {
         return m_transports.upsert_socket(id, sock);
     }
 
-    bool Router::upsert_shm_send(Label label, std::shared_ptr<shm::ShmSend> shm) {
-       return m_transports.upsert_shm_send(label, shm);
+    std::shared_ptr<sock::TCPClient> Router::get_socket(NodeId id) {
+        return m_transports.get_socket(id);
     }
 
-    bool Router::upsert_shm_recv(Label label, std::shared_ptr<shm::ShmRecv> shm) {
-        return m_transports.upsert_shm_recv(label, shm);
+    bool Router::upsert_send_shm(Label label, std::shared_ptr<shm::ShmSend> shm) {
+       return m_transports.upsert_send_shm(label, shm);
+    }
+
+    std::shared_ptr<shm::ShmSend> Router::get_send_shm(Label label) {
+        return m_transports.get_send_shm(label);
+    }
+
+    bool Router::upsert_recv_shm(Label label, std::shared_ptr<shm::ShmRecv> shm) {
+        return m_transports.upsert_recv_shm(label, shm);
+    }
+
+    std::shared_ptr<shm::ShmRecv> Router::get_recv_shm(Label label) {
+        return m_transports.get_recv_shm(label);
     }
 
     std::vector<std::shared_ptr<RecvTarget>>

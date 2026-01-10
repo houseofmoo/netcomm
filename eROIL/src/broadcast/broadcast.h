@@ -5,10 +5,11 @@
 #include <thread>
 #include <chrono>
 
-#include "socket/udp_multicast.h"
+#include "socket/udp_multicast.h" 
 #include "types/types.h"
-#include "router/router.h"
 #include "address/address.h"
+#include "router/router.h"
+#include "comms/recvrs.h"
 
 namespace eroil {
     struct LabelInfo {
@@ -27,11 +28,13 @@ namespace eroil {
             NodeId m_id;
             Address& m_address_book;
             Router& m_router;
+            Comms& m_comms;
+
             sock::UDPMulticastSocket m_udp;
             uint8_t m_port;
 
         public:
-            Broadcast(NodeId id, Address& address, Router& router);
+            Broadcast(NodeId id, Address& address, Router& router, Comms& comms);
             ~Broadcast();
 
             bool start_broadcast(uint16_t port);

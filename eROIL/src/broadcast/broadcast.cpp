@@ -5,10 +5,11 @@
 #include <eROIL/print.h>
 
 namespace eroil {
-    Broadcast::Broadcast(NodeId id, Address& address, Router& router) :
+    Broadcast::Broadcast(NodeId id, Address& address, Router& router, Comms& comms) :
         m_id(id), 
         m_address_book(address),
-        m_router(router), 
+        m_router(router),
+        m_comms(comms),
         m_udp{},
         m_port{0} {}
 
@@ -132,18 +133,16 @@ namespace eroil {
             const auto addr = m_address_book.get(msg.id);
             switch (addr.kind) {
                 case RouteKind::Shm: {
+                    // add local recv pub and start recv worker to watch shared memory block
                     PRINT(m_id, " adding to local recv publisher, nodeid=", msg.id, " label=", info.label);
                     m_router.set_local_recv_publisher(info.label, info.size, m_id);
-                    // for each new local recv publisher, we need a new thread to listen to for
-                    // that label
+                    m_comms.start_local_recv_worker(info.label, info.size);
                     break;
                 }
                 case RouteKind::Socket: {
+                    // add remote recv pub, recv worker should already be listening to this socket
                     PRINT(m_id, " adding to remote recv publisher, nodeid=", msg.id, " label=", info.label);
                     m_router.set_remote_recv_publisher(info.label, info.size, msg.id);
-                    // should already have 1 thread per socket connection that listens for data from that peer
-                    // that thread recv's data, then passes it to the router 
-                    // m_router.recv_from_publisher(Label label, const void* buf, size_t size);
                     break;
                 }
                 default: {

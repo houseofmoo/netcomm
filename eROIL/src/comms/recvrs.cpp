@@ -10,13 +10,59 @@ namespace eroil {
         m_address_book(address),
         m_router(router), 
         m_context{}, 
-        m_tcp_server{}, 
+        m_tcp_server{},
+        m_sender{router},
         m_sock_recvrs{}, 
         m_shm_recvrs{} {}
 
     void Comms::start() {
+        m_sender.start(); // start sender thread for all outgoing comms
         start_tcp_server();
         search_peers();
+    }
+
+    void Comms::send_label(handle_uid uid, Label label, size_t label_size, std::unique_ptr<uint8_t[]> buf) {
+        m_sender.enqueue(eroil::worker::SendQEntry{
+            uid,
+            label,
+            label_size,
+            std::move(buf)
+        });
+    }
+
+    bool Comms::start_local_recv_worker(Label label, size_t label_size) {
+        auto [it, inserted] = m_shm_recvrs.try_emplace(
+            label,
+            m_router, label,label_size, m_router.get_recv_shm(label)
+        );
+
+        if (inserted) {
+            it->second.launch();
+        } else {
+            it->second.stop();
+            m_shm_recvrs.erase(it);
+        }
+
+        return inserted;
+    }
+
+    bool Comms::start_remove_recv_worker(NodeId from_id) {
+        // TODO: right now we assume all connetions are new, but
+        // if someone disconnects we have to figure out how we want to handle that
+        auto [it, inserted] = m_sock_recvrs.try_emplace(
+            from_id,
+            // pass constructor args to build worker
+            m_router, from_id, m_router.get_socket(from_id)  
+        );
+            
+        if (inserted) {
+            it->second.launch();
+        } else {
+            it->second.stop();
+            m_sock_recvrs.erase(it);
+        }
+
+        return inserted;
     }
 
     void Comms::start_tcp_server() {
@@ -62,15 +108,14 @@ namespace eroil {
                 }
 
                 auto for_router = std::make_shared<sock::TCPClient>(std::move(client));
-                auto for_worker = for_router;
-
                 m_router.upsert_socket(hdr.source_id, for_router);
 
                 // TODO: right now we assume all connetions are new, but
                 // if someone disconnects we have to figure out how we want to handle that
                 auto [it, inserted] = m_sock_recvrs.try_emplace(
                     hdr.source_id,
-                    m_router, hdr.source_id, for_worker // pass constructor args to build worker
+                    // pass constructor args to build worker
+                    m_router, hdr.source_id, m_router.get_socket(hdr.source_id) 
                 );
                 
                 if (inserted) {
@@ -117,20 +162,13 @@ namespace eroil {
             };
             client.send(&hdr, sizeof(hdr));
 
-            auto for_router = std::make_shared<sock::TCPClient>(std::move(client));
-            auto for_worker = for_router;
-
-            m_router.upsert_socket(id, for_router);
-
-            // TODO: right now we assume all connetions are new, but
-            // if someone disconnects we have to figure out how we want to handle that
-            auto [it, inserted] = m_sock_recvrs.try_emplace(
-                id,
-                m_router, id, for_worker // pass constructor args to build worker
+            m_router.upsert_socket(
+                id, 
+                std::make_shared<sock::TCPClient>(std::move(client))
             );
-            
-            if (inserted) {
-                it->second.launch();
+
+            bool success = start_remove_recv_worker(id);
+            if (success) {
                 LOG(m_id, " established connection to node: ", id);
             } else {
                 ERR_PRINT(m_id, "tried to insert new socket recvr worker but it already existed");

@@ -4,6 +4,7 @@
 #include "router/router.h"
 #include "socket/socket_context.h"
 #include "socket/tcp_socket.h"
+#include "workers/send_worker.h"
 #include "workers/socket_recv_worker.h"
 #include "workers/shm_recv_worker.h"
 
@@ -15,13 +16,19 @@ namespace eroil {
             Router& m_router;
             sock::SocketContext m_context; // required for sockets to be available
             sock::TCPServer m_tcp_server;
+
+            worker::SendWorker m_sender;
             std::unordered_map<NodeId, worker::SocketRecvWorker> m_sock_recvrs;
             std::unordered_map<Label, worker::ShmRecvWorker> m_shm_recvrs;
 
         public:
             Comms(NodeId id, Router& router, Address& address);
             ~Comms() = default;
+
             void start();
+            void send_label(handle_uid uid, Label label, size_t label_size, std::unique_ptr<uint8_t[]> buf);
+            bool start_local_recv_worker(Label label, size_t label_size);
+            bool start_remove_recv_worker(NodeId from_id);
 
         private:
             void start_tcp_server();

@@ -1,5 +1,6 @@
 #pragma once
 #include "types/types.h"
+#include <eROIL/print.h>
 
 // PLATFORM SPECIFIC THINGS LIVE HERE
 
@@ -20,9 +21,11 @@ namespace eroil {
 
     inline void signal_recv_sem(sem_handle sem, int /*signal_mode*/) {
         #if defined(EROIL_LINUX)
-            if (sem) { sem_post(sem); }
+        if (sem) { sem_post(sem); }
         #elif defined(EROIL_WIN32)
-            if (sem) { ::SetEvent(sem); }
+        if (sem && !::ReleaseSemaphore(sem, 1, nullptr)) {
+            ERR_PRINT("sem signal failed, errno=",::GetLastError());
+        }
         #endif
     }
 }

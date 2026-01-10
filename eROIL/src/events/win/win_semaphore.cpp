@@ -1,5 +1,6 @@
 #include "events/semaphore.h"
 #include "windows_hdr.h"
+#include <limits>
 
 namespace eroil::evt {
     static SemOpErr do_wait(sem_handle handle, DWORD timeout_ms) {
@@ -15,10 +16,11 @@ namespace eroil::evt {
         }
     }
 
-    Semaphore::Semaphore() : Semaphore(1000) {}
+    Semaphore::Semaphore() : Semaphore(0) {}
 
     Semaphore::Semaphore(uint32_t max_count) : m_sem(nullptr), m_max_count(max_count) {
-        m_sem = ::CreateSemaphoreW(nullptr, 0, max_count, nullptr);
+        if (m_max_count == 0) m_max_count = std::numeric_limits<long>::max();
+        m_sem = ::CreateSemaphoreW(nullptr, 0, m_max_count, nullptr);
     }
 
     Semaphore::~Semaphore() {

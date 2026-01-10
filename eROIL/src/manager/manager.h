@@ -8,18 +8,24 @@
 #include "router/router.h"
 #include "broadcast/broadcast.h"
 #include "comms/recvrs.h"
-#include "workers/send_worker.h"
 
 namespace eroil {
+
+    struct ManagerConfig {
+        // TODO: create this to allow us to config manager
+        // to do things like SHM only, SOCKET only, 
+        // things like that for testing and validation...and eventual
+        // integration with imgui (i think)
+    };
+
     
     class Manager {
         private:
             int m_id;
             Address m_address_book;
             Router m_router;
-            Broadcast m_broadcast;
             Comms m_comms;
-            worker::SendWorker m_sender;
+            Broadcast m_broadcast;
             bool m_valid;
 
         public:

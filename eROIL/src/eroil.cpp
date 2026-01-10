@@ -35,7 +35,7 @@ void* open_recv(int label, void* buf, int size, void* sem) {
         0,
         static_cast<uint8_t*>(buf),
         static_cast<size_t>(size),
-        0,
+        1,
         0,
         nullptr,
         sem,

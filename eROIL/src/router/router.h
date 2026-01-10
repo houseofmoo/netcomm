@@ -50,25 +50,24 @@ namespace eroil {
             SendOpErr send_to_subscribers(Label label, const void* buf, size_t size);
             void recv_from_publisher(Label label, const void* buf, size_t size);
 
-            SendHandle* get_send_handle(handle_uid uid) const;
-            RecvHandle* get_recv_handle(handle_uid uid) const;
-
+            // for broadcaster
             std::vector<std::pair<Label, size_t>> get_send_labels() const;
             std::vector<std::pair<Label, size_t>> get_recv_labels() const;
-
             bool has_send_label(Label label) const;
             bool has_recv_label(Label label) const;
-
             bool is_send_subscriber(Label label, NodeId id) const;
             bool is_recv_publisher(Label label, NodeId from_id, NodeId my_id) const;
 
+            // share ref to sockets/shm for workers
             bool upsert_socket(NodeId id, std::shared_ptr<sock::TCPClient> sock);
-            bool upsert_shm_send(Label label, std::shared_ptr<shm::ShmSend> shm);
-            bool upsert_shm_recv(Label label, std::shared_ptr<shm::ShmRecv> shm);
+            std::shared_ptr<sock::TCPClient> get_socket(NodeId id);
+            bool upsert_send_shm(Label label, std::shared_ptr<shm::ShmSend> shm);
+            std::shared_ptr<shm::ShmSend> get_send_shm(Label label);
+            bool upsert_recv_shm(Label label, std::shared_ptr<shm::ShmRecv> shm);
+            std::shared_ptr<shm::ShmRecv> get_recv_shm(Label label);
 
         private:
             std::vector<std::shared_ptr<RecvTarget>> 
             snapshot_recv_delivery(const std::vector<handle_uid>& uids) const;
-
     };
 }

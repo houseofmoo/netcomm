@@ -13,30 +13,16 @@ namespace eroil {
         return (it != m_sockets.end()) && (it->second != nullptr);
     }
 
-    std::shared_ptr<sock::TCPClient> TransportRegistry::get_socket(NodeId id) const {
-        auto it = m_sockets.find(id);
-        if (it == m_sockets.end()) return nullptr;
-        return it->second;
-    }
-
     bool TransportRegistry::upsert_socket(NodeId id, std::shared_ptr<sock::TCPClient> sock) {
         if (!sock) return false;
         m_sockets.insert_or_assign(id, std::move(sock));
         return true;
     }
 
-    bool TransportRegistry::upsert_shm_send(Label label, std::shared_ptr<shm::ShmSend> shm) {
-        if (!shm) return false;
-
-        m_send_shm.insert_or_assign(label, std::move(shm));
-        return true;
-    }
-
-    bool TransportRegistry::upsert_shm_recv(Label label, std::shared_ptr<shm::ShmRecv> shm) {
-        if (!shm) return false;
-
-        m_recv_shm.insert_or_assign(label, std::move(shm));
-        return true;
+    std::shared_ptr<sock::TCPClient> TransportRegistry::get_socket(NodeId id) const {
+        auto it = m_sockets.find(id);
+        if (it == m_sockets.end()) return nullptr;
+        return it->second;
     }
 
     std::shared_ptr<shm::ShmSend>
@@ -67,10 +53,17 @@ namespace eroil {
         return shm_block;
     }
 
-    bool TransportRegistry::has_local_send_subscriber(Label label, NodeId to_id) const {
+    bool TransportRegistry::upsert_send_shm(Label label, std::shared_ptr<shm::ShmSend> shm) {
+        if (!shm) return false;
+
+        m_send_shm.insert_or_assign(label, std::move(shm));
+        return true;
+    }
+
+    std::shared_ptr<shm::ShmSend> TransportRegistry::get_send_shm(Label label) {
         auto it = m_send_shm.find(label);
-        if (it == m_send_shm.end() || !it->second) return false;
-        return it->second->has_send_event(label, to_id);
+        if (it == m_send_shm.end()) return nullptr;
+        return it->second;
     }
 
     std::shared_ptr<shm::ShmRecv>
@@ -99,6 +92,25 @@ namespace eroil {
 
         m_recv_shm.emplace(label, shm_block);
         return shm_block;
+    }
+
+    bool TransportRegistry::upsert_recv_shm(Label label, std::shared_ptr<shm::ShmRecv> shm) {
+        if (!shm) return false;
+
+        m_recv_shm.insert_or_assign(label, std::move(shm));
+        return true;
+    }
+
+    std::shared_ptr<shm::ShmRecv> TransportRegistry::get_recv_shm(Label label) {
+        auto it = m_recv_shm.find(label);
+        if (it == m_recv_shm.end()) return nullptr;
+        return it->second;
+    }
+
+    bool TransportRegistry::has_local_send_subscriber(Label label, NodeId to_id) const {
+        auto it = m_send_shm.find(label);
+        if (it == m_send_shm.end() || !it->second) return false;
+        return it->second->has_send_event(label, to_id);
     }
 
     bool TransportRegistry::has_local_recv_publisher(Label label, NodeId my_id) const {

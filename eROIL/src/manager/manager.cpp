@@ -4,8 +4,6 @@
 #include <chrono>
 #include <memory>
 #include <eROIL/print.h>
-#include "socket/socket_result.h"
-#include "socket/socket_header.h"
 
 namespace eroil {
     static int unique_id() {
@@ -17,9 +15,8 @@ namespace eroil {
         : m_id(id), 
         m_address_book{}, 
         m_router{}, 
-        m_broadcast{id, m_address_book, m_router}, 
         m_comms{id, m_router, m_address_book},
-        m_sender(m_router),
+        m_broadcast{id, m_address_book, m_router, m_comms}, 
         m_valid(false) {
 
         // confirm we know who the fuck we are
@@ -38,7 +35,6 @@ namespace eroil {
             return false;
         }
 
-        m_sender.start();                   // start sender thread
         m_broadcast.start_broadcast(30001); // join udp multicast group and send/recv threads
         m_comms.start();                    // start tcp listener and recv comms handlers
         return true;
@@ -52,8 +48,6 @@ namespace eroil {
     }
 
     void Manager::send_label(SendHandle* handle, void* buf, size_t buf_size, size_t buf_offset) {
-        //int label = handle->data.label;
-
         // figure out which buffer to use
         uint8_t* send_buf = nullptr;
         size_t send_size = 0;
@@ -71,13 +65,7 @@ namespace eroil {
         // copy data into a local buffer so sender does not have to wait for send to complete
         auto data = std::make_unique<uint8_t[]>(send_size);
         std::memcpy(data.get(), send_buf + send_offset, send_size);
-
-        m_sender.enqueue(worker::SendQEntry{
-            handle->uid,
-            handle->data.label,
-            send_size,
-            std::move(data)
-        });
+        m_comms.send_label(handle->uid, handle->data.label, send_size, std::move(data));
     }
 
     void Manager::close_send(SendHandle* handle) {
