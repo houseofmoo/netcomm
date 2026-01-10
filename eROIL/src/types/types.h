@@ -25,11 +25,13 @@ namespace eroil {
         using shm_handle = void*;
         using sem_handle = void*;
         using shm_view = void*;
+        using socket_handle = std::uintptr_t;
     #elif defined(EROIL_LINUX)
         struct sem_t; // forward decl so we dont have to include <semaphore.h>
         using shm_handle = int;
         using sem_handle = sem_t*;
         using shm_view = void*;
+        using socket_handle = int;
     #else
         #error "Must define EROIL_LINUX or EROIL_WIN32"
     #endif

@@ -6,7 +6,7 @@
 namespace eroil {
   
     struct OpenSendData {
-        uint32_t label;
+        int32_t label;
         uint8_t* buf;
         size_t buf_size;
         uint32_t buf_offset;
@@ -24,8 +24,8 @@ namespace eroil {
     };
 
     struct OpenReceiveData{
-        uint32_t label;
-        uint32_t forward_label;  // the fuck this for?
+        int32_t label;
+        int32_t forward_label;  // the fuck this for?
         uint8_t* buf;
         size_t buf_size;
         size_t buf_slots;

@@ -19,15 +19,12 @@ namespace eroil {
         uint16_t port;
     };
 
-    class Address {
-        private:
-            std::unordered_map<NodeId, NodeAddress> m_node_addresses;
+    struct Address {
+        std::unordered_map<NodeId, NodeAddress> addresses;
+        Address() = default;
+        ~Address() = default;
 
-        public:
-            Address() = default;
-            ~Address() = default;
-
-            void insert_addresses(NodeInfo self, std::vector<NodeInfo> nodes);
-            NodeAddress get(NodeId id);
+        void insert_addresses(NodeInfo self, std::vector<NodeInfo> nodes);
+        NodeAddress get(NodeId id);
     };
 }

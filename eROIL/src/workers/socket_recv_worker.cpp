@@ -1,8 +1,9 @@
 #include "socket_recv_worker.h"
+#include "socket/socket_header.h"
 #include <eROIL/print.h>
 
 namespace eroil::worker {
-    SocketRecvWorker::SocketRecvWorker(Router& router, NodeId peer_id, std::shared_ptr<net::ClientSocket> sock)
+    SocketRecvWorker::SocketRecvWorker(Router& router, NodeId peer_id, std::shared_ptr<sock::TCPClient> sock)
         : m_router(router), m_peer_id(peer_id), m_sock(std::move(sock)) {}
 
     void SocketRecvWorker::launch() { 
@@ -15,7 +16,7 @@ namespace eroil::worker {
 
     void SocketRecvWorker::request_unblock() {
         if (m_sock != nullptr) {
-            m_sock->shutdown_read();
+            m_sock->shutdown();
         }
     }
 
@@ -23,11 +24,11 @@ namespace eroil::worker {
         try {
             std::vector<std::byte> payload;
             while (!stop_requested()) {
-                WireHeader hdr{};
+                sock::SocketHeader hdr{};
                 // TODO: these may be error states that are unrecoverable, but maybe not?
                 if (!recv_exact(&hdr, sizeof(hdr))) break;
-                if (hdr.magic != kMagic || hdr.version != kWireVer) break;
-                if (hdr.data_size > kMaxPayload) break;
+                if (hdr.magic != sock::kMagic || hdr.version != sock::kWireVer) break;
+                if (hdr.data_size > sock::kMaxPayload) break;
                 if (hdr.data_size <= 0) {
                     ERR_PRINT("socket recv got a header that indicated data size was 0");
                     continue;
@@ -50,32 +51,52 @@ namespace eroil::worker {
         }
     }
 
+    // bool SocketRecvWorker::recv_exact(void* dst, size_t size) {
+    //     std::byte* dst_offset = static_cast<std::byte*>(dst);
+    //     size_t got = 0;
+        
+    //     while (got < size) {
+    //         if (stop_requested()) return false;
+
+    //         sock::SockResult result = m_sock->recv(dst_offset + got, size - got);
+    //         switch (result.code) {
+    //             case sock::SockErr::None: {
+    //                 if (result.bytes <= 0) return false; // should never happen
+    //                 got += static_cast<size_t>(result.bytes);
+    //                 break;
+    //             }
+
+    //             case sock::SockErr::WouldBlock: {
+    //                 // should never happen with blocking sockets
+    //                 std::this_thread::sleep_for(std::chrono::milliseconds(1));
+    //                 break;
+    //             }
+
+    //             case sock::SockErr::Closed:     // fallthrough
+    //             case sock::SockErr::Unknown:    // fallthrough
+    //             default: return false;
+    //         }
+    //     }
+    //     return true;
+    // }
     bool SocketRecvWorker::recv_exact(void* dst, size_t size) {
-        std::byte* dst_offset = static_cast<std::byte*>(dst);
-        size_t got = 0;
-
-        while (got < size) {
-            if (stop_requested()) return false;
-
-            net::SocketOp op = m_sock->recv(dst_offset + got, size - got);
-
-            switch (op.result) {
-                case net::SocketIoResult::Ok: {
-                    if (op.bytes <= 0) return false; // should never happen
-                    got += static_cast<size_t>(op.bytes);
-                    break;
-                }
-
-                case net::SocketIoResult::WouldBlock: {
-                    // should never happen with blocking sockets
-                    std::this_thread::sleep_for(std::chrono::milliseconds(1));
-                    break;
-                }
-
-                case net::SocketIoResult::Closed: // fallthrough
-                case net::SocketIoResult::Error:  // fallthrough
-                default: return false;
+        if (stop_requested()) return false;
+        auto result = m_sock->recv_all(dst, size);
+        switch (result.code) {
+            case sock::SockErr::None: {
+                if (result.bytes <= 0) return false; // should never happen
+                break;
             }
+
+            case sock::SockErr::WouldBlock: {
+                // should never happen with blocking sockets
+                std::this_thread::sleep_for(std::chrono::milliseconds(1));
+                break;
+            }
+
+            case sock::SockErr::Closed:     // fallthrough
+            case sock::SockErr::Unknown:    // fallthrough
+            default: return false;
         }
         return true;
     }

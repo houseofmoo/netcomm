@@ -59,4 +59,16 @@ namespace eroil {
 
         return nodes;
     }
+
+    std::vector<NodeInfo> GetTestNodeInfo() {
+        std::vector<NodeInfo> nodes;
+        for (int i = 0; i < 20; i++) {
+            nodes.push_back(NodeInfo{
+                i,
+                LOCAL_HOST,
+                static_cast<uint16_t>(PORT_START + i)
+            });
+        }
+        return nodes;
+    }
 }  // namespace eROIL

@@ -10,29 +10,32 @@ namespace eroil {
 
     bool TransportRegistry::has_socket(NodeId id) const {
         auto it = m_sockets.find(id);
-        return (it != m_sockets.end()) && (it->second.socket != nullptr);
+        return (it != m_sockets.end()) && (it->second != nullptr);
     }
 
-    std::shared_ptr<net::ClientSocket> TransportRegistry::get_socket(NodeId id) const {
+    std::shared_ptr<sock::TCPClient> TransportRegistry::get_socket(NodeId id) const {
         auto it = m_sockets.find(id);
         if (it == m_sockets.end()) return nullptr;
-        return it->second.socket;
+        return it->second;
     }
 
-    bool TransportRegistry::upsert_socket(NodeId id,
-                                          std::string ip,
-                                          uint16_t port,
-                                          std::shared_ptr<net::ClientSocket> sock) {
+    bool TransportRegistry::upsert_socket(NodeId id, std::shared_ptr<sock::TCPClient> sock) {
         if (!sock) return false;
+        m_sockets.insert_or_assign(id, std::move(sock));
+        return true;
+    }
 
-        SocketConn conn{
-            id,
-            std::move(ip),
-            port,
-            std::move(sock)
-        };
+    bool TransportRegistry::upsert_shm_send(Label label, std::shared_ptr<shm::ShmSend> shm) {
+        if (!shm) return false;
 
-        m_sockets.insert_or_assign(id, std::move(conn));
+        m_send_shm.insert_or_assign(label, std::move(shm));
+        return true;
+    }
+
+    bool TransportRegistry::upsert_shm_recv(Label label, std::shared_ptr<shm::ShmRecv> shm) {
+        if (!shm) return false;
+
+        m_recv_shm.insert_or_assign(label, std::move(shm));
         return true;
     }
 
@@ -122,8 +125,8 @@ namespace eroil {
             out.sockets.reserve(remote_node_ids.size());
             for (NodeId peer : remote_node_ids) {
                 auto sit = m_sockets.find(peer);
-                if (sit != m_sockets.end() && sit->second.socket) {
-                    out.sockets.push_back(sit->second.socket);
+                if (sit != m_sockets.end() && sit->second) {
+                    out.sockets.push_back(sit->second);
                 }
             }
             out.has_remote = !out.sockets.empty();

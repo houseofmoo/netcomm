@@ -14,4 +14,5 @@ namespace eroil {
     };
 
     std::vector<NodeInfo> GetNodeInfo();
+    std::vector<NodeInfo> GetTestNodeInfo();
 }

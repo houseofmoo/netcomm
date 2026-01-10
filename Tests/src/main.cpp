@@ -1,6 +1,7 @@
 #include <iostream>
 #include <cstring>
-//#include <eROIL/socket.h>
+#include <eROIL/print.h>
+#include <eROIL/eroil.h>
 
 #include <thread>
 #include <chrono>
@@ -64,62 +65,16 @@
 //     }
 // }
 
-int main() {
-    std::cout << "hello world from main.cpp2" << std::endl;
+int main(int argc, char** argv) {
+    int id = 0;
+    if (argc >= 2) {
+        id = std::stoi(argv[1]);
+    }
 
-    // {
-    //     eroil::net::NetContext context;
-    //     if (!context.ok()) {
-    //         std::cerr << "WSAStartup failed\n";
-    //         return 1;
-    //     }
+    std::cout << "init_manager(" << id << ")" << std::endl;
+    init_manager(id);
 
-    //     std::thread thread1([]() {
-    //         RunThread1();
-    //     });
-
-
-    //     std::thread thread2([]() {
-    //         RunThread2();
-    //     });
-
-    //     std::thread thread3([]() {
-    //         RunThread3();
-    //     });
-
-    //     thread1.join();
-    //     thread2.join();
-    //     thread3.join();
-
-    //     // eROIL::net::socket::TCPClient s = eROIL::net::tcp::open_tcp_socket();
-    //     // eROIL::net::tcp::set_nonblocking(s, false);
-
-    //     // if (!eROIL::net::tcp::connect(s, "127.0.0.1", 8001)) {
-    //     //     std::cerr << "Connect failed\n";
-    //     //     eROIL::net::tcp::close(s);
-    //     //     eROIL::net::shutdown();
-    //     //     return 1;
-    //     // }
-
-    //     // const char msg[] = "hello\n";
-    //     // auto w = eROIL::net::tcp::send(s, msg, std::strlen(msg));
-    //     // if (w.result != eROIL::net::SocketIoResult::Ok) {
-    //     //     std::cerr << "send failed, err=" << w.sys_error << "\n";
-    //     // }
-
-    //     // char buf[1024];
-    //     // auto r = eROIL::net::tcp::recv(s, buf, sizeof(buf) - 1);
-    //     // if (r.result == eROIL::net::SocketIoResult::Ok) {
-    //     //     buf[r.bytes] = '\0';
-    //     //     std::cout << "recv: " << buf;
-    //     // } else if (r.result == eROIL::net::SocketIoResult::Closed) {
-    //     //     std::cout << "peer closed\n";
-    //     // } else {
-    //     //     std::cerr << "recv failed/wouldblock, err=" << r.sys_error << "\n";
-    //     // }
-
-    //     // eROIL::net::tcp::close(s);
-    // }
-    std::cout<<"hello close"<<std::endl;
+    std::this_thread::sleep_for(std::chrono::milliseconds(1000 * 20));
+    std::cout << "sleep ends" << std::endl;
     return 0;
 }

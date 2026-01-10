@@ -3,6 +3,7 @@
 #include <cstring>
 #include <thread>
 #include <chrono>
+#include "shm/shm_header.h"
 #include <eROIL/print.h>
 
 namespace eroil::shm {

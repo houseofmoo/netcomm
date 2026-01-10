@@ -15,17 +15,17 @@ namespace eroil::worker {
             virtual void on_stop_requested() {}
             virtual void on_stopped() {}
 
+            void start() {
+                m_stop.store(false, std::memory_order_release);
+                m_thread = std::thread([this] { run(); });
+            }
+
         public:
             ThreadWorker() = default;
             ThreadWorker(const ThreadWorker&) = delete;
             ThreadWorker& operator=(const ThreadWorker&) = delete;
 
             virtual ~ThreadWorker() = default; // must call stop() explicitly
-
-            void start() {
-                m_stop.store(false, std::memory_order_release);
-                m_thread = std::thread([this] { run(); });
-            }
 
             void stop() {
                 bool was_stopping = m_stop.exchange(true, std::memory_order_acq_rel);

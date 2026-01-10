@@ -13,7 +13,7 @@ namespace eroil {
             } else {
                 kind = RouteKind::Socket;
             }
-            auto [it, inserted] = m_node_addresses.try_emplace(
+            auto [it, inserted] = addresses.try_emplace(
                 node.id,
                 NodeAddress { kind, node.id, node.ip, node.port }
             );
@@ -25,8 +25,8 @@ namespace eroil {
     }
 
     NodeAddress Address::get(NodeId id) {
-        auto it = m_node_addresses.find(id);
-        if (it == m_node_addresses.end()) {
+        auto it = addresses.find(id);
+        if (it == addresses.end()) {
             return NodeAddress{ RouteKind::None, 0, std::string(), 0 };
         }
 

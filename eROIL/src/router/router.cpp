@@ -312,22 +312,30 @@ namespace eroil {
 
     bool Router::is_send_subscriber(Label label, NodeId id) const {
         std::shared_lock lock(m_router_mtx);
-
         if (m_routes.is_remote_send_subscriber(label, id)) {
             return true;
         }
-
         return m_transports.has_local_send_subscriber(label, id);
     }
 
     bool Router::is_recv_publisher(Label label, NodeId from_id, NodeId my_id) const {
         std::shared_lock lock(m_router_mtx);
-
         if (m_routes.is_remote_recv_publisher(label, from_id)) {
             return true;
         }
-
         return m_transports.has_local_recv_publisher(label, my_id);
+    }
+
+    bool Router::upsert_socket(NodeId id, std::shared_ptr<sock::TCPClient> sock) {
+        return m_transports.upsert_socket(id, sock);
+    }
+
+    bool Router::upsert_shm_send(Label label, std::shared_ptr<shm::ShmSend> shm) {
+       return m_transports.upsert_shm_send(label, shm);
+    }
+
+    bool Router::upsert_shm_recv(Label label, std::shared_ptr<shm::ShmRecv> shm) {
+        return m_transports.upsert_shm_recv(label, shm);
     }
 
     std::vector<std::shared_ptr<RecvTarget>>

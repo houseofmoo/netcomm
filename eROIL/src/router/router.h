@@ -62,6 +62,10 @@ namespace eroil {
             bool is_send_subscriber(Label label, NodeId id) const;
             bool is_recv_publisher(Label label, NodeId from_id, NodeId my_id) const;
 
+            bool upsert_socket(NodeId id, std::shared_ptr<sock::TCPClient> sock);
+            bool upsert_shm_send(Label label, std::shared_ptr<shm::ShmSend> shm);
+            bool upsert_shm_recv(Label label, std::shared_ptr<shm::ShmRecv> shm);
+
         private:
             std::vector<std::shared_ptr<RecvTarget>> 
             snapshot_recv_delivery(const std::vector<handle_uid>& uids) const;

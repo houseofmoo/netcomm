@@ -5,35 +5,30 @@
 #include <cstddef>
 
 #include "types/types.h"
-#include "net/socket.h"
+#include "socket/tcp_socket.h"
 #include "shm/shm.h"
 
 namespace eroil {
-    struct SocketConn {
-        NodeId to_id{};
-        std::string ip;
-        uint16_t port{};
-        std::shared_ptr<net::ClientSocket> socket;
-    };
-
     struct SendTargets {
         std::shared_ptr<shm::ShmSend> shm;
-        std::vector<std::shared_ptr<net::ClientSocket>> sockets;
+        std::vector<std::shared_ptr<sock::TCPClient>> sockets;
         bool has_local = false;
         bool has_remote = false;
     };
 
     class TransportRegistry {
         private:
-            std::unordered_map<NodeId, SocketConn> m_sockets;
+            std::unordered_map<NodeId, std::shared_ptr<sock::TCPClient>> m_sockets;
             std::unordered_map<Label, std::shared_ptr<shm::ShmSend>> m_send_shm;
             std::unordered_map<Label, std::shared_ptr<shm::ShmRecv>> m_recv_shm;
 
         public:
             // socket
             bool has_socket(NodeId id) const;
-            std::shared_ptr<net::ClientSocket> get_socket(NodeId id) const;
-            bool upsert_socket(NodeId id, std::string ip, uint16_t port, std::shared_ptr<net::ClientSocket> sock);
+            std::shared_ptr<sock::TCPClient> get_socket(NodeId id) const;
+            bool upsert_socket(NodeId id, std::shared_ptr<sock::TCPClient> sock);
+            bool upsert_shm_send(Label label, std::shared_ptr<shm::ShmSend> shm);
+            bool upsert_shm_recv(Label label, std::shared_ptr<shm::ShmRecv> shm);
 
             // send shm
             std::shared_ptr<shm::ShmSend> ensure_send_shm(Label label, size_t size, NodeId to_id);
@@ -51,5 +46,7 @@ namespace eroil {
 
             void erase_send_shm(Label label);
             void erase_recv_shm(Label label);
+
+            // start worker
     };
 }

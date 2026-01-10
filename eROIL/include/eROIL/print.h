@@ -41,5 +41,5 @@ namespace print {
 
     #define PRINT(...)
     #define ERR_PRINT(...) print::error(__VA_ARGS__);
-    #define LOG(...)
+    #define LOG(...) print::log(__VA_ARGS__);
 #endif

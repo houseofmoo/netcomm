@@ -13,8 +13,10 @@ target_compile_definitions(eROIL
 
 # platform independent sources
 target_sources(eROIL PRIVATE 
+    ${CMAKE_CURRENT_SOURCE_DIR}/src/eroil.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/src/address/address.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/src/broadcast/broadcast.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/src/comms/recvrs.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/src/config/config.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/src/manager/manager.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/src/router/dispatcher.cpp
@@ -32,15 +34,22 @@ target_sources(eROIL PRIVATE
         ${CMAKE_CURRENT_SOURCE_DIR}/src/events/win/win_named_event.cpp
         ${CMAKE_CURRENT_SOURCE_DIR}/src/events/win/win_semaphore.cpp
 
-        ${CMAKE_CURRENT_SOURCE_DIR}/src/net/win/win_context.cpp
-        ${CMAKE_CURRENT_SOURCE_DIR}/src/net/win/win_socket_tcp.cpp
-        ${CMAKE_CURRENT_SOURCE_DIR}/src/net/win/win_socket_udp.cpp
-        ${CMAKE_CURRENT_SOURCE_DIR}/src/net/win/win_socket_udpm.cpp
-        ${CMAKE_CURRENT_SOURCE_DIR}/src/net/win/win_socket.cpp
+        # ${CMAKE_CURRENT_SOURCE_DIR}/src/net/win/win_context.cpp
+        # ${CMAKE_CURRENT_SOURCE_DIR}/src/net/win/win_socket_tcp.cpp
+        # ${CMAKE_CURRENT_SOURCE_DIR}/src/net/win/win_socket_udp.cpp
+        # ${CMAKE_CURRENT_SOURCE_DIR}/src/net/win/win_socket_udpm.cpp
+        # ${CMAKE_CURRENT_SOURCE_DIR}/src/net/win/win_socket.cpp
 
         ${CMAKE_CURRENT_SOURCE_DIR}/src/shm/win/win_shm_recv.cpp
         ${CMAKE_CURRENT_SOURCE_DIR}/src/shm/win/win_shm_send.cpp
         ${CMAKE_CURRENT_SOURCE_DIR}/src/shm/win/win_shm.cpp
+        
+        ${CMAKE_CURRENT_SOURCE_DIR}/src/socket/win/win_map_err.cpp
+        ${CMAKE_CURRENT_SOURCE_DIR}/src/socket/win/win_socket_context.cpp
+        ${CMAKE_CURRENT_SOURCE_DIR}/src/socket/win/win_tcp_client.cpp
+        ${CMAKE_CURRENT_SOURCE_DIR}/src/socket/win/win_tcp_server.cpp
+        ${CMAKE_CURRENT_SOURCE_DIR}/src/socket/win/win_tcp_socket.cpp
+        ${CMAKE_CURRENT_SOURCE_DIR}/src/socket/win/win_udp_multicast.cpp
     >
     $<$<PLATFORM_ID:Linux>:
         # ${CMAKE_CURRENT_SOURCE_DIR}/src/named_event/linux/linux_named_event.cpp
@@ -67,6 +76,7 @@ target_include_directories(eROIL
         ${CMAKE_CURRENT_SOURCE_DIR}/src/net
         ${CMAKE_CURRENT_SOURCE_DIR}/src/router
         ${CMAKE_CURRENT_SOURCE_DIR}/src/shm
+        ${CMAKE_CURRENT_SOURCE_DIR}/src/socket
         ${CMAKE_CURRENT_SOURCE_DIR}/src/types
         ${CMAKE_CURRENT_SOURCE_DIR}/src/workers
 

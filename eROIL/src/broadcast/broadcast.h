@@ -2,8 +2,13 @@
 
 #include <array>
 #include <mutex>
-#include "net/socket.h"
+#include <thread>
+#include <chrono>
+
+#include "socket/udp_multicast.h"
 #include "types/types.h"
+#include "router/router.h"
+#include "address/address.h"
 
 namespace eroil {
     struct LabelInfo {
@@ -19,21 +24,22 @@ namespace eroil {
 
     class Broadcast {
         private:
-            net::socket::UDPMulti m_udp;
-            const char* m_ip;
+            NodeId m_id;
+            Address& m_address_book;
+            Router& m_router;
+            sock::UDPMulticastSocket m_udp;
             uint8_t m_port;
-            bool m_ok;
-            
-            std::mutex m_mtx;
 
         public:
-            Broadcast();
+            Broadcast(NodeId id, Address& address, Router& router);
             ~Broadcast();
 
-            void setup(uint16_t port);
+            bool start_broadcast(uint16_t port);
+            bool is_connected() const;
 
-            void send(const BroadcastMessage& msg);
-            void recv(BroadcastMessage& buf) const;
+        private:
+            void send_broadcast();
+            void recv_broadcast();
     };
 }
         
