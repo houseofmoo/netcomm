@@ -9,8 +9,11 @@
 static std::unique_ptr<eroil::Manager> manager;
 
 void init_manager(int id) {
-    auto node_info = eroil::GetTestNodeInfo();
-    manager = std::make_unique<eroil::Manager>(id, node_info);
+    auto cfg = eroil::ManagerConfig();
+    cfg.id = id;
+    cfg.nodes = eroil::GetTestNodeInfo();
+    cfg.mode = eroil::ManagerMode::SocketOnly;
+    manager = std::make_unique<eroil::Manager>(cfg);
     manager->init();
 }
 

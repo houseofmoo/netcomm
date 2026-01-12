@@ -20,21 +20,20 @@ int main(int argc, char** argv) {
     
     auto buf = std::make_unique<uint8_t[]>(1024);
 
-    if (id % 2 == 0) {
+    if (id == 0) {
         auto handle = open_send(5, buf.get(), 1024);
-        int count = 0;
+        int count = 1;
         std::this_thread::sleep_for(std::chrono::milliseconds(3000));
         while (true) {
-            //PRINT("sending ", count);
+            PRINT("sending: ", count);
             std::memcpy(buf.get(), &count, sizeof(count));
             send_label(handle, buf.get(), 1024, 0);
             count += 1;
-            std::this_thread::sleep_for(std::chrono::microseconds(100));
+            std::this_thread::sleep_for(std::chrono::milliseconds(100));
         }
 
     } else {
         auto sem = ::CreateSemaphoreW(nullptr, 0, 1000, nullptr);
-        PRINT("sem handle: ", sem);
         open_recv(5, buf.get(), 1024, sem);
         int count = 0;
         int prev_count = 0;
@@ -44,6 +43,8 @@ int main(int argc, char** argv) {
             //PRINT("recvd :", count);
             if (prev_count + 1 != count) {
                 PRINT("got count out of order expected=", prev_count + 1, " got=", count);
+            } else {
+                PRINT("got: ", count);
             }
             prev_count = count;
         }

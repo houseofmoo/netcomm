@@ -99,11 +99,6 @@ namespace eroil::worker {
                         ERR_PRINT("Err on send, handle it");
                         // TODO: handle errors
                     }
-                    
-                    // TODO: populate IOSB send handle
-                    //auto send_handle = m_router_ptr->get_send_handle(entry.handle_uid);
-                    //send_handle->data.iosb->
-
                 } catch (const std::exception& e) {
                     ERR_PRINT("Exception in worker thread, entry.label: ", entry->label, ", exception: ", e.what());
                 } catch (...) {

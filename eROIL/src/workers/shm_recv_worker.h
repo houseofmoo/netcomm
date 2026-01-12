@@ -11,11 +11,12 @@ namespace eroil::worker {
             Router& m_router;
             Label m_label;
             size_t m_label_size;
-            std::shared_ptr<shm::ShmRecv> m_recv_shm;
+            std::shared_ptr<shm::Shm> m_recv_shm;
 
         public:
-            ShmRecvWorker(Router& router, Label label, size_t label_size, std::shared_ptr<shm::ShmRecv> recv);
-            void launch();
+            ShmRecvWorker(Router& router, 
+                          Label label, 
+                          size_t label_size);
 
         protected:
             void request_unblock() override;

@@ -15,7 +15,6 @@ target_compile_definitions(eROIL
 target_sources(eROIL PRIVATE 
     ${CMAKE_CURRENT_SOURCE_DIR}/src/eroil.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/src/address/address.cpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/src/broadcast/broadcast.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/src/comms/recvrs.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/src/config/config.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/src/manager/manager.cpp
@@ -33,12 +32,6 @@ target_sources(eROIL PRIVATE
     $<$<PLATFORM_ID:Windows>:
         ${CMAKE_CURRENT_SOURCE_DIR}/src/events/win/win_named_event.cpp
         ${CMAKE_CURRENT_SOURCE_DIR}/src/events/win/win_semaphore.cpp
-
-        # ${CMAKE_CURRENT_SOURCE_DIR}/src/net/win/win_context.cpp
-        # ${CMAKE_CURRENT_SOURCE_DIR}/src/net/win/win_socket_tcp.cpp
-        # ${CMAKE_CURRENT_SOURCE_DIR}/src/net/win/win_socket_udp.cpp
-        # ${CMAKE_CURRENT_SOURCE_DIR}/src/net/win/win_socket_udpm.cpp
-        # ${CMAKE_CURRENT_SOURCE_DIR}/src/net/win/win_socket.cpp
 
         ${CMAKE_CURRENT_SOURCE_DIR}/src/shm/win/win_shm_recv.cpp
         ${CMAKE_CURRENT_SOURCE_DIR}/src/shm/win/win_shm_send.cpp

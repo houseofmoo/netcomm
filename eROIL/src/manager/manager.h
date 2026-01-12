@@ -1,35 +1,41 @@
 #pragma once
 #include <vector>
+#include <array>
 
 #include "types/types.h"
+#include "types/broadcast_msg.h"
 #include "types/handles.h"
 #include "config/config.h"
 #include "address/address.h"
 #include "router/router.h"
-#include "broadcast/broadcast.h"
+#include "socket/udp_multicast.h"
+#include "socket/socket_context.h"
 #include "comms/recvrs.h"
 
 namespace eroil {
-
-    struct ManagerConfig {
-        // TODO: create this to allow us to config manager
-        // to do things like SHM only, SOCKET only, 
-        // things like that for testing and validation...and eventual
-        // integration with imgui (i think)
+    enum class ManagerMode {
+        Normal,
+        ShmOnly,
+        SocketOnly
     };
 
+    struct ManagerConfig {
+        NodeId id = 0;
+        ManagerMode mode = ManagerMode::Normal;
+        std::vector<NodeInfo> nodes = {};
+    };
     
     class Manager {
         private:
             int m_id;
-            Address m_address_book;
             Router m_router;
+            sock::SocketContext m_context;
             Comms m_comms;
-            Broadcast m_broadcast;
+            sock::UDPMulticastSocket m_broadcast;
             bool m_valid;
 
         public:
-            Manager(int id, std::vector<NodeInfo> nodes);
+            Manager(ManagerConfig cfg);
             ~Manager() = default;
             
             bool init();
@@ -40,7 +46,15 @@ namespace eroil {
             
             RecvHandle* open_recv(OpenReceiveData data);
             void close_recv(RecvHandle* handle);
-
+        
+        private:
+            bool start_broadcast();
+            void send_broadcast();
+            void recv_broadcast();
+            void add_new_subscribers(const NodeId source_id, const std::vector<LabelInfo>& recv_labels);
+            void remove_subscription(const NodeId source_id, const std::vector<LabelInfo>& recv_labels);
+            void add_new_publisher(const NodeId source_id, const std::vector<LabelInfo>& send_labels);
+            void remove_publisher(const NodeId source_id, const std::vector<LabelInfo>& send_labels);
             // 1. Spawn send thread (SendWorker)
             // 2. Spawn thread for UDP broadcast handling (send/recv) 2 threads total
 

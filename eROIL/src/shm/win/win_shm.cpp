@@ -4,6 +4,7 @@
 #include <thread>
 #include <chrono>
 #include "shm/shm_header.h"
+#include "types/label_hdr.h"
 #include <eROIL/print.h>
 
 namespace eroil::shm {
@@ -72,7 +73,11 @@ namespace eroil::shm {
     }
 
     size_t Shm::size_bytes_total() const noexcept {
-        return m_label_size + sizeof(ShmHeader);
+        return m_label_size + sizeof(ShmHeader) + sizeof(LabelHeader);
+    }
+
+    size_t Shm::size_with_label_header() const noexcept {
+        return  m_label_size + sizeof(LabelHeader);
     }
 
     ShmErr Shm::open_new() {
@@ -111,8 +116,8 @@ namespace eroil::shm {
         // write header to block
         auto* hdr = static_cast<ShmHeader*>(m_view);
         hdr->state.store(SHM_INITING, std::memory_order_relaxed);
-        hdr->magic = kShmMagic;
-        hdr->version = kShmVersion;
+        hdr->magic = MAGIC_NUM;
+        hdr->version = VERSION;
         hdr->header_size = static_cast<uint16_t>(sizeof(ShmHeader));
         hdr->label_size = static_cast<uint32_t>(m_label_size);
 
@@ -177,8 +182,8 @@ namespace eroil::shm {
             return ShmErr::NotInitialized; 
         }
 
-        if (hdr->magic != kShmMagic ||
-            hdr->version != kShmVersion ||
+        if (hdr->magic != MAGIC_NUM ||
+            hdr->version != VERSION ||
             hdr->header_size != sizeof(ShmHeader) ||
             hdr->label_size != static_cast<uint32_t>(m_label_size)) {
             close();
@@ -225,7 +230,7 @@ namespace eroil::shm {
 
     ShmOpErr Shm::read(void* buf, const size_t size) const noexcept {
         if (!is_valid()) return ShmOpErr::NotOpen;
-        if (size > m_label_size) return ShmOpErr::TooLarge;
+        if (size > size_with_label_header()) return ShmOpErr::TooLarge;
 
         std::memcpy(buf, data_ptr(), size);
         return ShmOpErr::None;
@@ -233,7 +238,7 @@ namespace eroil::shm {
     
     ShmOpErr Shm::write(const void* buf, const size_t size) noexcept {
         if (!is_valid()) return ShmOpErr::NotOpen;
-        if (size > m_label_size) return ShmOpErr::TooLarge;
+        if (size > size_with_label_header()) return ShmOpErr::TooLarge;
 
         std::memcpy(data_ptr(), buf, size);
         return ShmOpErr::None;

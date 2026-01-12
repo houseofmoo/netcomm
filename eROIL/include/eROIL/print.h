@@ -6,23 +6,24 @@
 
 namespace print {
     inline std::mutex print_mtx;
+    inline int my_id = 0;
 
     template <typename... Args>
     inline void write(Args&&... args) noexcept {
         std::lock_guard<std::mutex> lock(print_mtx);
-        (std::cout << ... << args) << std::endl;
+        (std::cout << "[ " << my_id << " ] " << ... << args) << std::endl;
     }
 
     template <typename... Args>
     inline void error(Args&&... args) noexcept {
         std::lock_guard<std::mutex> lock(print_mtx);
-        (std::cerr << "ERROR: " << ... << args) << std::endl;
+        (std::cerr << "[ " << my_id << " ] " << "ERROR: " << ... << args) << std::endl;
     }
 
     template <typename... Args>
     inline void log(Args&&... args) noexcept {
         std::lock_guard<std::mutex> lock(print_mtx);
-        (std::clog << ... << args) << std::endl;
+        (std::clog << "[ " << my_id << " ] " << ... << args) << std::endl;
     }
 }
 

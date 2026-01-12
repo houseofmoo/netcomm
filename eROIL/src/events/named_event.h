@@ -17,17 +17,19 @@ namespace eroil::evt {
 
     struct NamedEventInfo {
         Label label_id;
+        NodeId source_id;
         NodeId destination_id;
     };
 
     class NamedEvent {
         private:
             Label m_label_id;
+            NodeId m_source_id;
             NodeId m_destination_id;
             sem_handle m_sem;
 
         public:
-            NamedEvent(Label label, NodeId dest_node_id);
+            NamedEvent(Label label, NodeId src_id, NodeId dest_node_id);
             ~NamedEvent();
 
             NamedEvent(NamedEvent&& other) noexcept;
@@ -39,7 +41,7 @@ namespace eroil::evt {
             NamedEventErr try_wait() const;
             NamedEventErr wait() const;
             NamedEventErr wait(uint32_t milliseconds) const;
-            NamedEventInfo get_info() const { return { m_label_id, m_destination_id }; }
+            NamedEventInfo get_info() const { return { m_label_id, m_source_id, m_destination_id }; }
             void close();
     };
 }

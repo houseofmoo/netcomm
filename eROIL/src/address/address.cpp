@@ -1,8 +1,10 @@
 #include "address.h"
 #include <eROIL/print.h>
 
-namespace eroil {
-    void Address::insert_addresses(NodeInfo self, std::vector<NodeInfo> nodes) {
+namespace eroil::addr {
+    static std::unordered_map<NodeId, NodeAddress> address_book;
+
+    void insert_addresses(NodeInfo self, std::vector<NodeInfo> nodes) {
         // we'll insert oursevels as a node, but thats fine 
         for (const auto& node : nodes) {
             RouteKind kind = RouteKind::None;
@@ -13,7 +15,7 @@ namespace eroil {
             } else {
                 kind = RouteKind::Socket;
             }
-            auto [it, inserted] = addresses.try_emplace(
+            auto [it, inserted] = address_book.try_emplace(
                 node.id,
                 NodeAddress { kind, node.id, node.ip, node.port }
             );
@@ -24,12 +26,28 @@ namespace eroil {
         }
     }
 
-    NodeAddress Address::get(NodeId id) {
-        auto it = addresses.find(id);
-        if (it == addresses.end()) {
-            return NodeAddress{ RouteKind::None, 0, std::string(), 0 };
+    NodeAddress get_address(NodeId id) {
+        auto it = address_book.find(id);
+        if (it == address_book.end()) {
+            return NodeAddress{ RouteKind::None, id, std::string(), 0 };
         }
 
         return it->second;
+    }
+    
+    const std::unordered_map<NodeId, NodeAddress>& get_address_book() {
+        return address_book;
+    }
+
+    void set_all_local() {
+        for (auto& [id, info] : address_book) {
+            info.kind = RouteKind::Shm;
+        }
+    }
+
+    void set_all_remote() {
+        for (auto& [id, info] : address_book) {
+            info.kind = RouteKind::Socket;
+        }
     }
 }

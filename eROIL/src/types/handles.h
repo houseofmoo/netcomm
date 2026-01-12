@@ -18,9 +18,10 @@ namespace eroil {
 
     struct SendHandle {
         handle_uid uid;
-        OpenSendData data;
+        std::shared_ptr<OpenSendData> data;
 
-        SendHandle(int id, OpenSendData data) : uid(id), data(data) {}
+        SendHandle(int id, OpenSendData data) 
+            : uid(id), data(std::make_unique<OpenSendData>(data)) {}
     };
 
     struct OpenReceiveData{
@@ -38,16 +39,10 @@ namespace eroil {
         int signal_mode;
     };
 
-    struct RecvTarget {
-        OpenReceiveData data;
-
-        RecvTarget(OpenReceiveData data) : data(data) {}
-    };
-
     struct RecvHandle {
         handle_uid uid;
-        std::shared_ptr<RecvTarget> target;
-
-        RecvHandle(int id, OpenReceiveData data) : uid(id), target(std::make_shared<RecvTarget>(data)) {}
+        std::shared_ptr<OpenReceiveData> data;
+        RecvHandle(int id, OpenReceiveData data) 
+            : uid(id), data(std::make_shared<OpenReceiveData>(data)) {}
     };
 }

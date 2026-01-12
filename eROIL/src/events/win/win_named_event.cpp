@@ -37,8 +37,12 @@ namespace eroil::evt {
         return out;
     }
 
-    NamedEvent::NamedEvent(Label label, NodeId dest_node_id) :
-        m_label_id(label), m_destination_id(dest_node_id), m_sem(nullptr) {}
+    NamedEvent::NamedEvent(Label label, NodeId src_id, NodeId dest_node_id) 
+        : m_label_id(label), m_source_id(src_id), m_destination_id(dest_node_id), m_sem(nullptr) {
+            if (open() != NamedEventErr::None) {
+                ERR_PRINT("failed to open named event srcid=", src_id, ", dstid=", dest_node_id)
+            }
+        }
 
     NamedEvent::~NamedEvent() {
         close();
@@ -46,9 +50,11 @@ namespace eroil::evt {
 
     NamedEvent::NamedEvent(NamedEvent&& other) noexcept : 
         m_label_id(other.m_label_id),
+        m_source_id(other.m_source_id),
         m_destination_id(other.m_destination_id),
         m_sem(other.m_sem) {
         other.m_label_id = -1;
+        other.m_source_id = -1;
         other.m_destination_id = -1;
         other.m_sem = nullptr;
     }
@@ -57,10 +63,12 @@ namespace eroil::evt {
         if (this != &other) {
             close();
             m_label_id = other.m_label_id;
+            m_source_id = other.m_source_id;
             m_destination_id = other.m_destination_id;
             m_sem = other.m_sem;
 
             other.m_label_id = -1;
+            other.m_source_id = -1;
             other.m_destination_id = -1;
             other.m_sem = nullptr;
         }

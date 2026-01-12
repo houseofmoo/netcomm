@@ -1,10 +1,11 @@
 #pragma once
 #include <string>
 #include <unordered_map>
+#include <vector>
 #include "config/config.h"
 #include "types/types.h"
 
-namespace eroil {
+namespace eroil::addr {
     enum class RouteKind {
         None,
         Shm,
@@ -19,12 +20,11 @@ namespace eroil {
         uint16_t port;
     };
 
-    struct Address {
-        std::unordered_map<NodeId, NodeAddress> addresses;
-        Address() = default;
-        ~Address() = default;
+    void insert_addresses(NodeInfo self, std::vector<NodeInfo> nodes);
+    NodeAddress get_address(NodeId id);
+    const std::unordered_map<NodeId, NodeAddress>& get_address_book();
 
-        void insert_addresses(NodeInfo self, std::vector<NodeInfo> nodes);
-        NodeAddress get(NodeId id);
-    };
+    // testing options
+    void set_all_local();
+    void set_all_remote();
 }

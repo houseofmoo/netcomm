@@ -2,97 +2,81 @@
 
 #include <cstring>
 #include <eROIL/print.h>
+#include "types/types.h"
+#include "types/label_hdr.h"
 #include "platform.h"
 
 namespace eroil {
-    bool Dispatcher::validate_recv_target(const OpenReceiveData& data) {
-        if (data.buf == nullptr) return false;
-        if (data.buf_slots == 0) return false;
-        if (data.buf_size == 0) return false;
-        return true;
-    }
-
-    SendOpErr Dispatcher::dispatch_send(const SendPlan& plan,
-                                        const SendTargets& targets,
+    SendOpErr Dispatcher::dispatch_send(const SendTargets& targets,
                                         const void* buf,
                                         size_t size) const {
-        if (buf == nullptr || size == 0) return SendOpErr::Failed;
-
-        if (size != plan.label_size) {
-            ERR_PRINT("dispatch_send(): size mismatch label=", plan.label,
-                      " expected=", plan.label_size, " got=", size);
-            return SendOpErr::SizeMismatch;
-        }
-
         bool failed = false;
 
         // local
-        if (plan.want_local) {
-            if (!targets.shm) {
-                failed = true;
-            } else {
-                auto err = targets.shm->send(buf, size);
-                if (err != shm::ShmOpErr::None) failed = true;
+        if (targets.shm != nullptr) {
+            auto shm_err = targets.shm->write(buf, size);
+            if (shm_err != shm::ShmOpErr::None) {
+                ERR_PRINT("shared memory write error=", (int)shm_err);
+            }
+
+            for (auto evt : targets.shm_signals) {
+                if (evt == nullptr) {
+                    ERR_PRINT("shared memory named event was null");
+                    continue;
+                }
+                evt->post();
             }
         }
 
         // remote
-        if (!plan.remote_node_ids.empty()) {
-            if (targets.sockets.empty()) {
-                failed = true; // couldn't resolve any socket
-            }
-
+        if (!targets.sockets.empty()) {
             for (const auto& sock : targets.sockets) {
-                if (!sock) {
-                    failed = true;
-                    continue;
+                if (sock == nullptr) continue;
+                auto sock_err = sock->send(buf, size);
+                if (sock_err.code != sock::SockErr::None) {
+                    if (sock_err.code == sock::SockErr::Closed) {
+                        // TODO: tell router the socket is dead somehow
+                    }
+                    ERR_PRINT("socket send errorcode=", (int)sock_err.code, ", op=", (int)sock_err.op);
                 }
-                sock->send(buf, size); // TODO: socket send return an error
             }
+        }
 
-            if (targets.sockets.size() < plan.remote_node_ids.size()) {
-                failed = true;
+        // write IOSB
+        for (auto& pubs : targets.publishers) {
+            if (pubs == nullptr) continue;
+
+            if (pubs->iosb != nullptr && pubs->num_iosb > 0) {
+                // TODO: write recv IOSB
+                pubs->iosb_index = (pubs->iosb_index + 1) & pubs->num_iosb;
             }
         }
 
         return failed ? SendOpErr::Failed : SendOpErr::None;
     }
 
-    void Dispatcher::dispatch_recv_targets(Label label,
-                                       size_t label_size,
-                                       const void* buf,
-                                       size_t size,
-                                       const std::vector<std::shared_ptr<RecvTarget>>& targets) const {
-        if (!buf || size == 0) return;
-        if (size != label_size) {
-            ERR_PRINT("dispatch_recv_targets(): size mismatch label=", label,
-                    " expected=", label_size, " got=", size);
-            return;
-        }
+    void Dispatcher::dispatch_recv_targets(const RecvTargets& targets,
+                                           const void* buf,
+                                           size_t size) const {
+        for (const auto& subs : targets.subscribers) {
+            if (subs == nullptr) continue;
 
-        for (const auto& target : targets) {
-            if (target == nullptr) continue;
+            if (subs->buf == nullptr) continue;
+            if (subs->buf_slots == 0) continue;
+            if (subs->buf_size == 0) continue;
 
-            OpenReceiveData& data = target->data;
-            if (!validate_recv_target(data)) continue;
-
-            // Prevent overflow of the receiver stride
-            if (data.buf_size != size) {
-                ERR_PRINT("dispatch_recv_targets(): buf_size mismatch label=", label,
-                        " expected buf_size=", data.buf_size, " got=", size);
-                continue;
-            }
-
-            const size_t slot = data.buf_index % data.buf_slots;
-            uint8_t* dst = data.buf + (slot * data.buf_size);
+            const size_t slot = subs->buf_index % subs->buf_slots;
+            uint8_t* dst = subs->buf + (slot * subs->buf_size);
             std::memcpy(dst, buf, size);
-            data.buf_index = (data.buf_index + 1) % data.buf_slots;
+            subs->buf_index = (subs->buf_index + 1) % subs->buf_slots;
 
-            if (data.iosb != nullptr && data.num_iosb > 0) {
+            // write IOSB 
+            if (subs->iosb != nullptr && subs->num_iosb > 0) {
                 // TODO: write recv IOSB
+                subs->iosb_index = (subs->iosb_index + 1) & subs->num_iosb;
             }
 
-            signal_recv_sem(data.sem, data.signal_mode);
+            signal_recv_sem(subs->sem, subs->signal_mode);
         }
     }
 }

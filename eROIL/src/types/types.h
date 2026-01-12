@@ -6,6 +6,9 @@ namespace eroil {
     // UNIVERSAL AND PLATFORM SPECIFIC TYPE NAMES
 
     constexpr std::uint32_t MAX_LABELS = 200;
+    static constexpr std::uint32_t MAGIC_NUM = 0x4C4F5245u; // 'EROL'
+    static constexpr std::uint16_t VERSION = 1;
+    static constexpr std::size_t SOCKET_DATA_MAX_SIZE = 1u << 20; // 1 MB
 
     using Label = std::int32_t;
     using NodeId = std::int32_t;

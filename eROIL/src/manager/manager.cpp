@@ -3,7 +3,9 @@
 #include <thread>
 #include <chrono>
 #include <memory>
+#include <algorithm>
 #include <eROIL/print.h>
+#include "types/label_hdr.h"
 
 namespace eroil {
     static int unique_id() {
@@ -11,22 +13,39 @@ namespace eroil {
         return next_id.fetch_add(1, std::memory_order_relaxed);
     }
 
-    Manager::Manager(int id, std::vector<NodeInfo> nodes) 
-        : m_id(id), 
-        m_address_book{}, 
+    Manager::Manager(ManagerConfig cfg) 
+        : m_id(cfg.id), 
         m_router{}, 
-        m_comms{id, m_router, m_address_book},
-        m_broadcast{id, m_address_book, m_router, m_comms}, 
+        m_context{},
+        m_comms{cfg.id, m_router},
+        m_broadcast{},
         m_valid(false) {
 
+        // set id so print shows the manager id
+        print::my_id = m_id;
+
         // confirm we know who the fuck we are
-        if (static_cast<size_t>(m_id) > nodes.size()) {
+        if (static_cast<size_t>(m_id) > cfg.nodes.size()) {
             ERR_PRINT("manager has no entry in nodes info list, manager cannot initialize");
             m_valid = false;
             return;
         }
+        
+        addr::insert_addresses(cfg.nodes[m_id], cfg.nodes);
+        switch (cfg.mode) {
+            case ManagerMode::ShmOnly: {
+                addr::set_all_local();
+                break;
+            }
+            case ManagerMode::SocketOnly: {
+                addr::set_all_remote();
+                break;
+            }
+            case ManagerMode::Normal: // fallthrough
+            default: { break; }// do nothing
+        }
+
         m_valid = true;
-        m_address_book.insert_addresses(nodes[m_id], nodes);
     }
 
     bool Manager::init() {
@@ -35,8 +54,8 @@ namespace eroil {
             return false;
         }
 
-        m_broadcast.start_broadcast(30001); // join udp multicast group and send/recv threads
-        m_comms.start();                    // start tcp listener and recv comms handlers
+        m_comms.start();
+        start_broadcast();
         return true;
     }
 
@@ -57,15 +76,28 @@ namespace eroil {
             send_size = buf_size;
             send_offset = buf_offset;
         } else {
-            send_buf = handle->data.buf;
-            send_size = handle->data.buf_size;
-            send_offset = handle->data.buf_offset;
+            send_buf = handle->data->buf;
+            send_size = handle->data->buf_size;
+            send_offset = handle->data->buf_offset;
         }
 
-        // copy data into a local buffer so sender does not have to wait for send to complete
-        auto data = std::make_unique<uint8_t[]>(send_size);
-        std::memcpy(data.get(), send_buf + send_offset, send_size);
-        m_comms.send_label(handle->uid, handle->data.label, send_size, std::move(data));
+        // attach header for send
+        uint16_t flags = 0;
+        set_flag(flags, LabelFlag::Data);
+        LabelHeader hdr {
+            MAGIC_NUM,
+            VERSION,
+            m_id,
+            flags,
+            static_cast<uint32_t>(handle->data->label),
+            static_cast<uint32_t>(send_size)
+        };
+        
+        size_t data_size = send_size + sizeof(hdr);
+        auto data = std::make_unique<uint8_t[]>(data_size);
+        std::memcpy(data.get(), &hdr, sizeof(hdr));
+        std::memcpy(data.get() + sizeof(hdr), send_buf + send_offset, send_size);
+        m_comms.send_label(handle->uid, handle->data->label, data_size, std::move(data));
     }
 
     void Manager::close_send(SendHandle* handle) {
@@ -81,5 +113,212 @@ namespace eroil {
 
     void Manager::close_recv(RecvHandle* handle) {
         m_router.unregister_recv_subscriber(handle);
+    }
+
+    bool Manager::start_broadcast() {
+        sock::UdpMcastConfig cfg;
+        auto result = m_broadcast.open_and_join(cfg);
+        if (result.code != sock::SockErr::None) {
+            ERR_PRINT("udp multicast group join failed, broadcast exiting");
+            print_socket_result(result);
+            return false;
+        }
+
+        std::thread send_broadcast_thread([this]() {
+            while (true) {
+                send_broadcast();
+                std::this_thread::sleep_for(std::chrono::milliseconds(3000));
+            }
+        });
+        send_broadcast_thread.detach();
+
+        std::thread recv_broadcast_thread([this]() {
+            while (true) { recv_broadcast(); }
+        });
+        recv_broadcast_thread.detach();
+        
+        return true;
+    }
+
+    void Manager::send_broadcast() {
+        BroadcastMessage msg;
+        msg.id = m_id;
+        msg.send_labels = m_router.get_send_labels();
+        msg.recv_labels = m_router.get_recv_labels();
+      
+        //PRINT(m_id, " sends broadcast");
+        m_broadcast.send_broadcast(&msg, sizeof(msg));
+    }
+
+    void Manager::recv_broadcast() {
+        BroadcastMessage msg;
+        m_broadcast.recv_broadcast(&msg, sizeof(msg));
+        if (msg.id == m_id) return; // we got a broadcast from ourselves -.-
+        
+        //PRINT(m_id, " recv broadcast from: ", msg.id);
+
+        // filter out invalid labels
+        std::vector<LabelInfo> recv_labels;
+        recv_labels.reserve(msg.recv_labels.size());
+        for (const LabelInfo& l : msg.recv_labels) {
+            if (l.label >= 0) recv_labels.push_back(l);
+        }
+
+        // check if they want a label we send
+        add_new_subscribers(msg.id, recv_labels);
+
+        // check if they removed their subscription from our labels
+        remove_subscription(msg.id, recv_labels);
+
+        // filter out invalid labels
+        std::vector<LabelInfo> send_labels;
+        send_labels.reserve(msg.send_labels.size());
+        for (const LabelInfo& l : msg.send_labels) {
+            if (l.label >= 0) send_labels.push_back(l);
+        }
+
+        // check if we want a label they send
+        add_new_publisher(msg.id, send_labels);
+
+        // check if they are no longer the publisher of a label we want
+        remove_publisher(msg.id, send_labels);
+    }
+
+    void Manager::add_new_subscribers(const NodeId source_id, const std::vector<LabelInfo>& recv_labels) {
+        for (const auto& info : recv_labels) {
+            // if we do not send this label, ignore it
+            if (!m_router.has_send_route(info.label)) continue;
+
+            // check if they're already on subscriber list
+            if (m_router.is_send_subscriber(info.label, source_id)) continue;
+
+            // this is a label they want to recv, but are not on the subscription list
+            const auto addr = addr::get_address(source_id);
+            switch (addr.kind) {
+                case addr::RouteKind::Shm: {
+                    PRINT("adding local send subscriber, nodeid=", source_id, " label=", info.label);
+                    m_router.add_local_send_subscriber(info.label, info.size, m_id, source_id);
+                    break;
+                }
+                case addr::RouteKind::Socket: {
+                    PRINT("adding remote send subscriber, nodeid=", source_id, " label=", info.label);
+                    m_router.add_remote_send_subscriber(info.label, info.size, source_id);
+                    break;
+                }
+                default: {
+                    ERR_PRINT("tried to add send subscriber but did not know routekind");
+                    break;
+                }
+            }
+        }
+    }
+
+    void Manager::remove_subscription(const NodeId source_id, const std::vector<LabelInfo>& recv_labels) {
+        // all the labels we send
+        auto send_labels = m_router.get_send_labels();
+        for (const auto& [label, _] : send_labels) {
+            // if theyre not a recver of this label, ignore it
+            if (!m_router.is_send_subscriber(label, source_id)) continue;
+
+            // they're a subscriber, do they still subscriber to this label?
+            auto it = std::find_if(
+                recv_labels.begin(),
+                recv_labels.end(),
+                [&](const LabelInfo& info) {
+                    return info.label == label;
+                }
+            );
+            if (it != recv_labels.end()) continue;
+
+            // they no longer subscriber to this label, remove them
+            const auto addr = addr::get_address(source_id);
+            switch (addr.kind) {
+                case addr::RouteKind::Shm: {
+                    PRINT("removing local send subscriber, nodeid=", source_id, " label=", label);
+                    m_router.remove_local_send_subscriber(label, source_id);
+                    // do we stop the 
+                    break;
+                }
+                case addr::RouteKind::Socket: {
+                    PRINT("removing remote send subscriber, nodeid=", source_id, " label=", label);
+                    m_router.remove_remote_send_subscriber(label, source_id);
+                    break;
+                }
+                default: {
+                    ERR_PRINT("tried to add send subscriber but did not know routekind");
+                    break;
+                }
+            }
+        }
+    }
+
+    void Manager::add_new_publisher(const NodeId source_id, const std::vector<LabelInfo>& send_labels) {
+        for (const auto& info : send_labels) {
+            // if we do not want this label, ignore it
+            if (!m_router.has_recv_route(info.label)) continue;
+
+            // check if we're already subscribed
+            if (m_router.is_recv_publisher(info.label, source_id)) continue;
+
+            // this is a label we want to recv and have not registered a publisher
+            const auto addr = addr::get_address(source_id);
+            switch (addr.kind) {
+                case addr::RouteKind::Shm: {
+                    // add local recv pub and start recv worker to watch shared memory block
+                    PRINT("adding local recv publisher, nodeid=", source_id, " label=", info.label);
+                    m_router.add_local_recv_publisher(info.label, info.size, m_id, source_id);
+                    m_comms.start_local_recv_worker(info.label, info.size);
+                    break;
+                }
+                case addr::RouteKind::Socket: {
+                    // add remote recv pub, recv worker should already be listening to this socket
+                    PRINT("adding remote recv publisher, nodeid=", source_id, " label=", info.label);
+                    m_router.add_remote_recv_publisher(info.label, info.size, source_id);
+                    break;
+                }
+                default: {
+                    ERR_PRINT("tried to add send subscriber but did not know routekind");
+                    break;
+                }
+            }
+        }
+    }
+
+    void Manager::remove_publisher(const NodeId source_id, const std::vector<LabelInfo>& send_labels) {
+        // all the labels we recv
+        auto recv_labels = m_router.get_recv_labels();
+        for (const auto& [label, _] : recv_labels) {
+            // are they a publisher of this label, if not continue
+            if (!m_router.is_recv_publisher(label, source_id)) continue;
+
+            // they are a publisher, do they still publish this label?
+            auto it = std::find_if(
+                send_labels.begin(),
+                send_labels.end(),
+                [&](const LabelInfo& info) {
+                    return info.label == label;
+                }
+            );
+            if (it != send_labels.end()) continue;
+
+            // they no longer publish this label, remove them as a publisher
+            const auto addr = addr::get_address(source_id);
+            switch (addr.kind) {
+                case addr::RouteKind::Shm: {
+                    PRINT("removing local recv publisher, nodeid=", source_id, " label=", label);
+                    m_router.remove_local_recv_publisher(label, source_id);
+                    break;
+                }
+                case addr::RouteKind::Socket: {
+                    PRINT("removing remote recv publisher, nodeid=", source_id, " label=", label);
+                    m_router.remove_remote_recv_publisher(label,source_id);
+                    break;
+                }
+                default: {
+                    ERR_PRINT("tried to add send subscriber but did not know routekind");
+                    break;
+                }
+            }
+        }
     }
 }

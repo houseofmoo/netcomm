@@ -10,9 +10,6 @@ namespace eroil::shm {
         std::atomic<uint32_t> state; // readiness of shm block
     };
 
-    static constexpr uint32_t kShmMagic   = 0x314D4853u; // 'SHM1'
-    static constexpr uint16_t kShmVersion = 1;
-
     enum ShmState : uint32_t {
         SHM_INITING = 0,
         SHM_READY   = 1,

@@ -17,25 +17,33 @@ namespace eroil {
         None,
         RouteNotFound,
         SizeMismatch,
+        SizeTooLarge,
         ShmMissing,
         SocketMissing,
-        Failed,
+        NoPublishers,
+        Failed
+    };
+
+    struct SendTargets {
+        std::vector<std::shared_ptr<OpenSendData>> publishers;
+        std::shared_ptr<shm::Shm> shm;
+        std::vector<std::shared_ptr<evt::NamedEvent>> shm_signals;
+        std::vector<std::shared_ptr<sock::TCPClient>> sockets;
+    };
+
+    struct RecvTargets {
+        Label label;
+        std::vector<std::shared_ptr<OpenReceiveData>> subscribers;
     };
 
     class Dispatcher {
-        private:
-            static bool validate_recv_target(const OpenReceiveData& data);
-
         public:
-            SendOpErr dispatch_send(const SendPlan& plan,
-                                    const SendTargets& targets,
+            SendOpErr dispatch_send(const SendTargets& targets,
                                     const void* buf,
                                     size_t size) const;
 
-           void  dispatch_recv_targets(Label label,
-                                       size_t label_size,
+           void  dispatch_recv_targets(const RecvTargets& targets,
                                        const void* buf,
-                                       size_t size,
-                                       const std::vector<std::shared_ptr<RecvTarget>>& targets) const;
+                                       size_t size) const;
     };
 }
