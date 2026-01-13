@@ -1,4 +1,4 @@
-#include <eROIL/eroil.h>
+#include <eROIL/eroil_c.h>
 #include <memory>
 #include <vector>
 #include "config/config.h"
@@ -7,7 +7,31 @@
 
 
 static std::unique_ptr<eroil::Manager> manager;
+static eroil::ManagerConfig config{};
+static bool initialized = false;
 
+int NAE_Init(int /*iModuleId*/, int /*iProgramIDOffset*/, int /*iManager_CPU_ID*/, int /*iMaxNumCpus*/, int iNodeId) {
+    config.id = iNodeId;
+    config.nodes = eroil::GetTestNodeInfo();
+    config.mode = eroil::ManagerMode::LocalOnlyTestMode;
+    manager = std::make_unique<eroil::Manager>(config);
+    initialized = manager->init();
+    return initialized ? 1 : 0;
+}
+
+int NAE_Is_Agent_Up(int /*iNodeId*/) {
+    return initialized ? 1 : 0;
+}
+
+int NAE_Get_Node_ID() {
+    return config.id;
+}
+
+int NAE_Get_ROIL_Node_ID() {
+    return config.id;
+}
+
+// old interface test
 void init_manager(int id) {
     auto cfg = eroil::ManagerConfig();
     cfg.id = id;
@@ -15,6 +39,7 @@ void init_manager(int id) {
     cfg.mode = eroil::ManagerMode::LocalOnlyTestMode;
     manager = std::make_unique<eroil::Manager>(cfg);
     manager->init();
+    initialized = true;
 }
 
 void* open_send(int label, void* buf, int size) {
