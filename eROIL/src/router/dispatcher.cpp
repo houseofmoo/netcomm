@@ -51,14 +51,35 @@ namespace eroil {
             }
         }
 
-        // write IOSB
+        // write send IOSB
         for (auto& pubs : targets.publishers) {
             if (pubs == nullptr) continue;
 
             if (pubs->iosb != nullptr && pubs->num_iosb > 0) {
-                // TODO: write recv IOSB
+                auto iosb = pubs->iosb + pubs->iosb_index;
+
+                iosb->Status = size;  // number of bytes sent is status (-1 is error, 0 is disconnected)
+                iosb->Reserve1 = 0;
+                iosb->Header_Valid = 1;
+                iosb->Reserve2 = 0;  // 0 for send, 1 for receive (cause thats how they defined it)
+                iosb->Reserve3 = 0;
+                iosb->pMsgAddr = (char*)pubs->buf;  // TODO: wrong if we used provided buffer instead of handler buffer
+                iosb->MsgSize = pubs->buf_size;
+                iosb->Reserve4 = 0;
+                iosb->Reserve5 = 0;
+                iosb->Reserve6 = 0;
+                iosb->Reserve7 = 0;
+                iosb->Reserve8 = 0;
+                iosb->FC_Header = { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 };
+                iosb->Reserve9 = 0;
+                iosb->Reserve10 = 0;
+                iosb->TimeStamp = 0x12345678;  // TODO: write real timestamp here
+
+                // push iosb index forward
                 pubs->iosb_index = (pubs->iosb_index + 1) & pubs->num_iosb;
             }
+
+            signal_sem(pubs->sem, 0);
         }
 
         result.send_err = failed ? SendOpErr::Failed : SendOpErr::None;
@@ -78,15 +99,36 @@ namespace eroil {
             const size_t slot = subs->buf_index % subs->buf_slots;
             uint8_t* dst = subs->buf + (slot * subs->buf_size);
             std::memcpy(dst, buf, size);
-            subs->buf_index = (subs->buf_index + 1) % subs->buf_slots;
 
-            // write IOSB 
+            // write recv IOSB 
             if (subs->iosb != nullptr && subs->num_iosb > 0) {
-                // TODO: write recv IOSB
+                auto iosb = subs->iosb + subs->iosb_index;
+
+                iosb->Status = size;
+                iosb->Reserve1 = 0;
+                iosb->Header_Valid = 1;
+                iosb->Reserve2 = 1;  // 0 for send, 1 for receive (cause thats how they defined it)
+                iosb->Reserve3 = 0;
+                iosb->MsgSize = 0;
+                iosb->Reserve4 = 0;
+                iosb->Messaage_Slot = subs->buf_index;
+                iosb->Reserve5 = 0;
+                iosb->pMsgAddr = (char*)dst;
+                iosb->Reserve6 = 0;
+                iosb->Reserve7 = 0;
+                iosb->FC_Header = { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 };
+                iosb->Reserve8 = 0;
+                iosb->E_SOF = 0;
+                iosb->E_EOF = 0;
+                iosb->TimeStamp = 0; // TODO: write real timestamp here
+
                 subs->iosb_index = (subs->iosb_index + 1) & subs->num_iosb;
             }
+            
+            // push buffer index forward
+            subs->buf_index = (subs->buf_index + 1) % subs->buf_slots;
 
-            signal_recv_sem(subs->sem, subs->signal_mode);
+            signal_sem(subs->sem, subs->signal_mode);
         }
     }
 }

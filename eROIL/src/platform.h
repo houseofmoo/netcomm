@@ -19,7 +19,7 @@ namespace eroil {
         static_assert(std::is_same_v<sem_handle, HANDLE>);
     #endif
 
-    inline void signal_recv_sem(sem_handle sem, int /*signal_mode*/) {
+    inline void signal_sem(sem_handle sem, int /*signal_mode*/) {
         #if defined(EROIL_LINUX)
         if (sem) { sem_post(sem); }
         #elif defined(EROIL_WIN32)
