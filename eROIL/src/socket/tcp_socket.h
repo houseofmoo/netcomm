@@ -13,9 +13,11 @@ namespace eroil::sock {
             TCPSocket();
             ~TCPSocket();
 
+            // do not copy
             TCPSocket(const TCPSocket&) = delete;
             TCPSocket& operator=(const TCPSocket&) = delete;
 
+            // allow move
             TCPSocket(TCPSocket&& other) noexcept;
             TCPSocket& operator=(TCPSocket&& other) noexcept;
 
@@ -33,7 +35,6 @@ namespace eroil::sock {
     class TCPClient final : public TCPSocket {
         private:
             NodeId m_dest_id;
-
             //void query_remote();
 
         public:
@@ -49,7 +50,7 @@ namespace eroil::sock {
             TCPClient& operator=(TCPClient&&) noexcept = default;
 
             void set_destination_id(NodeId dest_id) { m_dest_id = dest_id; };
-            NodeId get_destination_id() { return { m_dest_id }; }
+            NodeId get_destination_id() { return m_dest_id; }
 
             SockResult connect(const char* ip, uint16_t port);
             SockResult open_and_connect(const char* ip, uint16_t port);
@@ -64,9 +65,11 @@ namespace eroil::sock {
             TCPServer() = default;
             ~TCPServer() = default;
 
+            // do not copy
             TCPServer(const TCPServer&) = delete;
             TCPServer& operator=(const TCPServer&) = delete;
 
+            // allow move
             TCPServer(TCPServer&&) noexcept = default;
             TCPServer& operator=(TCPServer&&) noexcept = default;
 

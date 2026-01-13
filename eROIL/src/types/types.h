@@ -6,14 +6,17 @@
 namespace eroil {
     // UNIVERSAL AND PLATFORM SPECIFIC TYPE NAMES
 
-    constexpr std::uint32_t MAX_LABELS = 200;
-    static constexpr std::uint32_t MAGIC_NUM = 0x4C4F5245u; // 'EROL'
-    static constexpr std::uint16_t VERSION = 1;
-    static constexpr std::size_t SOCKET_DATA_MAX_SIZE = 1u << 20; // 1 MB
-
     using Label = std::int32_t;
     using NodeId = std::int32_t;
     using handle_uid = std::uint64_t;
+
+    static constexpr Label INVALID_LABEL = -1;
+    static constexpr NodeId INVALID_NODE = -1;
+
+    constexpr std::uint32_t MAX_LABELS = 200;
+    static constexpr std::uint32_t MAGIC_NUM = 0x4C4F5245u; // 'EROL' as ascii bytes
+    static constexpr std::uint16_t VERSION = 1;
+    static constexpr std::size_t SOCKET_DATA_MAX_SIZE = 1u << 20; // 1 MB
     
     // using u8 = std::uint8_t;
     // using u16 = std::uint16_t;
@@ -60,13 +63,13 @@ namespace eroil {
         std::uint32_t data_size;
     };
 
-    enum class LabelFlag : uint16_t {
+    enum class LabelFlag : std::uint16_t {
         Data = 1 << 0,
         Connect = 1 << 1,
         Disconnect = 1 << 2,
         Ping = 1 << 3,
     };
 
-    inline void set_flag(uint16_t& flags, const LabelFlag flag) { flags |= static_cast<uint16_t>(flag); }
-    inline bool has_flag(const uint16_t flags, const LabelFlag flag) { return flags & static_cast<uint16_t>(flag); }
+    inline void set_flag(std::uint16_t& flags, const LabelFlag flag) { flags |= static_cast<std::uint16_t>(flag); }
+    inline bool has_flag(const std::uint16_t flags, const LabelFlag flag) { return flags & static_cast<std::uint16_t>(flag); }
 }

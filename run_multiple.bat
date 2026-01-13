@@ -2,7 +2,7 @@
 setlocal
 
 REM Number of processes to launch
-set N=3
+set N=5
 
 echo Launching %N% instances of ".\build\debug\bin\eROIL_Tests.exe"...
 

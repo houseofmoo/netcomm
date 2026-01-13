@@ -17,7 +17,7 @@ namespace eroil {
 
     std::array<LabelInfo, MAX_LABELS> RouteTable::get_send_labels() const {
         std::array<LabelInfo, MAX_LABELS> labels;
-        labels.fill(LabelInfo{ -1, 0 });
+        labels.fill(LabelInfo{ INVALID_LABEL, 0 });
 
         size_t index = 0;
         for (const auto& [label, route] : m_send_routes) {
@@ -32,7 +32,7 @@ namespace eroil {
 
     std::array<LabelInfo, MAX_LABELS> RouteTable::get_recv_labels() const {
         std::array<LabelInfo, MAX_LABELS> labels;
-        labels.fill(LabelInfo{ -1, 0 });
+        labels.fill(LabelInfo{ INVALID_LABEL, 0 });
         
         size_t index = 0;
         for (const auto& [label, route] : m_recv_routes) {

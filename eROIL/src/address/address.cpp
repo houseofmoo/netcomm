@@ -44,7 +44,7 @@ namespace eroil::addr {
             if (addr.ip == ip && addr.port == port) return addr;
         }
 
-        return NodeAddress{ RouteKind::None, -1, ip, port };
+        return NodeAddress{ RouteKind::None, INVALID_NODE, ip, port };
     }
 
     void set_all_local() {

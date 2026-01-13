@@ -65,9 +65,9 @@ namespace eroil::evt {
         m_dst_id(other.m_dst_id),
         m_sem(other.m_sem) {
             
-        other.m_label_id = -1;
-        other.m_src_id = -1;
-        other.m_dst_id = -1;
+        other.m_label_id = INVALID_LABEL;
+        other.m_src_id = INVALID_NODE;
+        other.m_dst_id = INVALID_NODE;
         other.m_sem = nullptr;
     }
 
@@ -79,9 +79,9 @@ namespace eroil::evt {
             m_dst_id = other.m_dst_id;
             m_sem = other.m_sem;
 
-            other.m_label_id = -1;
-            other.m_src_id = -1;
-            other.m_dst_id = -1;
+            other.m_label_id = INVALID_LABEL;
+            other.m_src_id = INVALID_NODE;
+            other.m_dst_id = INVALID_NODE;
             other.m_sem = nullptr;
         }
         return *this;

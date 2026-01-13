@@ -165,7 +165,7 @@ namespace eroil {
         std::vector<LabelInfo> recv_labels;
         recv_labels.reserve(msg.recv_labels.size());
         for (const LabelInfo& l : msg.recv_labels) {
-            if (l.label >= 0) recv_labels.push_back(l);
+            if (l.label > INVALID_LABEL) recv_labels.push_back(l);
         }
 
         // check if they want a label we send
@@ -178,7 +178,7 @@ namespace eroil {
         std::vector<LabelInfo> send_labels;
         send_labels.reserve(msg.send_labels.size());
         for (const LabelInfo& l : msg.send_labels) {
-            if (l.label >= 0) send_labels.push_back(l);
+            if (l.label > INVALID_LABEL) send_labels.push_back(l);
         }
 
         // check if we want a label they send

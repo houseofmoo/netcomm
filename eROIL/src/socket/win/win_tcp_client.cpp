@@ -14,7 +14,7 @@ namespace eroil::sock {
     //     return static_cast<socket_handle>(handle);
     // }
 
-    TCPClient::TCPClient() : TCPSocket(), m_dest_id(-1) {}
+    TCPClient::TCPClient() : TCPSocket(), m_dest_id(INVALID_NODE) {}
 
     // void TCPClient::query_remote() {
     //     // store who we're connected to
@@ -32,7 +32,7 @@ namespace eroil::sock {
     //             auto addr = addr::find_node_id(m_ip, m_port);
     //             if (addr.kind == addr::RouteKind::None) {
     //                 PRINT("could not identify peer by IP address");
-    //                 m_dest_id = -1;
+    //                 m_dest_id = INVALID_NODE;
     //             }
     //             PRINT("socket identified as destination_id=", m_dest_id, " at ip=", m_ip, ":", m_port);
     //         }

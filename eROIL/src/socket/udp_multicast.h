@@ -15,8 +15,8 @@ namespace eroil::sock {
         bool loopback = true;
         bool reuse_addr = true;
 
-        // Optional: choose NIC for multicast (Windows uses interface index or local IP)
-        // Keep it simple for now: let OS choose default route.
+        // optional: choose NIC for multicast (Windows uses interface index or local IP)
+        // let OS choose default route for now
     };
 
     class UDPMulticastSocket final {
