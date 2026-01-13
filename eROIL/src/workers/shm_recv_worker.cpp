@@ -1,19 +1,12 @@
 #include "shm_recv_worker.h"
 #include <eROIL/print.h>
-#include "types/label_hdr.h"
+#include "types/types.h"
 
 namespace eroil::worker {
     ShmRecvWorker::ShmRecvWorker(Router& router, 
                                  Label label, 
                                  size_t label_size)
         : m_router(router), m_label(label), m_label_size(label_size), m_recv_shm(nullptr) {}
-
-    void ShmRecvWorker::request_unblock() {
-        if (m_recv_shm != nullptr) {
-            // attempt to wake sleeping thread so they can exit
-            //m_recv_shm->interrupt_wait();
-        }
-    }
 
     void ShmRecvWorker::run() {
         try {

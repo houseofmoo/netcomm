@@ -9,48 +9,54 @@
 
 #include <windows.h>
 
+void sender(int /*id*/) {
+    auto buf = std::make_unique<uint8_t[]>(1024);
+    auto handle = open_send(5, buf.get(), 1024);
+    int count = 1;
+    std::this_thread::sleep_for(std::chrono::milliseconds(3000));
+
+    while (true) {
+        PRINT("sending: ", count);
+        std::memcpy(buf.get(), &count, sizeof(count));
+        send_label(handle, buf.get(), 1024, 0);
+        count += 1;
+        std::this_thread::sleep_for(std::chrono::milliseconds(100));
+    }
+}
+
+void recvr(int /*id*/) {
+    auto buf = std::make_unique<uint8_t[]>(1024);
+    auto sem = ::CreateSemaphoreW(nullptr, 0, 1000, nullptr);
+    open_recv(5, buf.get(), 1024, sem);
+
+    int count = 0;
+    int prev_count = 0;
+    while (true) {
+        ::WaitForSingleObject(sem, INFINITE);
+        std::memcpy(&count, buf.get(), sizeof(count));
+        if (prev_count + 1 != count) {
+            PRINT("got count out of order expected=", prev_count + 1, " got=", count);
+        } else {
+            PRINT("got: ", count);
+        }
+        prev_count = count;
+    }
+}
+
 int main(int argc, char** argv) {
     int id = 0;
     if (argc >= 2) {
         id = std::stoi(argv[1]);
     }
 
-    std::cout << "init_manager(" << id << ")" << std::endl;
     init_manager(id);
-    
-    auto buf = std::make_unique<uint8_t[]>(1024);
 
-    if (id == 0) {
-        auto handle = open_send(5, buf.get(), 1024);
-        int count = 1;
-        std::this_thread::sleep_for(std::chrono::milliseconds(3000));
-        while (true) {
-            PRINT("sending: ", count);
-            std::memcpy(buf.get(), &count, sizeof(count));
-            send_label(handle, buf.get(), 1024, 0);
-            count += 1;
-            std::this_thread::sleep_for(std::chrono::milliseconds(100));
-        }
-
-    } else {
-        auto sem = ::CreateSemaphoreW(nullptr, 0, 1000, nullptr);
-        open_recv(5, buf.get(), 1024, sem);
-        int count = 0;
-        int prev_count = 0;
-        while (true) {
-            ::WaitForSingleObject(sem, INFINITE);
-            std::memcpy(&count, buf.get(), sizeof(count));
-            //PRINT("recvd :", count);
-            if (prev_count + 1 != count) {
-                PRINT("got count out of order expected=", prev_count + 1, " got=", count);
-            } else {
-                PRINT("got: ", count);
-            }
-            prev_count = count;
-        }
+    switch (id) {
+        case 0: sender(id);
+        case 1: recvr(id);
+        default: recvr(id);
     }
 
-    std::this_thread::sleep_for(std::chrono::milliseconds(1000 * 2000));
-    std::cout << "sleep ends" << std::endl;
+    
     return 0;
 }

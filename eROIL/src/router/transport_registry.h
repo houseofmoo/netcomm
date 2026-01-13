@@ -21,6 +21,7 @@ namespace eroil {
             bool delete_socket(NodeId id);
             std::shared_ptr<sock::TCPClient> get_socket(NodeId id) const;
             bool has_socket(NodeId id) const;
+            std::vector<std::shared_ptr<sock::TCPClient>> get_all_sockets();
 
             // send shm
             bool open_send_shm(Label label, size_t label_size);

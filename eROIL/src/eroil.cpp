@@ -12,7 +12,7 @@ void init_manager(int id) {
     auto cfg = eroil::ManagerConfig();
     cfg.id = id;
     cfg.nodes = eroil::GetTestNodeInfo();
-    cfg.mode = eroil::ManagerMode::SocketOnly;
+    cfg.mode = eroil::ManagerMode::LocalOnlyTestMode;
     manager = std::make_unique<eroil::Manager>(cfg);
     manager->init();
 }

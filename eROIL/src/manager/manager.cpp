@@ -5,10 +5,10 @@
 #include <memory>
 #include <algorithm>
 #include <eROIL/print.h>
-#include "types/label_hdr.h"
+#include "types/types.h"
 
 namespace eroil {
-    static int unique_id() {
+    static int32_t unique_id() {
         static std::atomic<int> next_id{0};
         return next_id.fetch_add(1, std::memory_order_relaxed);
     }
@@ -39,6 +39,10 @@ namespace eroil {
             }
             case ManagerMode::SocketOnly: {
                 addr::set_all_remote();
+                break;
+            }
+            case ManagerMode::LocalOnlyTestMode: {
+                addr::split_by_id(m_id);
                 break;
             }
             case ManagerMode::Normal: // fallthrough
@@ -89,7 +93,7 @@ namespace eroil {
             VERSION,
             m_id,
             flags,
-            static_cast<uint32_t>(handle->data->label),
+            handle->data->label,
             static_cast<uint32_t>(send_size)
         };
         

@@ -31,8 +31,13 @@ namespace eroil::sock {
     };
 
     class TCPClient final : public TCPSocket {
+        private:
+            NodeId m_dest_id;
+
+            //void query_remote();
+
         public:
-            TCPClient() = default;
+            TCPClient();
             ~TCPClient() = default;
 
             TCPClient(const TCPClient&) = delete;
@@ -40,6 +45,9 @@ namespace eroil::sock {
 
             TCPClient(TCPClient&&) noexcept = default;
             TCPClient& operator=(TCPClient&&) noexcept = default;
+
+            void set_destination_id(NodeId dest_id) { m_dest_id = dest_id; };
+            NodeId get_destination_id() { return { m_dest_id }; }
 
             SockResult connect(const char* ip, uint16_t port);
             SockResult open_and_connect(const char* ip, uint16_t port);

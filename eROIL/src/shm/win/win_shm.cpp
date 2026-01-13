@@ -4,7 +4,7 @@
 #include <thread>
 #include <chrono>
 #include "shm/shm_header.h"
-#include "types/label_hdr.h"
+#include "types/types.h"
 #include <eROIL/print.h>
 
 namespace eroil::shm {

@@ -3,6 +3,7 @@
 #include <winsock2.h>
 #include <ws2tcpip.h>
 #include <eROIL/print.h>
+#include "address/address.h"
 
 namespace eroil::sock {
     static SOCKET as_native(socket_handle handle) noexcept {
@@ -11,6 +12,31 @@ namespace eroil::sock {
 
     // static socket_handle from_native(SOCKET handle) noexcept {
     //     return static_cast<socket_handle>(handle);
+    // }
+
+    TCPClient::TCPClient() : TCPSocket(), m_dest_id(-1) {}
+
+    // void TCPClient::query_remote() {
+    //     // store who we're connected to
+    //     sockaddr_storage addr{};
+    //     int addr_len = sizeof(addr);
+
+    //     if (getpeername(as_native(m_handle), reinterpret_cast<sockaddr*>(&addr), &addr_len) == 0) {
+    //         if (addr.ss_family == AF_INET) {
+    //             auto* a = (sockaddr_in*)&addr;
+    //             char ip[INET_ADDRSTRLEN];
+    //             inet_ntop(AF_INET, &a->sin_addr, ip, sizeof(ip));
+    //             m_ip = std::string(ip);
+
+    //             m_port = ntohs(a->sin_port);
+    //             auto addr = addr::find_node_id(m_ip, m_port);
+    //             if (addr.kind == addr::RouteKind::None) {
+    //                 PRINT("could not identify peer by IP address");
+    //                 m_dest_id = -1;
+    //             }
+    //             PRINT("socket identified as destination_id=", m_dest_id, " at ip=", m_ip, ":", m_port);
+    //         }
+    //     }
     // }
 
     SockResult TCPClient::connect(const char* ip, uint16_t port) {
@@ -74,12 +100,17 @@ namespace eroil::sock {
         }
 
         if (sent_bytes == 0) {
-            ERR_PRINT("send() sent 0 bytes, considering the socket closed")
+            ERR_PRINT("send() sent 0 bytes, considering the socket closed");
             m_connected = false;
             return SockResult{ SockErr::Closed, SockOp::Send, 0, 0 };
         }
 
         int err = ::WSAGetLastError();
+        if (err == WSAECONNRESET) {
+            ERR_PRINT("send() errcode indicates socket closed")
+            m_connected = false;
+        }
+        
         return SockResult{ map_err(err), SockOp::Send, err, 0 };
     }
 

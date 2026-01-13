@@ -3,20 +3,19 @@
 #include <array>
 
 #include "types/types.h"
-#include "types/broadcast_msg.h"
-#include "types/handles.h"
 #include "config/config.h"
 #include "address/address.h"
 #include "router/router.h"
 #include "socket/udp_multicast.h"
 #include "socket/socket_context.h"
-#include "comms/recvrs.h"
+#include "conn/connection_manager.h"
 
 namespace eroil {
     enum class ManagerMode {
         Normal,
         ShmOnly,
-        SocketOnly
+        SocketOnly,
+        LocalOnlyTestMode, // divides into some shm and some socket even if all apps are local
     };
 
     struct ManagerConfig {
@@ -27,10 +26,10 @@ namespace eroil {
     
     class Manager {
         private:
-            int m_id;
+            NodeId m_id;
             Router m_router;
             sock::SocketContext m_context;
-            Comms m_comms;
+            ConnectionManager m_comms;
             sock::UDPMulticastSocket m_broadcast;
             bool m_valid;
 

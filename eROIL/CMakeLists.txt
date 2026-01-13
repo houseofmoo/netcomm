@@ -4,6 +4,24 @@ project(eROIL LANGUAGES C CXX)
 # build as static lib
 add_library(eROIL STATIC)
 
+# require language standards per-target
+target_compile_features(eROIL PUBLIC cxx_std_17)
+set_target_properties(eROIL PROPERTIES
+    C_STANDARD 11
+    C_STANDARD_REQUIRED YES
+    C_EXTENSIONS NO
+    CXX_EXTENSIONS NO
+)
+
+# set_target_properties(eROIL PROPERTIES
+#     C_STANDARD 11
+#     C_STANDARD_REQUIRED YES
+#     C_EXTENSIONS NO
+#     CXX_STANDARD 17
+#     CXX_STANDARD_REQUIRED YES
+#     CXX_EXTENSIONS NO
+# )
+
 # linux vs windows macro defs
 target_compile_definitions(eROIL
     PRIVATE
@@ -15,8 +33,8 @@ target_compile_definitions(eROIL
 target_sources(eROIL PRIVATE 
     ${CMAKE_CURRENT_SOURCE_DIR}/src/eroil.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/src/address/address.cpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/src/comms/recvrs.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/src/config/config.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/src/conn/connection_manager.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/src/manager/manager.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/src/router/dispatcher.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/src/router/route_table.cpp
@@ -62,11 +80,10 @@ target_include_directories(eROIL
     PRIVATE
         ${CMAKE_CURRENT_SOURCE_DIR}/src
         ${CMAKE_CURRENT_SOURCE_DIR}/src/address
-        ${CMAKE_CURRENT_SOURCE_DIR}/src/broadcast
-        ${CMAKE_CURRENT_SOURCE_DIR}/src/config/
+        ${CMAKE_CURRENT_SOURCE_DIR}/src/config
+        ${CMAKE_CURRENT_SOURCE_DIR}/src/conn
         ${CMAKE_CURRENT_SOURCE_DIR}/src/events
         ${CMAKE_CURRENT_SOURCE_DIR}/src/manager
-        ${CMAKE_CURRENT_SOURCE_DIR}/src/net
         ${CMAKE_CURRENT_SOURCE_DIR}/src/router
         ${CMAKE_CURRENT_SOURCE_DIR}/src/shm
         ${CMAKE_CURRENT_SOURCE_DIR}/src/socket
@@ -78,16 +95,6 @@ target_include_directories(eROIL
         ${CMAKE_CURRENT_SOURCE_DIR}/include/eROIL
 )
 
-# build options
-set_target_properties(eROIL PROPERTIES
-    C_STANDARD 11
-    C_STANDARD_REQUIRED YES
-    C_EXTENSIONS NO
-    CXX_STANDARD 17
-    CXX_STANDARD_REQUIRED YES
-    CXX_EXTENSIONS NO
-)
-
 # strict warnings only for non-system code
 target_compile_options(eROIL PRIVATE
     $<$<CXX_COMPILER_ID:MSVC>:/W4 /WX>
@@ -95,7 +102,9 @@ target_compile_options(eROIL PRIVATE
     $<$<NOT:$<CXX_COMPILER_ID:MSVC>>:-Wunused-parameter -Wunused-variable>
 )
 
-# external libs
+# external system libs
 target_link_libraries(eROIL PRIVATE
-    $<$<PLATFORM_ID:Windows>:ws2_32>
+    $<$<PLATFORM_ID:Windows>:
+        ws2_32
+    >
 )

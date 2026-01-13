@@ -6,7 +6,6 @@
 #include <variant>
 
 #include "events/named_event.h"
-#include "types/broadcast_msg.h"
 #include "types/types.h"
 #include "types/handles.h"
 

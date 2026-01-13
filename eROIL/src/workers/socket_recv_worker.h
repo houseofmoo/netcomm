@@ -10,19 +10,18 @@ namespace eroil::worker {
     class SocketRecvWorker final : public ThreadWorker {
         private:
             Router& m_router;
+            NodeId m_id;
             NodeId m_peer_id;
+            bool m_is_active;
             std::shared_ptr<sock::TCPClient> m_sock;
-            std::function<void()> m_on_error;
 
         public:
-            SocketRecvWorker(Router& router, 
-                            NodeId peer_id,
-                            std::function<void()> on_err);
+            SocketRecvWorker(Router& router, NodeId id, NodeId peer_id);
+
             SocketRecvWorker(const SocketRecvWorker&) = delete;
             SocketRecvWorker& operator=(const SocketRecvWorker&) = delete;
 
         protected:
-            void request_unblock() override;
             void run() override;
 
         private:

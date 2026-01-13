@@ -37,6 +37,14 @@ namespace eroil {
         return (it != m_sockets.end()) && (it->second != nullptr);
     }
 
+    std::vector<std::shared_ptr<sock::TCPClient>> TransportRegistry::get_all_sockets() {
+        std::vector<std::shared_ptr<sock::TCPClient>> out;
+        for (auto [id, sock] : m_sockets) {
+            out.push_back(sock);
+        }
+        return out;
+    }
+
     // send shm
     bool TransportRegistry::open_send_shm(Label label, size_t label_size) {
         if (has_send_shm(label)) return true;

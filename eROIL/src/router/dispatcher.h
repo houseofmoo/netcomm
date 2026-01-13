@@ -24,6 +24,12 @@ namespace eroil {
         Failed
     };
 
+    struct SendResult {
+        SendOpErr send_err;
+        shm::ShmOpErr shm_err;
+        std::unordered_map<NodeId, sock::SockResult> sock_err;
+    };
+
     struct SendTargets {
         std::vector<std::shared_ptr<OpenSendData>> publishers;
         std::shared_ptr<shm::Shm> shm;
@@ -38,7 +44,7 @@ namespace eroil {
 
     class Dispatcher {
         public:
-            SendOpErr dispatch_send(const SendTargets& targets,
+            SendResult dispatch_send(const SendTargets& targets,
                                     const void* buf,
                                     size_t size) const;
 

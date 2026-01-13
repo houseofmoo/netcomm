@@ -94,11 +94,23 @@ namespace eroil::worker {
                 if (!entry) break;
 
                 try {
-                    auto send_err = m_router.send_to_subscribers(entry->label, entry->data.get(), entry->data_size);
-                    if (send_err != SendOpErr::None) {
-                        ERR_PRINT("Err on send, handle it");
-                        // TODO: handle errors
-                    }
+                    auto result = m_router.send_to_subscribers(entry->label, entry->data.get(), entry->data_size);
+                        switch (result.send_err) {
+                            // validation error
+                            case SendOpErr::RouteNotFound: // fallthrough
+                            case SendOpErr::SizeMismatch:  // fallthrough
+                            case SendOpErr::SizeTooLarge:  // fallthrough
+                            case SendOpErr::NoPublishers: { break; }
+
+                            // see why we failed
+                            case SendOpErr::Failed: {
+                                // TODO: handle failed send error
+                            }
+
+                            // no error
+                            case SendOpErr::None: { break; }
+                            default: { break; } // unknown error?
+                        }
                 } catch (const std::exception& e) {
                     ERR_PRINT("Exception in worker thread, entry.label: ", entry->label, ", exception: ", e.what());
                 } catch (...) {

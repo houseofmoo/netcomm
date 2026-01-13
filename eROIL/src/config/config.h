@@ -8,7 +8,7 @@ namespace eroil {
     constexpr uint16_t PORT_START = 8080;
 
     struct NodeInfo {
-        int id;
+        NodeId id;
         std::string ip;
         uint16_t port;
     };

@@ -19,7 +19,6 @@ namespace eroil::worker {
                           size_t label_size);
 
         protected:
-            void request_unblock() override;
             void run() override;
     };
 }

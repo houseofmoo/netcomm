@@ -11,7 +11,6 @@ namespace eroil::worker {
         protected:
             bool stop_requested() const { return m_stop.load(std::memory_order_acquire); }
             virtual void run() = 0;
-            virtual void request_unblock() = 0;
             virtual void on_stop_requested() {}
             virtual void on_stopped() {}
 
@@ -31,8 +30,6 @@ namespace eroil::worker {
                 if (!was_stopping) {
                     on_stop_requested();
                 }
-
-                this->request_unblock();
 
                 if (m_thread.joinable()) {
                     m_thread.join();

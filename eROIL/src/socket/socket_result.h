@@ -50,8 +50,8 @@ namespace eroil::sock {
     struct SockResult {
         SockErr code = SockErr::Unknown;
         SockOp op = SockOp::Open;
-        int sys_error = 0;     // WSAGetLastError() / errno
-        int bytes = 0;         // only meaningful for send/recv
+        int32_t sys_error = 0;     // WSAGetLastError() / errno
+        int32_t bytes = 0;         // only meaningful for send/recv
     };
 
     SockErr map_err(int err) noexcept;

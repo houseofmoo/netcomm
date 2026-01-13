@@ -3,19 +3,21 @@
 #include <cstring>
 #include <eROIL/print.h>
 #include "types/types.h"
-#include "types/label_hdr.h"
 #include "platform.h"
 
 namespace eroil {
-    SendOpErr Dispatcher::dispatch_send(const SendTargets& targets,
+    SendResult Dispatcher::dispatch_send(const SendTargets& targets,
                                         const void* buf,
                                         size_t size) const {
         bool failed = false;
+        SendResult result{};
 
         // local
         if (targets.shm != nullptr) {
             auto shm_err = targets.shm->write(buf, size);
             if (shm_err != shm::ShmOpErr::None) {
+                result.shm_err = shm_err;
+                failed = true;
                 ERR_PRINT("shared memory write error=", (int)shm_err);
             }
 
@@ -32,11 +34,18 @@ namespace eroil {
         if (!targets.sockets.empty()) {
             for (const auto& sock : targets.sockets) {
                 if (sock == nullptr) continue;
+
+                // dont bother sending to disconnected sockets
+                // we're trying to reconnect in in comms handler
+                if (!sock->is_connected()) continue;
+                
                 auto sock_err = sock->send(buf, size);
                 if (sock_err.code != sock::SockErr::None) {
-                    if (sock_err.code == sock::SockErr::Closed) {
-                        // TODO: tell router the socket is dead somehow
-                    }
+                    failed = true;
+                    result.sock_err.emplace(
+                        sock->get_destination_id(),
+                        sock_err
+                    );
                     ERR_PRINT("socket send errorcode=", (int)sock_err.code, ", op=", (int)sock_err.op);
                 }
             }
@@ -52,7 +61,8 @@ namespace eroil {
             }
         }
 
-        return failed ? SendOpErr::Failed : SendOpErr::None;
+        result.send_err = failed ? SendOpErr::Failed : SendOpErr::None;
+        return result;
     }
 
     void Dispatcher::dispatch_recv_targets(const RecvTargets& targets,

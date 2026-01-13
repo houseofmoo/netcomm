@@ -5,8 +5,6 @@
 #include <shared_mutex>
 
 #include "types/types.h"
-#include "types/broadcast_msg.h"
-
 #include "route_table.h"
 #include "transport_registry.h"
 #include "dispatcher.h"
@@ -55,11 +53,13 @@ namespace eroil {
             // for recv workers
             bool upsert_socket(NodeId id, std::shared_ptr<sock::TCPClient> sock);
             std::shared_ptr<sock::TCPClient> get_socket(NodeId id);
+            std::vector<std::shared_ptr<sock::TCPClient>> get_all_sockets();
+            bool has_socket(NodeId id) const;
             std::shared_ptr<shm::Shm> get_send_shm(Label label);
             std::shared_ptr<shm::Shm> get_recv_shm(Label label);
             RecvRoute* get_recv_route(Label label);
 
-            SendOpErr send_to_subscribers(Label label, const void* buf, size_t size);
+            SendResult send_to_subscribers(Label label, const void* buf, size_t size);
             void recv_from_publisher(Label label, const void* buf, size_t size);
     };
 }

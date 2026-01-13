@@ -9,7 +9,7 @@
 #include "workers/shm_recv_worker.h"
 
 namespace eroil {
-    class Comms {
+    class ConnectionManager {
         private:
             NodeId m_id;
             Router& m_router;
@@ -20,12 +20,11 @@ namespace eroil {
             std::unordered_map<Label, std::unique_ptr<worker::ShmRecvWorker>> m_shm_recvrs;
 
         public:
-            Comms(NodeId id, Router& router);
-            ~Comms() = default;
+            ConnectionManager(NodeId id, Router& router);
+            ~ConnectionManager() = default;
 
             void start();
             void send_label(handle_uid uid, Label label, size_t data_size, std::unique_ptr<uint8_t[]> data);
-            
             void start_local_recv_worker(Label label, size_t label_size);
             void start_remote_recv_worker(NodeId from_id);
 
@@ -33,5 +32,8 @@ namespace eroil {
             void start_tcp_server();
             void search_peers();
             void reconnect(NodeId to_id);
+            void monitor_sockets();
+            bool send_id(sock::TCPClient* sock);
+            bool send_ping(sock::TCPClient* sock);
     };
 }

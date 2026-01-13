@@ -1,7 +1,6 @@
 #include "router.h"
 
 #include <eROIL/print.h>
-#include "types/label_hdr.h"
 
 namespace eroil {
     Router::Router() = default;
@@ -235,6 +234,14 @@ namespace eroil {
         return m_transports.get_socket(id);
     }
 
+    std::vector<std::shared_ptr<sock::TCPClient>> Router::get_all_sockets() {
+        return m_transports.get_all_sockets();
+    }
+
+    bool Router::has_socket(NodeId id) const {
+        return m_transports.has_socket(id);
+    }
+
     std::shared_ptr<shm::Shm> Router::get_send_shm(Label label) {
         return m_transports.get_send_shm(label);
     }
@@ -247,8 +254,8 @@ namespace eroil {
         return m_routes.get_recv_route(label);
     }
 
-    SendOpErr Router::send_to_subscribers(Label label, const void* buf, size_t size) {
-        if (!buf || size == 0) return SendOpErr::Failed;
+    SendResult Router::send_to_subscribers(Label label, const void* buf, size_t size) {
+        if (!buf || size == 0) return { SendOpErr::Failed, {}, {} };
         SendTargets targets{ {}, nullptr, {}, {} };
         {
             std::shared_lock lock(m_router_mtx);
@@ -256,31 +263,26 @@ namespace eroil {
             const SendRoute* route = m_routes.get_send_route(label);
             if (route == nullptr) {
                 ERR_PRINT("send_to_subscribers(): unknown label=", label);
-                return SendOpErr::RouteNotFound;
+                return { SendOpErr::RouteNotFound, {}, {} };
             }
 
             size_t total_size = route->label_size + sizeof(LabelHeader);
             if (total_size != size ) {
                 ERR_PRINT("send_to_subscribers(): size mismatch label=", label,
                           " expected=", total_size, " got=", size);
-                return SendOpErr::SizeMismatch;
+                return { SendOpErr::SizeMismatch, {}, {} };
             }
 
             if (size > SOCKET_DATA_MAX_SIZE) {
                 ERR_PRINT("send_to_subscribers(): send size bigger than max label=", label,
                           " size=", size, " max=", SOCKET_DATA_MAX_SIZE);
-                return SendOpErr::SizeTooLarge;
-            }
-
-            if (route->publishers.empty()) {
-                ERR_PRINT("send_to_subscribers(): called with no publishers label=", label);
-                return SendOpErr::Failed;
+                return { SendOpErr::SizeTooLarge, {}, {} };
             }
 
             auto uids = m_routes.snapshot_send_publishers(label);
             if (uids.empty()) {
                 ERR_PRINT("recv_from_publisher(): no send publishers for label=", label);
-                return SendOpErr::NoPublishers;
+                return { SendOpErr::NoPublishers, {}, {} };
             }
 
             targets.publishers.reserve(uids.size());
@@ -307,7 +309,7 @@ namespace eroil {
 
             // no one to send to
             if (targets.shm == nullptr &&
-                targets.sockets.empty()) return SendOpErr::None;
+                targets.sockets.empty()) return { SendOpErr::None, {}, {} };
         }
 
         return m_dispatch.dispatch_send(targets, buf, size);
