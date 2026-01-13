@@ -182,7 +182,7 @@ namespace eroil {
             route->local_subscribers->subscribe_events.end(),
             [&](const std::shared_ptr<evt::NamedEvent> e) {
                 auto info = e->get_info();
-                return info.destination_id == to_id;
+                return info.dst_id == to_id;
             }
         );
 
@@ -282,7 +282,7 @@ namespace eroil {
             route->local_subscribers->subscribe_events.end(),
             [&](const std::shared_ptr<evt::NamedEvent> e) {
                 auto info = e->get_info();
-                return info.destination_id == to_id;
+                return info.dst_id == to_id;
             }
         );
         return it != route->local_subscribers->subscribe_events.end();
@@ -401,7 +401,7 @@ namespace eroil {
             return false;
         }
 
-        if (pub->publish_event->get_info().source_id != from_id) {
+        if (pub->publish_event->get_info().src_id != from_id) {
             ERR_PRINT(__func__, "(): from id does not match expected, label=", label);
             return false;
         }
@@ -485,7 +485,7 @@ namespace eroil {
         if (route == nullptr) return false;
 
         if (auto* local = std::get_if<LocalPublisher>(&route->publisher)) {
-            return local->publish_event->get_info().source_id == from_id;
+            return local->publish_event->get_info().src_id == from_id;
         }
         return false;
     }

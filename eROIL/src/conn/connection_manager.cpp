@@ -28,8 +28,32 @@ namespace eroil {
         m_sender.start();
         start_tcp_server();
 
-        std::thread search([this]() { search_peers(); });
+        auto search_complete = std::make_shared<evt::Semaphore>();
+        std::thread search([this, search_complete]() { 
+            search_remote_peers(); 
+            search_complete->post();
+        });
         search.detach();
+
+        // wait 10 seconds for peer search, otherwise continue normally
+        auto wait_err = search_complete->wait(10 * 1000);
+        switch (wait_err) {
+            case evt::SemOpErr::None: {
+                LOG("remote peer connections complete");
+                break;
+            }
+            case evt::SemOpErr::WouldBlock: // fallthrough
+            case evt::SemOpErr::Timeout: {
+                ERR_PRINT("remote peer search took longer than 10 seconds to complete");
+                break;
+            }
+            case evt::SemOpErr::NotInitialized: // fallthrough
+            case evt::SemOpErr::SysError: // fallthrough
+            default: {
+                ERR_PRINT("error waiting for remote peer search complete signal");
+                break;
+            }
+        }
 
         std::thread monitor([this]() { monitor_sockets(); });
         monitor.detach();
@@ -137,7 +161,7 @@ namespace eroil {
         tcp_server_thread.detach();
     }
 
-    void ConnectionManager::search_peers() {
+    void ConnectionManager::search_remote_peers() {
         LOG("searching for peers...");
         // how many peers do we expect to connect to
 
@@ -185,18 +209,15 @@ namespace eroil {
                 actual_peers += 1;
             }
 
-            // search for remaining peers again in 5 seconds
-            std::this_thread::sleep_for(std::chrono::milliseconds(5000));
+            // search for remaining peers again in 1 second
+            std::this_thread::sleep_for(std::chrono::milliseconds(1 * 1000));
         }
-
-        LOG("peer connection complete");
     }
 
     void ConnectionManager::monitor_sockets() {
         // every couple of seconds we need to check that the sockets are still alive
         // if theyre dead, stop recv worker and attempt re-connection
         while (true) {
-            std::this_thread::sleep_for(std::chrono::milliseconds(1000 * 5));
             auto sockets = m_router.get_all_sockets();
             for (auto& sock : sockets) {
 
@@ -211,11 +232,11 @@ namespace eroil {
                 sock->disconnect();
                 LOG("found dead socket to nodeid=", peer_id);
 
-                // find worker for this socket, which may not exist if they were deleted
-                // during a previous monitoring sweep
+                // if worker is still listening to dead socket, stop and erase them
                 auto worker_it = m_sock_recvrs.find(peer_id);
                 if (worker_it != m_sock_recvrs.end()) {
-                    worker_it->second->stop();
+                    // this call has a thread.join(), if monitor thread stops responding likely this is the cause
+                    worker_it->second->stop(); 
                     m_sock_recvrs.erase(worker_it);
                 }
 
@@ -238,6 +259,8 @@ namespace eroil {
                 LOG("re-established tcp connection to node: ", addr.id);
                 start_remote_recv_worker(peer_id);
             }
+            
+            std::this_thread::sleep_for(std::chrono::milliseconds(5 * 1000));
         }   
     }
 

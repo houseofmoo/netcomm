@@ -18,6 +18,7 @@ namespace eroil::worker {
         public:
             SocketRecvWorker(Router& router, NodeId id, NodeId peer_id);
 
+            // do not copy
             SocketRecvWorker(const SocketRecvWorker&) = delete;
             SocketRecvWorker& operator=(const SocketRecvWorker&) = delete;
 

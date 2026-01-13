@@ -51,8 +51,6 @@ target_sources(eROIL PRIVATE
         ${CMAKE_CURRENT_SOURCE_DIR}/src/events/win/win_named_event.cpp
         ${CMAKE_CURRENT_SOURCE_DIR}/src/events/win/win_semaphore.cpp
 
-        ${CMAKE_CURRENT_SOURCE_DIR}/src/shm/win/win_shm_recv.cpp
-        ${CMAKE_CURRENT_SOURCE_DIR}/src/shm/win/win_shm_send.cpp
         ${CMAKE_CURRENT_SOURCE_DIR}/src/shm/win/win_shm.cpp
         
         ${CMAKE_CURRENT_SOURCE_DIR}/src/socket/win/win_map_err.cpp

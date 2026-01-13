@@ -34,6 +34,10 @@ namespace eroil::worker {
             explicit SendWorker(Router& router);
             ~SendWorker() = default;
 
+            // do not copy
+            SendWorker(const SendWorker&) = delete;
+            SendWorker& operator=(const SendWorker&) = delete;
+
             void start();
             void stop();
             void enqueue(SendQEntry entry);

@@ -4,7 +4,7 @@
 namespace eroil::evt {
     enum class SemOpErr {
         None,
-        InvalidSem,
+        NotInitialized,
         Timeout,
         WouldBlock,
         MaxCountReached,
@@ -21,16 +21,17 @@ namespace eroil::evt {
             explicit Semaphore(uint32_t max_count);
             ~Semaphore();
 
+            // do not copy
             Semaphore(const Semaphore&) = delete;
             Semaphore& operator=(const Semaphore&) = delete;
 
+            // allow move
             Semaphore(Semaphore&& other) noexcept;
             Semaphore& operator=(Semaphore&& other) noexcept;
 
-            SemOpErr wait();
-            SemOpErr timed_wait(uint32_t milliseconds);
-            SemOpErr try_wait();
             SemOpErr post();
+            SemOpErr try_wait();
+            SemOpErr wait(uint32_t milliseconds = 0);
             void close();
     };
 }

@@ -10,8 +10,12 @@ namespace eroil::worker {
 
     void ShmRecvWorker::run() {
         try {
+            // size our recv block
+            const size_t hdr_size = sizeof(LabelHeader);
+
             std::vector<std::byte> tmp;
-            tmp.resize(m_label_size + sizeof(LabelHeader));
+            tmp.resize(m_label_size + hdr_size);
+
             while (!stop_requested()) {
                 auto route = m_router.get_recv_route(m_label);
                 if (route == nullptr) {
@@ -35,13 +39,13 @@ namespace eroil::worker {
                     auto err = shm->read(tmp.data(), tmp.size());
                     if (err != shm::ShmOpErr::None) {
                         // either interrupted or underlying error
-                        ERR_PRINT("shm recv worker got error waiting for shm recv for label=", m_label, " errno=", (int)err);
+                        ERR_PRINT("shm recv worker got error reading recv shm data for label=", m_label, " errno=", (int)err);
                         continue;
                     }
 
-                    // move pointer passed the header, only we care about the header, consumers do not
-                    auto* label_ptr = tmp.data() + sizeof(LabelHeader);
-                    m_router.recv_from_publisher(m_label, label_ptr, tmp.size() - sizeof(LabelHeader));
+                    // move pointer passed the header
+                    auto* label_ptr = tmp.data() + hdr_size;
+                    m_router.recv_from_publisher(m_label, label_ptr, tmp.size() - hdr_size);
                 } else {
                     ERR_PRINT("route is not a local route, recv shm worker exiting for label=", m_label);
                     break;

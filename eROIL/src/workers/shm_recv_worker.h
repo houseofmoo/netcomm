@@ -14,9 +14,11 @@ namespace eroil::worker {
             std::shared_ptr<shm::Shm> m_recv_shm;
 
         public:
-            ShmRecvWorker(Router& router, 
-                          Label label, 
-                          size_t label_size);
+            ShmRecvWorker(Router& router, Label label, size_t label_size);
+
+            // do not copy
+            ShmRecvWorker(const ShmRecvWorker&) = delete;
+            ShmRecvWorker& operator=(const ShmRecvWorker&) = delete;
 
         protected:
             void run() override;

@@ -30,9 +30,11 @@ namespace eroil::sock {
             UDPMulticastSocket();
             ~UDPMulticastSocket();
 
+            // do not copy
             UDPMulticastSocket(const UDPMulticastSocket&) = delete;
             UDPMulticastSocket& operator=(const UDPMulticastSocket&) = delete;
 
+            // allow move
             UDPMulticastSocket(UDPMulticastSocket&& other) noexcept;
             UDPMulticastSocket& operator=(UDPMulticastSocket&& other) noexcept;
 

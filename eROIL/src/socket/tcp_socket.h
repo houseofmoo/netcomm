@@ -40,9 +40,11 @@ namespace eroil::sock {
             TCPClient();
             ~TCPClient() = default;
 
+            // do not copy
             TCPClient(const TCPClient&) = delete;
             TCPClient& operator=(const TCPClient&) = delete;
 
+            // allow move
             TCPClient(TCPClient&&) noexcept = default;
             TCPClient& operator=(TCPClient&&) noexcept = default;
 

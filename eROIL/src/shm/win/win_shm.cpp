@@ -80,7 +80,7 @@ namespace eroil::shm {
         return  m_label_size + sizeof(LabelHeader);
     }
 
-    ShmErr Shm::open_new() {
+    ShmErr Shm::create() {
         if (is_valid()) return ShmErr::DoubleOpen;
 
         auto wname = to_windows_wstring(name());
@@ -130,17 +130,7 @@ namespace eroil::shm {
         return ShmErr::None;
     }
 
-    ShmErr Shm::open_new_rety(const uint32_t attempts, const uint32_t wait_ms) {
-        ShmErr error = ShmErr::None;
-        for (uint32_t i = 0; i < attempts; ++i) {
-            error = open_new();
-            if (error == ShmErr::None) return error;
-            std::this_thread::sleep_for(std::chrono::milliseconds(wait_ms));
-        }
-        return error;
-    }
-
-    ShmErr Shm::open_existing() {
+    ShmErr Shm::open() {
         if (is_valid()) return ShmErr::DoubleOpen;
 
         auto wname = to_windows_wstring(name());
@@ -193,32 +183,20 @@ namespace eroil::shm {
         return ShmErr::None;
     }
 
-    ShmErr Shm::open_existing_rety(const uint32_t attempts, const uint32_t wait_ms) {
-        ShmErr error = ShmErr::None;
-        for (uint32_t i = 0; i < attempts; ++i) {
-            error = open_existing();
-            if (error == ShmErr::None) return error;
-            std::this_thread::sleep_for(std::chrono::milliseconds(wait_ms));
-        }
-        return error;
-    }
-
     ShmErr Shm::create_or_open(const uint32_t attempts, const uint32_t wait_ms) {
         if (is_valid()) return ShmErr::DoubleOpen;
         ShmErr err = ShmErr::None;
 
         for (uint32_t i = 0; i < attempts; ++i) {
-            err = open_new();
-            if (err == ShmErr::None) {
-                return err;
-            }
+            err = create();
+            if (err == ShmErr::None) return err;
 
             if (err != ShmErr::AlreadyExists) {
                 ERR_PRINT("shm::create_or_open() got unexpected error from open_new(): ", static_cast<int>(err));
                 return err; // some other failure state
             }
 
-            err = open_existing();
+            err = open();
             if (err == ShmErr::None) return err;
 
             // wait and try again

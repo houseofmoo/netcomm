@@ -3,10 +3,18 @@
 #include <limits>
 
 namespace eroil::evt {
-    static SemOpErr do_wait(sem_handle handle, DWORD timeout_ms) {
-        if (handle == nullptr) return SemOpErr::InvalidSem;
+    static HANDLE as_native(sem_handle p) noexcept {
+        return static_cast<HANDLE>(p);
+    }
 
-        DWORD rc = ::WaitForSingleObject(handle, timeout_ms);
+    static sem_handle from_native(HANDLE h) noexcept {
+        return static_cast<sem_handle>(h);
+    }
+
+    static SemOpErr do_wait(sem_handle handle, DWORD timeout_ms) {
+        if (handle == nullptr) return SemOpErr::NotInitialized;
+
+        DWORD rc = ::WaitForSingleObject(as_native(handle), timeout_ms);
 
         switch (rc) {
             case WAIT_OBJECT_0: return SemOpErr::None;
@@ -20,7 +28,7 @@ namespace eroil::evt {
 
     Semaphore::Semaphore(uint32_t max_count) : m_sem(nullptr), m_max_count(max_count) {
         if (m_max_count == 0) m_max_count = std::numeric_limits<long>::max();
-        m_sem = ::CreateSemaphoreW(nullptr, 0, m_max_count, nullptr);
+        m_sem = from_native(::CreateSemaphoreW(nullptr, 0, m_max_count, nullptr));
     }
 
     Semaphore::~Semaphore() {
@@ -30,6 +38,7 @@ namespace eroil::evt {
     Semaphore::Semaphore(Semaphore&& other) noexcept {
         m_sem = other.m_sem;
         m_max_count = other.m_max_count;
+        
         other.m_sem = nullptr;
         other.m_max_count = 0;
     }
@@ -37,28 +46,18 @@ namespace eroil::evt {
     Semaphore& Semaphore::operator=(Semaphore&& other) noexcept {
         if (this != &other) {
             close();
+
             m_sem = other.m_sem;
             m_max_count = other.m_max_count;
+
             other.m_sem = nullptr;
             other.m_max_count = 0;
         }
         return *this;
     }
 
-    SemOpErr Semaphore::wait() {
-        return do_wait(m_sem, INFINITE);
-    }
-
-    SemOpErr Semaphore::timed_wait(uint32_t milliseconds) {
-        return do_wait(m_sem, static_cast<DWORD>(milliseconds));
-    }
-
-    SemOpErr Semaphore::try_wait() {
-        return do_wait(m_sem, 0);
-    }
-
     SemOpErr Semaphore::post() {
-        if (m_sem == nullptr) return SemOpErr::InvalidSem;
+        if (m_sem == nullptr) return SemOpErr::NotInitialized;
 
         if (!::ReleaseSemaphore(m_sem, 1, nullptr)) {
             DWORD err = ::GetLastError();
@@ -66,6 +65,18 @@ namespace eroil::evt {
             return SemOpErr::SysError;
         }
         return SemOpErr::None;
+    }
+
+    SemOpErr Semaphore::try_wait() {
+        return do_wait(m_sem, 0);
+    }
+
+    SemOpErr Semaphore::wait(uint32_t milliseconds) {
+        DWORD timeout = static_cast<DWORD>(milliseconds);
+        if (milliseconds <= 0) {
+            timeout = INFINITE;
+        }
+        return do_wait(m_sem, timeout);
     }
 
     void Semaphore::close() {

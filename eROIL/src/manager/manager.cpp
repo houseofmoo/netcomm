@@ -240,7 +240,6 @@ namespace eroil {
                 case addr::RouteKind::Shm: {
                     PRINT("removing local send subscriber, nodeid=", source_id, " label=", label);
                     m_router.remove_local_send_subscriber(label, source_id);
-                    // do we stop the 
                     break;
                 }
                 case addr::RouteKind::Socket: {
@@ -311,6 +310,7 @@ namespace eroil {
                 case addr::RouteKind::Shm: {
                     PRINT("removing local recv publisher, nodeid=", source_id, " label=", label);
                     m_router.remove_local_recv_publisher(label, source_id);
+                    // TODO: may need to kill the ShmRecvWorker if theres nothing to recv!
                     break;
                 }
                 case addr::RouteKind::Socket: {

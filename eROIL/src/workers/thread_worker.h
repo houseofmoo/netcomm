@@ -16,9 +16,11 @@ namespace eroil::worker {
 
         public:
             ThreadWorker() = default;
+            virtual ~ThreadWorker() = default; // must call stop() explicitly
+
+            // do not copy
             ThreadWorker(const ThreadWorker&) = delete;
             ThreadWorker& operator=(const ThreadWorker&) = delete;
-            virtual ~ThreadWorker() = default; // must call stop() explicitly
 
             void start() {
                 m_stop.store(false, std::memory_order_release);

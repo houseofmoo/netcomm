@@ -30,8 +30,7 @@ namespace eroil {
 
         private:
             void start_tcp_server();
-            void search_peers();
-            void reconnect(NodeId to_id);
+            void search_remote_peers();
             void monitor_sockets();
             bool send_id(sock::TCPClient* sock);
             bool send_ping(sock::TCPClient* sock);

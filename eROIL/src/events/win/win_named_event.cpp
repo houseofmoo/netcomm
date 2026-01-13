@@ -7,8 +7,19 @@ namespace eroil::evt {
         return static_cast<HANDLE>(p);
     }
 
-    static sem_handle as_sem_handle(HANDLE h) noexcept {
+    static sem_handle from_native(HANDLE h) noexcept {
         return static_cast<sem_handle>(h);
+    }
+
+    static NamedEventErr do_wait(sem_handle handle, DWORD timeout_ms) {
+        if (handle == nullptr) return NamedEventErr::NotInitialized;
+        DWORD rc = ::WaitForSingleObject(as_native(handle), timeout_ms);
+        switch (rc) {
+            case WAIT_OBJECT_0: return NamedEventErr::None;
+            case WAIT_TIMEOUT: return (timeout_ms == 0) ? NamedEventErr::WouldBlock : NamedEventErr::Timeout;
+            case WAIT_FAILED: return NamedEventErr::SysError;
+            default: return NamedEventErr::SysError;
+        }
     }
 
     static std::wstring to_windows_wstring(const std::string& s) {
@@ -37,10 +48,10 @@ namespace eroil::evt {
         return out;
     }
 
-    NamedEvent::NamedEvent(Label label, NodeId src_id, NodeId dest_node_id) 
-        : m_label_id(label), m_source_id(src_id), m_destination_id(dest_node_id), m_sem(nullptr) {
+    NamedEvent::NamedEvent(Label label, NodeId src_id, NodeId dst_id) 
+        : m_label_id(label), m_src_id(src_id), m_dst_id(dst_id), m_sem(nullptr) {
             if (open() != NamedEventErr::None) {
-                ERR_PRINT("failed to open named event srcid=", src_id, ", dstid=", dest_node_id)
+                ERR_PRINT("failed to open named event srcid=", src_id, ", dstid=", dst_id)
             }
         }
 
@@ -50,12 +61,13 @@ namespace eroil::evt {
 
     NamedEvent::NamedEvent(NamedEvent&& other) noexcept : 
         m_label_id(other.m_label_id),
-        m_source_id(other.m_source_id),
-        m_destination_id(other.m_destination_id),
+        m_src_id(other.m_src_id),
+        m_dst_id(other.m_dst_id),
         m_sem(other.m_sem) {
+            
         other.m_label_id = -1;
-        other.m_source_id = -1;
-        other.m_destination_id = -1;
+        other.m_src_id = -1;
+        other.m_dst_id = -1;
         other.m_sem = nullptr;
     }
 
@@ -63,20 +75,20 @@ namespace eroil::evt {
         if (this != &other) {
             close();
             m_label_id = other.m_label_id;
-            m_source_id = other.m_source_id;
-            m_destination_id = other.m_destination_id;
+            m_src_id = other.m_src_id;
+            m_dst_id = other.m_dst_id;
             m_sem = other.m_sem;
 
             other.m_label_id = -1;
-            other.m_source_id = -1;
-            other.m_destination_id = -1;
+            other.m_src_id = -1;
+            other.m_dst_id = -1;
             other.m_sem = nullptr;
         }
         return *this;
     }
 
     std::string NamedEvent::name() const {
-        return "Local\\eroil.evt." + std::to_string(m_destination_id) + "_" + std::to_string(m_label_id);
+        return "Local\\eroil.evt." + std::to_string(m_dst_id) + "_" + std::to_string(m_label_id);
     }
 
     NamedEventErr NamedEvent::open() {
@@ -103,7 +115,7 @@ namespace eroil::evt {
             return NamedEventErr::OpenFailed;
         }
 
-        m_sem = as_sem_handle(handle);
+        m_sem = from_native(handle);
         return NamedEventErr::None;
     }
 
@@ -116,32 +128,15 @@ namespace eroil::evt {
     }
 
     NamedEventErr NamedEvent::try_wait() const {
-        if (m_sem == nullptr) return NamedEventErr::NotInitialized;
-        DWORD rc = ::WaitForSingleObject(as_native(m_sem), 0);
-        if (rc == WAIT_OBJECT_0) return NamedEventErr::None;
-        if (rc == WAIT_TIMEOUT)  return NamedEventErr::Timeout;
-        return NamedEventErr::WaitFailed;
-    }
-
-    NamedEventErr NamedEvent::wait() const {
-        if (m_sem == nullptr) return NamedEventErr::NotInitialized;
-        DWORD rc = ::WaitForSingleObject(as_native(m_sem), INFINITE);
-        if (rc == WAIT_OBJECT_0) return NamedEventErr::None;
-        return NamedEventErr::WaitFailed;
+        return do_wait(m_sem, 0);
     }
 
     NamedEventErr NamedEvent::wait(uint32_t milliseconds) const {
-            if (m_sem == nullptr) return NamedEventErr::NotInitialized;
-
-            // prevent infinite wait...but this is a long ass time to wait
-            DWORD timeout = (milliseconds == INFINITE) 
-                ? static_cast<DWORD>(milliseconds - 1) 
-                : static_cast<DWORD>(milliseconds);
-
-            DWORD rc = ::WaitForSingleObject(as_native(m_sem), timeout);
-            if (rc == WAIT_OBJECT_0) return NamedEventErr::None;
-            if (rc == WAIT_TIMEOUT)  return NamedEventErr::Timeout;
-            return NamedEventErr::WaitFailed;
+        DWORD timeout = static_cast<DWORD>(milliseconds);
+        if (milliseconds <= 0) {
+            timeout = INFINITE;
+        }
+        return do_wait(m_sem, timeout);
     }
 
     void NamedEvent::close() {

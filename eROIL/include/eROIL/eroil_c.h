@@ -1,15 +1,15 @@
 #ifdef __cplusplus
-#    pragma once
-extern "C" {
+    // if compiled as C++, prevent name mangling
+    #pragma once
+    extern "C" {
 #endif
 
 #ifndef EROIL_C_H
-    #define EROIL_C_H
+#define EROIL_C_H
+    // windows or linux
     #ifdef EROIL_LINUX
-    #include <semaphore.h>
-    #include <stddef.h>
-    #include <stdint.h>
-        #defime SEM_HANDLE sem_t*;
+        #include <semaphore.h>
+        #defime SEM_HANDLE sem_t*
     #elif EROIL_WIN32
         #define SEM_HANDLE void*
     #else
