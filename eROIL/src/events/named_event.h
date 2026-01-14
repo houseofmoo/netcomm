@@ -13,6 +13,7 @@ namespace eroil::evt {
         SignalFailed,       // post()/SetEvent failed
         Timeout,            // Timed wait expired
         WouldBlock,
+        MaxCount,
         SysError,           // wait() failed (WAIT_FAILED, etc.)
     };
 

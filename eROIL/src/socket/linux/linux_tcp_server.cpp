@@ -1,64 +1,55 @@
-#ifdef EROIL_WIN32
+#ifdef EROIL_LINUX
 #include "socket/tcp_socket.h"
-#include "windows_hdr.h"
-#include <winsock2.h>
-#include <ws2tcpip.h>
+
+#include <sys/types.h>
+#include <sys/socket.h>
+#include <netinet/in.h>
+#include <arpa/inet.h>
+#include <unistd.h>
+#include <errno.h>
 
 namespace eroil::sock {
-    static SOCKET as_native(socket_handle handle) noexcept {
-        return static_cast<SOCKET>(handle);
-    }
 
-    static socket_handle from_native(SOCKET handle) noexcept {
-        return static_cast<socket_handle>(handle);
-    }
+    static int as_native(socket_handle h) noexcept { return h; }
+    static socket_handle from_native(int fd) noexcept { return fd; }
 
     SockResult TCPServer::bind(uint16_t port, const char* ip) {
-        if (!handle_valid()) { 
-            return SockResult { SockErr::InvalidHandle, SockOp::Bind, 0, 0 };
+        if (!handle_valid()) {
+            return SockResult{ SockErr::InvalidHandle, SockOp::Bind, 0, 0 };
         }
 
-        // pseudo-validate ip
         if (!ip || *ip == '\0') {
             return SockResult{ SockErr::InvalidIp, SockOp::Bind, 0, 0 };
         }
 
         sockaddr_in addr{};
         addr.sin_family = AF_INET;
-        addr.sin_port = htons(port);
+        addr.sin_port   = htons(port);
 
         if (::inet_pton(AF_INET, ip, &addr.sin_addr) != 1) {
             return SockResult{ SockErr::InvalidIp, SockOp::Bind, 0, 0 };
         }
 
-        // set re-use address
-        BOOL reuse = TRUE;
-        ::setsockopt(
-            as_native(m_handle), 
-            SOL_SOCKET, 
-            SO_REUSEADDR,
-            reinterpret_cast<const char*>(&reuse),
-            sizeof(reuse)
-        );
+        int reuse = 1;
+        (void)::setsockopt(as_native(m_handle), SOL_SOCKET, SO_REUSEADDR, &reuse, (socklen_t)sizeof(reuse));
 
-        // bind to port
-        if (::bind(as_native(m_handle), reinterpret_cast<sockaddr*>(&addr), sizeof(addr)) != 0) {
-            int err = ::WSAGetLastError();
+        if (::bind(as_native(m_handle), reinterpret_cast<sockaddr*>(&addr), (socklen_t)sizeof(addr)) != 0) {
+            const int err = errno;
             return SockResult{ map_err(err), SockOp::Bind, err, 0 };
         }
-        
+
         return SockResult{ SockErr::None, SockOp::Bind, 0, 0 };
     }
 
     SockResult TCPServer::listen(int backlog) {
-        if (!handle_valid()) { 
+        if (!handle_valid()) {
             return SockResult{ SockErr::InvalidHandle, SockOp::Listen, 0, 0 };
         }
-        
+
         if (backlog == 0) backlog = SOMAXCONN;
 
         if (::listen(as_native(m_handle), backlog) != 0) {
-            int err = ::WSAGetLastError();
+            const int err = errno;
             return SockResult{ map_err(err), SockOp::Listen, err, 0 };
         }
 
@@ -84,12 +75,15 @@ namespace eroil::sock {
         }
 
         sockaddr_in conn{};
-        int conn_size = sizeof(conn);
+        socklen_t conn_size = (socklen_t)sizeof(conn);
 
-        SOCKET sock = ::accept(as_native(m_handle), reinterpret_cast<sockaddr*>(&conn), &conn_size);
-        if (sock == INVALID_SOCKET) {
-            result.sys_error = ::WSAGetLastError();
-            if (result.sys_error == WSAEINVAL || result.sys_error == WSAENOTSOCK) {
+        int fd = ::accept(as_native(m_handle), reinterpret_cast<sockaddr*>(&conn), &conn_size);
+        if (fd < 0) {
+            result.sys_error = errno;
+
+            // When request_stop() closes the listen socket, accept commonly fails with EBADF.
+            // Also treat ENOTSOCK as closed.
+            if (result.sys_error == EBADF || result.sys_error == ENOTSOCK) {
                 result.code = SockErr::Closed;
             } else {
                 result.code = map_err(result.sys_error);
@@ -98,8 +92,8 @@ namespace eroil::sock {
         }
 
         auto client = std::make_shared<TCPClient>();
-        client->adopt(from_native(sock), true);
-        
+        client->adopt(from_native(fd), true);
+
         result.code = SockErr::None;
         return { std::move(client), result };
     }
@@ -107,5 +101,6 @@ namespace eroil::sock {
     void TCPServer::request_stop() noexcept {
         close();
     }
+
 }
 #endif

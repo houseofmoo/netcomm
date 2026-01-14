@@ -34,7 +34,10 @@ namespace eroil {
         using shm_view = void*;
         using socket_handle = std::uintptr_t;
     #elif defined(EROIL_LINUX)
-        struct sem_t; // forward decl so we dont have to include <semaphore.h>
+        //struct sem_t; // forward decl so we dont have to include <semaphore.h>
+        constexpr int32_t INVALID_SOCKET = -1;
+
+        #include <semaphore.h>
         using shm_handle = int;
         using sem_handle = sem_t*;
         using shm_view = void*;

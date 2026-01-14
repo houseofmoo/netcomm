@@ -1,42 +1,43 @@
-#ifdef EROIL_WIN32
+#ifdef EROIL_LINUX
+
 #include "socket/udp_multicast.h"
-#include "windows_hdr.h"
-#include <winsock2.h>
-#include <ws2tcpip.h>
+
+#include <sys/types.h>
+#include <sys/socket.h>
+#include <netinet/in.h>   // sockaddr_in, IPPROTO_IP
+#include <arpa/inet.h>    // inet_pton
+#include <unistd.h>       // close
+#include <errno.h>
+#include <cstring>
 #include <utility>
+
 #include <eROIL/print.h>
 
 namespace eroil::sock {
-    static SOCKET as_native(socket_handle h) noexcept {
-        return static_cast<SOCKET>(h);
-    }
-    static socket_handle from_native(SOCKET h) noexcept {
-        return static_cast<socket_handle>(h);
-    }
-
-    
     bool UDPMulticastSocket::handle_valid() const noexcept {
-         return m_handle != INVALID_SOCKET; 
+        return m_handle != INVALID_SOCKET;
     }
 
-    UDPMulticastSocket::UDPMulticastSocket() 
+    UDPMulticastSocket::UDPMulticastSocket()
         : m_handle(INVALID_SOCKET), m_open(false), m_joined(false), m_cfg{} {}
 
-    UDPMulticastSocket::~UDPMulticastSocket() { close(); }
+    UDPMulticastSocket::~UDPMulticastSocket() { 
+        close(); 
+    }
 
     UDPMulticastSocket::UDPMulticastSocket(UDPMulticastSocket&& o) noexcept
         : m_handle(std::exchange(o.m_handle, INVALID_SOCKET)),
-        m_open(std::exchange(o.m_open, false)),
-        m_joined(std::exchange(o.m_joined, false)),
-        m_cfg(o.m_cfg) {}
+          m_open(std::exchange(o.m_open, false)),
+          m_joined(std::exchange(o.m_joined, false)),
+          m_cfg(o.m_cfg) {}
 
     UDPMulticastSocket& UDPMulticastSocket::operator=(UDPMulticastSocket&& o) noexcept {
         if (this != &o) {
             close();
-            m_handle  = std::exchange(o.m_handle, INVALID_SOCKET);
-            m_open    = std::exchange(o.m_open, false);
-            m_joined  = std::exchange(o.m_joined, false);
-            m_cfg     = o.m_cfg;
+            m_handle = std::exchange(o.m_handle, INVALID_SOCKET);
+            m_open   = std::exchange(o.m_open, false);
+            m_joined = std::exchange(o.m_joined, false);
+            m_cfg    = o.m_cfg;
         }
         return *this;
     }
@@ -46,7 +47,6 @@ namespace eroil::sock {
     }
 
     SockResult UDPMulticastSocket::open_and_join(const UdpMcastConfig& cfg) {
-        // open
         SockResult result{};
         result.op = SockOp::Open;
 
@@ -55,20 +55,23 @@ namespace eroil::sock {
         if (!cfg.bind_ip  || *cfg.bind_ip  == '\0') { result.code = SockErr::InvalidIp; return result; }
         if (cfg.port == 0) { result.code = SockErr::InvalidArgument; return result; }
 
-        SOCKET sock = ::socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP);
-        if (sock == INVALID_SOCKET) {
-            result.sys_error = ::WSAGetLastError();
+        int fd = ::socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP);
+        if (fd < 0) {
+            result.sys_error = errno;
             result.code = map_err(result.sys_error);
             return result;
         }
-        m_handle = from_native(sock);
+
+        m_handle = fd;
         m_open = true;
         m_cfg = cfg;
 
         if (cfg.reuse_addr) {
-            BOOL reuse = TRUE;
-            ::setsockopt(as_native(m_handle), SOL_SOCKET, SO_REUSEADDR,
-                        reinterpret_cast<const char*>(&reuse), sizeof(reuse));
+            int reuse = 1;
+            (void)::setsockopt(m_handle, SOL_SOCKET, SO_REUSEADDR, &reuse, (socklen_t)sizeof(reuse));
+
+            // Optional on Linux for multicast fanout if you want multiple listeners reliably:
+            (void)::setsockopt(m_handle, SOL_SOCKET, SO_REUSEPORT, &reuse, (socklen_t)sizeof(reuse));
         }
 
         // bind
@@ -76,7 +79,7 @@ namespace eroil::sock {
 
         sockaddr_in local{};
         local.sin_family = AF_INET;
-        local.sin_port = htons(cfg.port);
+        local.sin_port   = htons(cfg.port);
 
         if (::inet_pton(AF_INET, cfg.bind_ip, &local.sin_addr) != 1) {
             close();
@@ -84,31 +87,31 @@ namespace eroil::sock {
             return result;
         }
 
-        if (::bind(as_native(m_handle), reinterpret_cast<sockaddr*>(&local), sizeof(local)) != 0) {
+        if (::bind(m_handle, reinterpret_cast<sockaddr*>(&local), (socklen_t)sizeof(local)) != 0) {
             ERR_PRINT("err ::bind()");
-            result.sys_error = ::WSAGetLastError();
+            result.sys_error = errno;
             result.code = map_err(result.sys_error);
             close();
             return result;
         }
 
+        // TTL
         result.op = SockOp::Send;
         int ttl = cfg.ttl;
-        if (::setsockopt(as_native(m_handle), IPPROTO_IP, IP_MULTICAST_TTL,
-                        reinterpret_cast<const char*>(&ttl), sizeof(ttl)) != 0) {
-            result.sys_error = ::WSAGetLastError();
+        if (::setsockopt(m_handle, IPPROTO_IP, IP_MULTICAST_TTL, &ttl, (socklen_t)sizeof(ttl)) != 0) {
+            result.sys_error = errno;
             result.code = map_err(result.sys_error);
             close();
             return result;
         }
 
         // loopback
-        u_char loop = cfg.loopback ? 1 : 0;
-        ::setsockopt(as_native(m_handle), IPPROTO_IP, IP_MULTICAST_LOOP,
-                    reinterpret_cast<const char*>(&loop), sizeof(loop));
+        unsigned char loop = cfg.loopback ? 1 : 0;
+        (void)::setsockopt(m_handle, IPPROTO_IP, IP_MULTICAST_LOOP, &loop, (socklen_t)sizeof(loop));
 
         // join group
         result.op = SockOp::Join;
+
         ip_mreq mreq{};
         if (::inet_pton(AF_INET, cfg.group_ip, &mreq.imr_multiaddr) != 1) {
             ERR_PRINT("err ::join()");
@@ -116,11 +119,12 @@ namespace eroil::sock {
             result.code = SockErr::InvalidIp;
             return result;
         }
+
+        // Match your Windows behavior: join on "any" interface
         mreq.imr_interface.s_addr = htonl(INADDR_ANY);
 
-        if (::setsockopt(as_native(m_handle), IPPROTO_IP, IP_ADD_MEMBERSHIP,
-                        reinterpret_cast<const char*>(&mreq), sizeof(mreq)) != 0) {
-            result.sys_error = ::WSAGetLastError();
+        if (::setsockopt(m_handle, IPPROTO_IP, IP_ADD_MEMBERSHIP, &mreq, (socklen_t)sizeof(mreq)) != 0) {
+            result.sys_error = errno;
             result.code = map_err(result.sys_error);
             close();
             return result;
@@ -143,27 +147,29 @@ namespace eroil::sock {
 
         sockaddr_in dst{};
         dst.sin_family = AF_INET;
-        dst.sin_port = htons(m_cfg.port);
+        dst.sin_port   = htons(m_cfg.port);
 
         if (::inet_pton(AF_INET, m_cfg.group_ip, &dst.sin_addr) != 1) {
             result.code = SockErr::InvalidIp;
             return result;
         }
 
-        int sent = ::sendto(as_native(m_handle),
-                            static_cast<const char*>(data),
-                            static_cast<int>(size),
-                            0,
-                            reinterpret_cast<sockaddr*>(&dst),
-                            sizeof(dst));
+        const ssize_t sent = ::sendto(
+            m_handle,
+            data,
+            size,
+            0,
+            reinterpret_cast<sockaddr*>(&dst),
+            (socklen_t)sizeof(dst)
+        );
 
-        if (sent == SOCKET_ERROR) {
-            result.sys_error = ::WSAGetLastError();
+        if (sent < 0) {
+            result.sys_error = errno;
             result.code = map_err(result.sys_error);
             return result;
         }
 
-        result.bytes = sent;
+        result.bytes = static_cast<int>(sent);
         result.code = SockErr::None;
         return result;
     }
@@ -178,34 +184,44 @@ namespace eroil::sock {
         if (size > static_cast<size_t>(INT32_MAX)) { result.code = SockErr::SizeTooLarge; return result; }
 
         sockaddr_in src{};
-        int srclen = sizeof(src);
+        socklen_t srclen = (socklen_t)sizeof(src);
 
-        int recvd = ::recvfrom(as_native(m_handle),
-                            static_cast<char*>(data),
-                            static_cast<int>(size),
-                            0,
-                            reinterpret_cast<sockaddr*>(&src),
-                            &srclen);
+        const ssize_t recvd = ::recvfrom(
+            m_handle,
+            data,
+            size,
+            0,
+            reinterpret_cast<sockaddr*>(&src),
+            &srclen
+        );
 
-        if (recvd == SOCKET_ERROR) {
-            result.sys_error = ::WSAGetLastError();
+        if (recvd < 0) {
+            result.sys_error = errno;
             result.code = map_err(result.sys_error);
             return result;
         }
 
-        result.bytes = recvd;
+        result.bytes = static_cast<int>(recvd);
         result.code = SockErr::None;
         return result;
     }
 
     void UDPMulticastSocket::request_stop() noexcept {
-        close(); // breaks blocking recvfrom
+        close(); // attempts to break blocking recvfrom
     }
 
     void UDPMulticastSocket::close() noexcept {
         if (handle_valid()) {
-            ::closesocket(as_native(m_handle));
+            // Optional: drop membership before closing (recommended if you track group/interface).
+            // Your Windows version didn’t, so this is kept minimal.
+            // If you want it, store `ip_mreq` in the class and call:
+            // ::setsockopt(fd, IPPROTO_IP, IP_DROP_MEMBERSHIP, &mreq, sizeof(mreq));
+
+            int rc;
+            do { rc = ::close(m_handle); }
+            while (rc != 0 && errno == EINTR);
         }
+
         m_handle = INVALID_SOCKET;
         m_open = false;
         m_joined = false;

@@ -1,3 +1,4 @@
+#ifdef EROIL_WIN32
 #include "socket/socket_context.h"
 #include "windows_hdr.h"
 #include <winsock2.h>
@@ -13,6 +14,7 @@ namespace eroil::sock {
         if (m_ok) {
             WSACleanup();
         }
+        m_ok = false;
     }
 
     bool SocketContext::ok() const noexcept {
@@ -28,3 +30,4 @@ namespace eroil::sock {
         WSACleanup();
     }
 }
+#endif

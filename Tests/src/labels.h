@@ -21,6 +21,7 @@ inline SendLabel make_send_label(int id, int size) {
     };
 }
 
+#ifdef EROIL_WIN32
 struct RecvLabel {
     int id;
     int size;
@@ -43,3 +44,33 @@ inline RecvLabel make_recv_label(int id, int size) {
         ::CreateSemaphoreW(nullptr, 0, 1000, nullptr)
     };
 }
+#endif
+
+#ifdef EROIL_LINUX
+#include <semaphore.h>
+struct RecvLabel {
+    int id;
+    int size;
+    std::unique_ptr<std::uint8_t[]> buf;
+    sem_t* sem;
+
+    std::uint8_t* get_buf() { return buf.get(); }
+    void wait() {
+        if (sem != nullptr) {
+            sem_wait(sem);
+        }
+    }
+};
+
+inline RecvLabel make_recv_label(int id, int size) {
+    sem_t* sem = new sem_t();
+    sem_init(sem, 0, 0);
+    
+    return RecvLabel {
+        id,
+        size,
+        std::make_unique<std::uint8_t[]>(size),
+        sem
+    };
+}
+#endif

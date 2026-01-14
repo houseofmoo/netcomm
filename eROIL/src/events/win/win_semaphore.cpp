@@ -1,3 +1,5 @@
+#ifdef EROIL_WIN32
+
 #include "events/semaphore.h"
 #include "windows_hdr.h"
 #include <limits>
@@ -81,8 +83,10 @@ namespace eroil::evt {
 
     void Semaphore::close() {
         if (m_sem != nullptr) {
-            ::CloseHandle(m_sem);
+            ::CloseHandle(as_native(m_sem));
             m_sem = nullptr;
         }
     }
 }
+
+#endif

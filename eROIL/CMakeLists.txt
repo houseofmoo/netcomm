@@ -61,15 +61,17 @@ target_sources(eROIL PRIVATE
         ${CMAKE_CURRENT_SOURCE_DIR}/src/socket/win/win_udp_multicast.cpp
     >
     $<$<PLATFORM_ID:Linux>:
-        # ${CMAKE_CURRENT_SOURCE_DIR}/src/named_event/linux/linux_named_event.cpp
-        # ${CMAKE_CURRENT_SOURCE_DIR}/src/net/linux/linux_context.cpp
-        # ${CMAKE_CURRENT_SOURCE_DIR}/src/net/linux/linux_socket_tcp.cpp
-        # ${CMAKE_CURRENT_SOURCE_DIR}/src/net/linux/linux_socket_udp.cpp
-        # ${CMAKE_CURRENT_SOURCE_DIR}/src/net/linux/linux_socket_udpm.cpp
-        # ${CMAKE_CURRENT_SOURCE_DIR}/src/net/linux/linux_socket.cpp
-        # ${CMAKE_CURRENT_SOURCE_DIR}/src/shm/linux/linux_shm_recv.cpp
-        # ${CMAKE_CURRENT_SOURCE_DIR}/src/shm/linux/linux_shm_send.cpp
-        # ${CMAKE_CURRENT_SOURCE_DIR}/src/shm/linux/linux_shm.cpp
+        ${CMAKE_CURRENT_SOURCE_DIR}/src/events/linux/linux_named_event.cpp
+        ${CMAKE_CURRENT_SOURCE_DIR}/src/events/linux/linux_semaphore.cpp
+
+        ${CMAKE_CURRENT_SOURCE_DIR}/src/shm/linux/linux_shm.cpp
+        
+        ${CMAKE_CURRENT_SOURCE_DIR}/src/socket/linux/linux_map_err.cpp
+        ${CMAKE_CURRENT_SOURCE_DIR}/src/socket/linux/linux_socket_context.cpp
+        ${CMAKE_CURRENT_SOURCE_DIR}/src/socket/linux/linux_tcp_client.cpp
+        ${CMAKE_CURRENT_SOURCE_DIR}/src/socket/linux/linux_tcp_server.cpp
+        ${CMAKE_CURRENT_SOURCE_DIR}/src/socket/linux/linux_tcp_socket.cpp
+        ${CMAKE_CURRENT_SOURCE_DIR}/src/socket/linux/linux_udp_multicast.cpp
     >
 )
 

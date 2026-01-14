@@ -1,3 +1,5 @@
+#ifdef EROIL_WIN32
+
 #include "events/named_event.h"
 #include "windows_hdr.h"
 #include <eROIL/print.h>
@@ -146,3 +148,5 @@ namespace eroil::evt {
         }
     }   
 }
+
+#endif

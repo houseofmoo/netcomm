@@ -1,65 +1,36 @@
-#ifdef EROIL_WIN32
+#ifdef EROIL_LINUX
+
 #include "socket/tcp_socket.h"
-#include "windows_hdr.h"
-#include <winsock2.h>
-#include <ws2tcpip.h>
+
+#include <sys/types.h>
+#include <sys/socket.h>
+#include <netinet/in.h>
+#include <arpa/inet.h>
+#include <errno.h>
+
 #include <eROIL/print.h>
-#include "address/address.h"
 
 namespace eroil::sock {
-    static SOCKET as_native(socket_handle handle) noexcept {
-        return static_cast<SOCKET>(handle);
-    }
-
-    // static socket_handle from_native(SOCKET handle) noexcept {
-    //     return static_cast<socket_handle>(handle);
-    // }
-
     TCPClient::TCPClient() : TCPSocket(), m_dest_id(INVALID_NODE) {}
-
-    // void TCPClient::query_remote() {
-    //     // store who we're connected to
-    //     sockaddr_storage addr{};
-    //     int addr_len = sizeof(addr);
-
-    //     if (getpeername(as_native(m_handle), reinterpret_cast<sockaddr*>(&addr), &addr_len) == 0) {
-    //         if (addr.ss_family == AF_INET) {
-    //             auto* a = (sockaddr_in*)&addr;
-    //             char ip[INET_ADDRSTRLEN];
-    //             inet_ntop(AF_INET, &a->sin_addr, ip, sizeof(ip));
-    //             m_ip = std::string(ip);
-
-    //             m_port = ntohs(a->sin_port);
-    //             auto addr = addr::find_node_id(m_ip, m_port);
-    //             if (addr.kind == addr::RouteKind::None) {
-    //                 PRINT("could not identify peer by IP address");
-    //                 m_dest_id = INVALID_NODE;
-    //             }
-    //             PRINT("socket identified as destination_id=", m_dest_id, " at ip=", m_ip, ":", m_port);
-    //         }
-    //     }
-    // }
 
     SockResult TCPClient::connect(const char* ip, uint16_t port) {
         if (!handle_valid()) return SockResult{ SockErr::InvalidHandle, SockOp::Connect, 0, 0 };
-        if (is_connected()) return SockResult{ SockErr::AlreadyConnected, SockOp::Connect, 0, 0 };
-        
-        // pseudo-validate ip
+        if (is_connected())  return SockResult{ SockErr::AlreadyConnected, SockOp::Connect, 0, 0 };
+
         if (!ip || *ip == '\0') {
             return SockResult{ SockErr::InvalidIp, SockOp::Connect, 0, 0 };
         }
 
         sockaddr_in addr{};
         addr.sin_family = AF_INET;
-        addr.sin_port = htons(port);
+        addr.sin_port   = htons(port);
 
-        // parse IP
         if (::inet_pton(AF_INET, ip, &addr.sin_addr) != 1) {
             return SockResult{ SockErr::InvalidIp, SockOp::Connect, 0, 0 };
         }
 
-        if (::connect(as_native(m_handle), reinterpret_cast<sockaddr*>(&addr), sizeof(addr)) != 0) {
-            int err = ::WSAGetLastError();
+        if (::connect(m_handle, reinterpret_cast<sockaddr*>(&addr), sizeof(addr)) != 0) {
+            const int err = errno;
             return SockResult{ map_err(err), SockOp::Connect, err, 0 };
         }
 
@@ -80,7 +51,7 @@ namespace eroil::sock {
             return SockResult{ SockErr::NotConnected, SockOp::Send, 0, 0 };
         }
 
-        if (size <= 0) { 
+        if (size == 0) {
             return SockResult{ SockErr::SizeZero, SockOp::Send, 0, 0 };
         }
 
@@ -89,33 +60,36 @@ namespace eroil::sock {
         }
 
         // NOTE: may not always send all bytes, use send_all() for that
-        int sent_bytes = 0;
+        ssize_t sent_bytes = 0;
         {
             std::lock_guard lock(m_send_mtx);
             sent_bytes = ::send(
-                as_native(m_handle), 
-                static_cast<const char*>(data), 
-                static_cast<int>(size), 
-                0
+                m_handle,
+                data,
+                size,
+                MSG_NOSIGNAL
             );
         }
 
         if (sent_bytes > 0) {
-            return SockResult{ SockErr::None, SockOp::Send, 0, sent_bytes };
+            return SockResult{ SockErr::None, SockOp::Send, 0, static_cast<int>(sent_bytes) };
         }
 
         if (sent_bytes == 0) {
+            // This is unusual for send(); treat as closed to match your Windows logic.
             ERR_PRINT("send() sent 0 bytes, considering the socket closed");
             m_connected = false;
             return SockResult{ SockErr::Closed, SockOp::Send, 0, 0 };
         }
 
-        int err = ::WSAGetLastError();
-        if (err == WSAECONNRESET) {
-            ERR_PRINT("send() errcode indicates socket closed")
+        const int err = errno;
+
+        // Match your Windows behavior: mark disconnected on fatal errors.
+        if (is_fatal_send_err(err)) {
+            ERR_PRINT("send() fatal error indicates socket closed/unusable, errno=", err);
             m_connected = false;
         }
-        
+
         return SockResult{ map_err(err), SockOp::Send, err, 0 };
     }
 
@@ -124,7 +98,7 @@ namespace eroil::sock {
             return SockResult{ SockErr::NotConnected, SockOp::Send, 0, 0 };
         }
 
-        if (size <= 0) { 
+        if (size == 0) {
             return SockResult{ SockErr::SizeZero, SockOp::Send, 0, 0 };
         }
 
@@ -133,15 +107,22 @@ namespace eroil::sock {
         }
 
         size_t total = 0;
-        auto* ptr = static_cast<const char*>(data);
+        const auto* ptr = static_cast<const std::byte*>(data);
 
         std::lock_guard lock(m_send_mtx);
         while (total < size) {
-            int to_send = static_cast<int>(size - total);
-            int sent_bytes = ::send(as_native(m_handle), ptr + total, to_send, 0);
+            const size_t remaining = size - total;
 
-            if (sent_bytes > 0) {
-                total += static_cast<size_t>(sent_bytes); 
+            // send() takes size_t on Linux, returns ssize_t
+            const ssize_t sent = ::send(
+                m_handle,
+                ptr + total,
+                remaining,
+                MSG_NOSIGNAL
+            );
+
+            if (sent > 0) {
+                total += static_cast<size_t>(sent);
                 continue;
             }
 
@@ -151,8 +132,8 @@ namespace eroil::sock {
                 return SockResult{ SockErr::Closed, SockOp::Send, 0, static_cast<int>(total) };
             }
 
-            int err = ::WSAGetLastError();
-            if (err == WSAEINTR) {
+            const int err = errno;
+            if (err == EINTR) {
                 continue; // retry
             }
 
@@ -171,7 +152,7 @@ namespace eroil::sock {
             return SockResult{ SockErr::NotConnected, SockOp::Recv, 0, 0 };
         }
 
-        if (size <= 0) { 
+        if (size == 0) {
             return SockResult{ SockErr::SizeZero, SockOp::Recv, 0, 0 };
         }
 
@@ -179,17 +160,24 @@ namespace eroil::sock {
             return SockResult{ SockErr::SizeTooLarge, SockOp::Recv, 0, 0 };
         }
 
-        int recv_bytes = ::recv(as_native(m_handle), static_cast<char*>(data), static_cast<int>(size), 0);
+        ssize_t recv_bytes = ::recv(
+            m_handle,
+            data,
+            size,
+            0
+        );
+
         if (recv_bytes > 0) {
-            return SockResult{ SockErr::None, SockOp::Recv, 0, recv_bytes };
+            return SockResult{ SockErr::None, SockOp::Recv, 0, static_cast<int>(recv_bytes) };
         }
 
         if (recv_bytes == 0) {
+            // peer performed orderly shutdown
             m_connected = false;
             return SockResult{ SockErr::Closed, SockOp::Recv, 0, 0 };
         }
 
-        int err = ::WSAGetLastError();
+        const int err = errno;
         return SockResult{ map_err(err), SockOp::Recv, err, 0 };
     }
 
@@ -206,24 +194,23 @@ namespace eroil::sock {
             return SockResult{ SockErr::SizeTooLarge, SockOp::Recv, 0, 0 };
         }
 
-        char* out = static_cast<char*>(data);
+        auto* out = static_cast<std::byte*>(data);
         size_t total = 0;
 
         while (total < size) {
-            int recv_bytes = ::recv(
-                as_native(m_handle),
+            const ssize_t r = ::recv(
+                m_handle,
                 out + total,
-                static_cast<int>(size - total),
+                size - total,
                 0
             );
 
-            if (recv_bytes > 0) {
-                total += static_cast<size_t>(recv_bytes);
+            if (r > 0) {
+                total += static_cast<size_t>(r);
                 continue;
             }
 
-            if (recv_bytes == 0) {
-                // peer performed orderly shutdown
+            if (r == 0) {
                 m_connected = false;
                 return SockResult{
                     SockErr::Closed,
@@ -233,9 +220,10 @@ namespace eroil::sock {
                 };
             }
 
-            int err = ::WSAGetLastError();
-            if (err == WSAEINTR) {
-                continue; // retry, we were interrupted
+            const int err = errno;
+
+            if (err == EINTR) {
+                continue; // retry
             }
 
             return SockResult{
@@ -253,5 +241,6 @@ namespace eroil::sock {
             static_cast<int>(total)
         };
     }
+
 }
 #endif
