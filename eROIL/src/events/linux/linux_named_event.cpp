@@ -12,6 +12,14 @@
 #include <string>
 
 namespace eroil::evt {
+    static sem_t* as_native(sem_handle p) noexcept {
+        return static_cast<sem_t*>(p);
+    }
+
+    static sem_handle from_native(sem_t* h) noexcept {
+        return static_cast<sem_handle>(h);
+    }
+
     static NamedEventErr map_wait_errno(int e) noexcept {
         switch (e) {
             case EINTR: return NamedEventErr::SysError; // normally retry on this... if we get here somethigns fooked
@@ -90,19 +98,20 @@ namespace eroil::evt {
         }
 
         constexpr mode_t perms = 0777;
-        m_sem = sem_open(n.c_str(), O_CREAT, perms, 0);
-        if (m_sem == SEM_FAILED) {
-            m_sem = nullptr;
+        auto sem = sem_open(n.c_str(), O_CREAT, perms, 0);
+        if (sem == SEM_FAILED) {
+            sem = nullptr;
             return NamedEventErr::OpenFailed;
         }
 
+        m_sem = from_native(sem);
         return NamedEventErr::None;
     }
 
     NamedEventErr NamedEvent::post() const {
         if (m_sem == nullptr) return NamedEventErr::NotInitialized;
 
-        if (sem_post(m_sem) != 0) {
+        if (sem_post(as_native(m_sem)) != 0) {
             if (errno == EOVERFLOW) return NamedEventErr::MaxCount;
             return NamedEventErr::SignalFailed;
         }
@@ -114,7 +123,7 @@ namespace eroil::evt {
         if (m_sem == nullptr) return NamedEventErr::NotInitialized;
 
         for (;;) {
-            if (sem_trywait(m_sem) == 0) {
+            if (sem_trywait(as_native(m_sem)) == 0) {
                 return NamedEventErr::None;
             }
             const int e = errno;
@@ -130,7 +139,7 @@ namespace eroil::evt {
 
         if (milliseconds <= 0) {
             for (;;) {
-                if (sem_wait(m_sem) == 0) {
+                if (sem_wait(as_native(m_sem)) == 0) {
                     return NamedEventErr::None;
                 }
                 const int e = errno;
@@ -145,7 +154,7 @@ namespace eroil::evt {
         }
 
         for (;;) {
-            if (sem_timedwait(m_sem, &deadline) == 0) {
+            if (sem_timedwait(as_native(m_sem), &deadline) == 0) {
                 return NamedEventErr::None;
             }
             const int e = errno;

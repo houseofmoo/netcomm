@@ -1,4 +1,4 @@
-#ifdef EROIL_WIN32
+#if defined(EROIL_WIN32)
 #include "socket/udp_multicast.h"
 #include "windows_hdr.h"
 #include <winsock2.h>

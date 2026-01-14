@@ -21,7 +21,7 @@ inline SendLabel make_send_label(int id, int size) {
     };
 }
 
-#ifdef EROIL_WIN32
+#if defined(EROIL_WIN32)
 struct RecvLabel {
     int id;
     int size;
@@ -46,7 +46,7 @@ inline RecvLabel make_recv_label(int id, int size) {
 }
 #endif
 
-#ifdef EROIL_LINUX
+#if defined(EROIL_LINUX)
 #include <semaphore.h>
 struct RecvLabel {
     int id;

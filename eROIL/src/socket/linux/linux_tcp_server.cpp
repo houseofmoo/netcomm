@@ -1,4 +1,4 @@
-#ifdef EROIL_LINUX
+#if defined(EROIL_LINUX)
 #include "socket/tcp_socket.h"
 
 #include <sys/types.h>

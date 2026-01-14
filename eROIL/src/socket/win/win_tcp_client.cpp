@@ -1,4 +1,4 @@
-#ifdef EROIL_WIN32
+#if defined(EROIL_WIN32)
 #include "socket/tcp_socket.h"
 #include "windows_hdr.h"
 #include <winsock2.h>
@@ -145,7 +145,7 @@ namespace eroil::sock {
                 continue;
             }
 
-            if (sent == 0) {
+            if (sent_bytes == 0) {
                 // TOD: treating sending 0 bytes as closed, not sure if this makes sense
                 m_connected = false;
                 return SockResult{ SockErr::Closed, SockOp::Send, 0, static_cast<int>(total) };

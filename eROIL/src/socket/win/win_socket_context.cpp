@@ -1,4 +1,4 @@
-#ifdef EROIL_WIN32
+#if defined(EROIL_WIN32)
 #include "socket/socket_context.h"
 #include "windows_hdr.h"
 #include <winsock2.h>

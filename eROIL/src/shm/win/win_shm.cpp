@@ -1,4 +1,4 @@
-#ifdef EROIL_WIN32
+#if defined(EROIL_WIN32)
 
 #include "shm/shm.h"
 #include "windows_hdr.h"

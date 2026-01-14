@@ -164,10 +164,10 @@ namespace eroil {
 
     void ConnectionManager::search_remote_peers() {
         LOG("searching for peers...");
-        // how many peers do we expect to connect to
-
-        // TODO: need to connect to all peers we expect to be alive
-        // this thread will live until all connections established
+        // TODO: this assumes all peers start at the same time,
+        // if a peer joins much later in the process and they have a ID < ours, 
+        // they will not attempt to connect to us
+        // we need to enter slow search mode after initial esablishment
         
         int expected_peers = 0;
         for (const auto& [id, info] : addr::get_address_book()) {

@@ -7,10 +7,10 @@
 #ifndef EROIL_C_H
 #define EROIL_C_H
     // windows or linux
-    #ifdef EROIL_LINUX
+    #if defined(EROIL_LINUX)
         #include <semaphore.h>
         #define SEM_HANDLE sem_t*
-    #elif EROIL_WIN32
+    #elif defined(EROIL_WIN32)
         #define SEM_HANDLE void*
     #else
         #error "Must define EROIL_LINUX or EROIL_WIN32"

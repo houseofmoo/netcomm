@@ -14,14 +14,12 @@
 
 namespace eroil {
     #if defined(EROIL_LINUX)
-        static_assert(std::is_same_v<sem_handle, sem_t>);
-        static_assert(std::is_same_v<sem_ptr, sem_t*>);
+        static_assert(std::is_same_v<sem_handle, void*>);
     #elif defined(EROIL_WIN32)
         static_assert(std::is_same_v<sem_handle, HANDLE>);
-        static_assert(std::is_same_v<sem_ptr, HANDLE>);
     #endif
 
-    inline void signal_sem(sem_ptr sem, int /*signal_mode*/) {
+    inline void signal_sem(sem_handle sem, int /*signal_mode*/) {
         #if defined(EROIL_LINUX)
         if (sem) { sem_post(sem); }
         #elif defined(EROIL_WIN32)

@@ -1,4 +1,4 @@
-#ifdef EROIL_LINUX
+#if defined(EROIL_LINUX)
 #include "socket/socket_context.h"
         #include <signal.h>
 

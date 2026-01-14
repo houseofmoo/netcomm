@@ -1,4 +1,4 @@
-#ifdef EROIL_LINUX
+#if defined(EROIL_LINUX)
 
 #include "socket/socket_result.h"
 #include <errno.h>

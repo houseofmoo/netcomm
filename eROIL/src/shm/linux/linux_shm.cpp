@@ -1,4 +1,4 @@
-#ifdef EROIL_LINUX
+#if defined(EROIL_LINUX)
 
 // If you hit "timespec doesn't exist" style issues in your build, you can add:
 // #define _POSIX_C_SOURCE 200809L

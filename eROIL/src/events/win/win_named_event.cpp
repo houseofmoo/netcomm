@@ -1,19 +1,19 @@
-#ifdef EROIL_WIN32
+#if defined(EROIL_WIN32)
 
 #include "events/named_event.h"
 #include "windows_hdr.h"
 #include <eROIL/print.h>
 
 namespace eroil::evt {
-    static HANDLE as_native(sem_ptr p) noexcept {
+    static HANDLE as_native(sem_handle p) noexcept {
         return static_cast<HANDLE>(p);
     }
 
-    static sem_ptr from_native(HANDLE h) noexcept {
-        return static_cast<sem_ptr>(h);
+    static sem_handle from_native(HANDLE h) noexcept {
+        return static_cast<sem_handle>(h);
     }
 
-    static NamedEventErr do_wait(sem_ptr handle, DWORD timeout_ms) {
+    static NamedEventErr do_wait(sem_handle handle, DWORD timeout_ms) {
         if (handle == nullptr) return NamedEventErr::NotInitialized;
         DWORD rc = ::WaitForSingleObject(as_native(handle), timeout_ms);
         switch (rc) {

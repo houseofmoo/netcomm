@@ -1,4 +1,4 @@
-#ifdef EROIL_WIN32
+#if defined(EROIL_WIN32)
 #include "socket/socket_result.h"
 #include "windows_hdr.h"
 

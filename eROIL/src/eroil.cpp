@@ -66,7 +66,7 @@ void* open_recv(int label, void* buf, int size, void* sem) {
     data.buf_slots = 1;
     data.buf_index = 0;
     data.aux_buf = nullptr;
-    data.sem = static_cast<eroil::sem_ptr>(sem);
+    data.sem = static_cast<eroil::sem_handle>(sem);
     data.iosb = nullptr;
     data.num_iosb = 0;
     data.iosb_index = 0;
