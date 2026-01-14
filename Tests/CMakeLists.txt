@@ -23,6 +23,8 @@ target_compile_definitions(eROIL_Tests
 # Project sources
 target_sources(eROIL_Tests PRIVATE
      ${CMAKE_CURRENT_SOURCE_DIR}/src/main.cpp
+     ${CMAKE_CURRENT_SOURCE_DIR}/src/randomizer/randomizer.cpp
+     ${CMAKE_CURRENT_SOURCE_DIR}/src/scenario/scenario.cpp
 )
 
 # Local headers

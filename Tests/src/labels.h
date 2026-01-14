@@ -3,8 +3,6 @@
 #include <memory>
 #include "windows_hdr.h"
 
-constexpr size_t KILOBYTE = 1024;
-
 struct SendLabel {
     int id;
     int size;
