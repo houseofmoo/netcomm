@@ -59,7 +59,7 @@ namespace eroil {
             std::shared_ptr<shm::Shm> get_recv_shm(Label label);
             RecvRoute* get_recv_route(Label label);
 
-            SendResult send_to_subscribers(Label label, const void* buf, size_t size);
+            SendResult send_to_subscribers(Label label, const void* buf, size_t size, handle_uid uid);
             void recv_from_publisher(Label label, const void* buf, size_t size);
     };
 }

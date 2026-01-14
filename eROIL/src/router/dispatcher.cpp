@@ -51,20 +51,19 @@ namespace eroil {
             }
         }
 
-        // write send IOSB
-        for (auto& pubs : targets.publishers) {
-            if (pubs == nullptr) continue;
-
-            if (pubs->iosb != nullptr && pubs->num_iosb > 0) {
-                auto iosb = pubs->iosb + pubs->iosb_index;
+        // write send IOSB for sender
+        if (targets.publisher != nullptr) { 
+            // ... there may not be a iosb
+            if (targets.publisher->iosb != nullptr && targets.publisher->num_iosb > 0) {
+                auto iosb = targets.publisher->iosb + targets.publisher->iosb_index;
 
                 iosb->Status = size;  // number of bytes sent is status (-1 is error, 0 is disconnected)
                 iosb->Reserve1 = 0;
                 iosb->Header_Valid = 1;
                 iosb->Reserve2 = 0;  // 0 for send, 1 for receive (cause thats how they defined it)
                 iosb->Reserve3 = 0;
-                iosb->pMsgAddr = (char*)pubs->buf;  // TODO: wrong if we used provided buffer instead of handler buffer
-                iosb->MsgSize = pubs->buf_size;
+                iosb->pMsgAddr = (char*)targets.publisher->buf;  // TODO: wrong if we used provided buffer instead of handler buffer
+                iosb->MsgSize = targets.publisher->buf_size;
                 iosb->Reserve4 = 0;
                 iosb->Reserve5 = 0;
                 iosb->Reserve6 = 0;
@@ -76,10 +75,10 @@ namespace eroil {
                 iosb->TimeStamp = 0x12345678;  // TODO: write real timestamp here
 
                 // push iosb index forward
-                pubs->iosb_index = (pubs->iosb_index + 1) & pubs->num_iosb;
+                targets.publisher->iosb_index = (targets.publisher->iosb_index + 1) & targets.publisher->num_iosb;
             }
-
-            signal_sem(pubs->sem, 0);
+            
+            signal_sem(targets.publisher->sem, 0);
         }
 
         result.send_err = failed ? SendOpErr::Failed : SendOpErr::None;
@@ -91,7 +90,6 @@ namespace eroil {
                                            size_t size) const {
         for (const auto& subs : targets.subscribers) {
             if (subs == nullptr) continue;
-
             if (subs->buf == nullptr) continue;
             if (subs->buf_slots == 0) continue;
             if (subs->buf_size == 0) continue;
@@ -100,7 +98,7 @@ namespace eroil {
             uint8_t* dst = subs->buf + (slot * subs->buf_size);
             std::memcpy(dst, buf, size);
 
-            // write recv IOSB 
+            // write recvrs IOSB 
             if (subs->iosb != nullptr && subs->num_iosb > 0) {
                 auto iosb = subs->iosb + subs->iosb_index;
 

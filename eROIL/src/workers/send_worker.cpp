@@ -93,11 +93,7 @@ namespace eroil::worker {
                 if (!entry) break;
 
                 try {
-                    // TODO: right now we're assuming any label send needs an IOSB
-                    // write to ALL publishers of that label, which is incorrect
-                    // only write to the IOSB of the handle in the SendEntryQ.uid
-                    // they're the one that is sending a message
-                    auto result = m_router.send_to_subscribers(entry->label, entry->data.get(), entry->data_size);
+                    auto result = m_router.send_to_subscribers(entry->label, entry->data.get(), entry->data_size, entry->uid);
                     switch (result.send_err) {
                         // validation error
                         case SendOpErr::RouteNotFound: // fallthrough

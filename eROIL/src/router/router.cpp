@@ -1,6 +1,7 @@
 #include "router.h"
 
 #include <eROIL/print.h>
+#include <algorithm>
 
 namespace eroil {
     Router::Router() = default;
@@ -254,7 +255,7 @@ namespace eroil {
         return m_routes.get_recv_route(label);
     }
 
-    SendResult Router::send_to_subscribers(Label label, const void* buf, size_t size) {
+    SendResult Router::send_to_subscribers(Label label, const void* buf, size_t size, handle_uid uid) {
         if (!buf || size == 0) return { SendOpErr::Failed, {}, {} };
         SendTargets targets{ {}, nullptr, {}, {} };
         {
@@ -279,25 +280,39 @@ namespace eroil {
                 return { SendOpErr::SizeTooLarge, {}, {} };
             }
 
+            auto handle_it = m_send_handles.find(uid);
+            if (handle_it == m_send_handles.end()) {
+                ERR_PRINT("send_to_subscribers(): got handle uid that does not match any known send handles, uid=", uid);
+                return { SendOpErr::UnknownHandle, {}, {} };
+            }
+
             auto uids = m_routes.snapshot_send_publishers(label);
             if (uids.empty()) {
-                ERR_PRINT("recv_from_publisher(): no send publishers for label=", label);
+                ERR_PRINT("send_to_subscribers(): no send publishers for label=", label);
                 return { SendOpErr::NoPublishers, {}, {} };
             }
 
-            targets.publishers.reserve(uids.size());
-            for (handle_uid uid : uids) {
-                auto it = m_send_handles.find(uid);
-                if (it != m_send_handles.end() && it->second) {
-                    targets.publishers.push_back(it->second->data);
-                }
+            // confirm this uid is a publisher
+            auto uids_it = std::find(
+                uids.begin(),
+                uids.end(),
+                uid
+            );
+            if (uids_it == uids.end()) {
+                ERR_PRINT("send_to_subscribers(): handle was not a member of the send publishers list, uid=", uid);
+                return { SendOpErr::IncorrectPublisher, {}, {} };
             }
 
+            // store publisher
+            targets.publisher = handle_it->second->data;
+
+            // snapshot local subs
             if (route->local_subscribers.has_value()) {
                 targets.shm = m_transports.get_send_shm(route->local_subscribers->shm_block);
                 targets.shm_signals = route->local_subscribers->subscribe_events;
             }
             
+            // snapshot remote subs
             if (!route->remote_subscribers.empty()) {
                 targets.sockets.reserve(route->remote_subscribers.size());
                 for (const auto remote : route->remote_subscribers) {

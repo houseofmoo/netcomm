@@ -164,11 +164,12 @@ namespace eroil {
 
     void ConnectionManager::search_remote_peers() {
         LOG("searching for peers...");
-        // TODO: this assumes all peers start at the same time,
-        // if a peer joins much later in the process and they have a ID < ours, 
-        // they will not attempt to connect to us
-        // we need to enter slow search mode after initial esablishment
+
+        // TODO: if not all peers start at the same time, this thread will
+        // continue until we find every peer we expect to, searching every
+        // 3 seconds, is this what we want?
         
+        int actual_peers = 0;
         int expected_peers = 0;
         for (const auto& [id, info] : addr::get_address_book()) {
             if (info.kind == addr::RouteKind::Shm) continue;
@@ -177,7 +178,6 @@ namespace eroil {
             expected_peers += 1;
         }
 
-        int actual_peers = 0;
         while (actual_peers < expected_peers) {
             for (const auto& [id, info] : addr::get_address_book()) {
                 if (info.kind == addr::RouteKind::Shm) continue;
@@ -210,8 +210,8 @@ namespace eroil {
                 actual_peers += 1;
             }
 
-            // search for remaining peers again in 1 second
-            std::this_thread::sleep_for(std::chrono::milliseconds(1 * 1000));
+            // search for remaining peers again in 3 seconds
+            std::this_thread::sleep_for(std::chrono::milliseconds(3 * 1000));
         }
     }
 

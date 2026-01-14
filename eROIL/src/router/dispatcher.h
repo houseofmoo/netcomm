@@ -20,7 +20,9 @@ namespace eroil {
         SizeTooLarge,
         ShmMissing,
         SocketMissing,
+        UnknownHandle,
         NoPublishers,
+        IncorrectPublisher,
         Failed
     };
 
@@ -31,7 +33,7 @@ namespace eroil {
     };
 
     struct SendTargets {
-        std::vector<std::shared_ptr<OpenSendData>> publishers;
+        std::shared_ptr<OpenSendData> publisher;
         std::shared_ptr<shm::Shm> shm;
         std::vector<std::shared_ptr<evt::NamedEvent>> shm_signals;
         std::vector<std::shared_ptr<sock::TCPClient>> sockets;
