@@ -109,9 +109,9 @@ namespace eroil {
     }
 
     void ConnectionManager::start_tcp_server() {
-        LOG("tcp server listen start...");
-        std::thread tcp_server_thread([this]() {
-            auto info = addr::get_address(m_id);
+        auto info = addr::get_address(m_id);
+        LOG("tcp server listen start at ", info.ip, ":", info.port);
+        std::thread tcp_server_thread([this, info]() {
             auto ts_result = m_tcp_server.open_and_listen(info.port);
             if (ts_result.code != sock::SockErr::None) {
                 ERR_PRINT("tcp server open failed, exiting");
