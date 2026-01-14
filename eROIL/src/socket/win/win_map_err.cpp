@@ -34,4 +34,20 @@ namespace eroil::sock {
             default: return SockErr::Unknown;
         }
     }
+
+    bool is_fatal_send_err(int e) noexcept {
+        switch (e) {
+            case WSAECONNRESET:
+            case WSAENOTCONN:
+            case WSAESHUTDOWN:
+            case WSAECONNABORTED:
+            case WSAEHOSTUNREACH:
+            case WSAENETDOWN:
+            case WSAENETRESET:
+            case WSAENETUNREACH:
+                return true;
+            default:
+                return false;
+        }
+    }
 }

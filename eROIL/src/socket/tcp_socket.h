@@ -1,5 +1,7 @@
 #pragma once
 #include <string>
+#include <mutex>
+#include <memory>
 #include "types/types.h"
 #include "socket_result.h"
 
@@ -35,6 +37,11 @@ namespace eroil::sock {
     class TCPClient final : public TCPSocket {
         private:
             NodeId m_dest_id;
+
+            // to prevent any chance of a send being interrupted and data arriving at
+            // destination out of order, we lock on sends. We do not need to lock
+            // on recvs since only 1 thread listens to each sockets incoming messages
+            std::mutex m_send_mtx; 
             //void query_remote();
 
         public:
@@ -45,9 +52,9 @@ namespace eroil::sock {
             TCPClient(const TCPClient&) = delete;
             TCPClient& operator=(const TCPClient&) = delete;
 
-            // allow move
-            TCPClient(TCPClient&&) noexcept = default;
-            TCPClient& operator=(TCPClient&&) noexcept = default;
+            // do not allow move (due to mutex)
+            TCPClient(TCPClient&&) noexcept = delete;
+            TCPClient& operator=(TCPClient&&) noexcept = delete;
 
             void set_destination_id(NodeId dest_id) { m_dest_id = dest_id; };
             NodeId get_destination_id() { return m_dest_id; }
@@ -77,7 +84,7 @@ namespace eroil::sock {
             SockResult listen(int backlog = 0);
             SockResult open_and_listen(uint16_t port, const char* ip = "0.0.0.0");
 
-            std::pair<TCPClient, SockResult> accept();
+            std::pair<std::shared_ptr<TCPClient>, SockResult> accept();
             void request_stop() noexcept;
     };
 }

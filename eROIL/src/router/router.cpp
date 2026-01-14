@@ -317,7 +317,6 @@ namespace eroil {
 
     void Router::recv_from_publisher(Label label, const void* buf, size_t size) {
         if (!buf || size == 0) return;
-
         
         RecvTargets targets{};
         targets.label = label;

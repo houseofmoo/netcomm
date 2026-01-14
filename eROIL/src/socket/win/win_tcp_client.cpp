@@ -88,12 +88,16 @@ namespace eroil::sock {
         }
 
         // NOTE: may not always send all bytes, use send_all() for that
-        int sent_bytes = ::send(
-            as_native(m_handle), 
-            static_cast<const char*>(data), 
-            static_cast<int>(size), 
-            0
-        );
+        int sent_bytes = 0;
+        {
+            std::lock_guard lock(m_send_mtx);
+            sent_bytes = ::send(
+                as_native(m_handle), 
+                static_cast<const char*>(data), 
+                static_cast<int>(size), 
+                0
+            );
+        }
 
         if (sent_bytes > 0) {
             return SockResult{ SockErr::None, SockOp::Send, 0, sent_bytes };
@@ -130,22 +134,25 @@ namespace eroil::sock {
         size_t total = 0;
         auto* ptr = static_cast<const char*>(data);
 
-        while (total < size) {
-            int sent_bytes = ::send(as_native(m_handle), ptr + total, static_cast<int>(size - total), 0);
+        std::lock_guard lock(m_send_mtx);
+            while (total < size) {
+            int to_send = static_cast<int>(size - total);
+            int sent_bytes = ::send(as_native(m_handle), ptr + total, to_send, 0);
+
             if (sent_bytes > 0) {
                 total += static_cast<size_t>(sent_bytes); 
                 continue;
             }
 
-            if (sent_bytes == 0) {
-                ERR_PRINT("send_all() sent 0 bytes, considering the socket closed")
-                m_connected = false;
-                return SockResult{ SockErr::Closed, SockOp::Send, 0, static_cast<int>(total) };
+            int err = ::WSAGetLastError();
+            if (err == WSAEINTR) {
+                continue; // retry
             }
 
-            // if we got an error, likely this socket is dead
-            m_connected = false;
-            int err = WSAGetLastError();
+            if (is_fatal_send_err(err)) {
+                m_connected = false;
+            }
+
             return SockResult{ map_err(err), SockOp::Send, err, static_cast<int>(total) };
         }
 

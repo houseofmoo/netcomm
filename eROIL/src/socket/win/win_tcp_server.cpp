@@ -74,12 +74,12 @@ namespace eroil::sock {
         return listen(0);
     }
 
-    std::pair<TCPClient, SockResult> TCPServer::accept() {
+    std::pair<std::shared_ptr<TCPClient>, SockResult> TCPServer::accept() {
         SockResult result{ SockErr::Unknown, SockOp::Accept, 0, 0 };
 
         if (!handle_valid()) {
             result.code = SockErr::InvalidHandle;
-            return { TCPClient{}, result };
+            return { nullptr, result };
         }
 
         sockaddr_in conn{};
@@ -93,11 +93,11 @@ namespace eroil::sock {
             } else {
                 result.code = map_err(result.sys_error);
             }
-            return { TCPClient{}, result };
+            return { nullptr, result };
         }
 
-        TCPClient client;
-        client.adopt(from_native(sock), true);
+        auto client = std::make_shared<TCPClient>();
+        client->adopt(from_native(sock), true);
         result.code = SockErr::None;
         return { std::move(client), result };
     }

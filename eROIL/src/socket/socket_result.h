@@ -55,6 +55,7 @@ namespace eroil::sock {
     };
 
     SockErr map_err(int err) noexcept;
+    bool is_fatal_send_err(int e) noexcept;
 
     inline void print_socket_result(const SockResult& result) {
         PRINT("SOCKET RESULT:");

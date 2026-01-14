@@ -47,16 +47,15 @@ namespace eroil::worker {
         if (err != evt::SemOpErr::None) {
             switch (err) {
                 case evt::SemOpErr::MaxCountReached: {
-                    // if max count occurs, we'll need to scale up from a single send worker
-                    ERR_PRINT("Cannot enqueue anymore send jobs"); 
+                    ERR_PRINT("cannot enqueue anymore send jobs"); 
                     break;
                 }
                 case evt::SemOpErr::SysError: {
-                    ERR_PRINT("Semaphore post got system error");
+                    ERR_PRINT("semaphore post got system error");
                     break;
                 }
                 default: {
-                    ERR_PRINT("Semaphore post failed to unknown error, SemOpErr: ", std::to_string((int)err));
+                    ERR_PRINT("emaphore post failed to unknown error, SemOpErr: ", std::to_string((int)err));
                     break;
                 }
             }
@@ -71,10 +70,10 @@ namespace eroil::worker {
             if (!continue_work.load(std::memory_order_acquire)) return;
 
             if (err != evt::SemOpErr::None) {
-                ERR_PRINT("Send worker got sem error waiting on work");
+                ERR_PRINT("send worker got sem error waiting on work");
                 if (++wait_errs > 10) {
                     continue_work.store(false, std::memory_order_release);
-                    ERR_PRINT("Send worker had too many sem errors in a row, exiting");
+                    ERR_PRINT("send worker had too many sem errors in a row, exiting");
                     return;
                 }
                 continue;
@@ -95,22 +94,22 @@ namespace eroil::worker {
 
                 try {
                     auto result = m_router.send_to_subscribers(entry->label, entry->data.get(), entry->data_size);
-                        switch (result.send_err) {
-                            // validation error
-                            case SendOpErr::RouteNotFound: // fallthrough
-                            case SendOpErr::SizeMismatch:  // fallthrough
-                            case SendOpErr::SizeTooLarge:  // fallthrough
-                            case SendOpErr::NoPublishers: { break; }
+                    switch (result.send_err) {
+                        // validation error
+                        case SendOpErr::RouteNotFound: // fallthrough
+                        case SendOpErr::SizeMismatch:  // fallthrough
+                        case SendOpErr::SizeTooLarge:  // fallthrough
+                        case SendOpErr::NoPublishers: { break; }
 
-                            // see why we failed
-                            case SendOpErr::Failed: {
-                                // TODO: handle failed send error
-                            }
-
-                            // no error
-                            case SendOpErr::None: { break; }
-                            default: { break; } // unknown error?
+                        // see why we failed
+                        case SendOpErr::Failed: {
+                            // TODO: handle failed send error
                         }
+
+                        // no error
+                        case SendOpErr::None: { break; }
+                        default: { break; } // unknown error?
+                    }
                 } catch (const std::exception& e) {
                     ERR_PRINT("Exception in worker thread, entry.label: ", entry->label, ", exception: ", e.what());
                 } catch (...) {

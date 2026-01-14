@@ -60,7 +60,7 @@ namespace eroil {
     }
 
     void ConnectionManager::send_label(handle_uid uid, Label label, size_t buf_size, std::unique_ptr<uint8_t[]> data) {
-        m_sender.enqueue(eroil::worker::SendQEntry{
+        m_sender.enqueue(worker::SendQEntry{
             uid,
             label,
             buf_size,
@@ -121,7 +121,8 @@ namespace eroil {
 
             while (true) {
                 auto [client, result] = m_tcp_server.accept();
-                if (result.code != sock::SockErr::None) {
+                if (result.code != sock::SockErr::None ||
+                    client == nullptr) {
                     ERR_PRINT("tcp server accepted connection but there was an error");
                     print_socket_result(result);
                     continue;
@@ -129,30 +130,30 @@ namespace eroil {
 
                 // they connected to us, they'll send a follow up message
                 LabelHeader hdr{};
-                auto recv_result = client.recv_all(&hdr, sizeof(hdr));
+                auto recv_result = client->recv_all(&hdr, sizeof(hdr));
                 if (recv_result.code != sock::SockErr::None) {
                     ERR_PRINT("tcp server had an error recving client information");
                     print_socket_result(recv_result);
-                    client.disconnect();
+                    client->disconnect();
                     continue;
                 }
 
                 if (hdr.magic != MAGIC_NUM || hdr.version != VERSION) {
                     ERR_PRINT("tcp server recvd invalid header from client");
-                    client.disconnect();
+                    client->disconnect();
                     continue;
                 }
 
                 if (!has_flag(hdr.flags, LabelFlag::Connect)) {
                     ERR_PRINT("tcp server recvd invalid request type");
-                    client.disconnect();
+                    client->disconnect();
                     continue;
                 }
                 
-                client.set_destination_id(hdr.source_id);
+                client->set_destination_id(hdr.source_id);
                 m_router.upsert_socket(
                     hdr.source_id,
-                    std::make_shared<sock::TCPClient>(std::move(client))
+                    std::move(client)
                 );
                 start_remote_recv_worker(hdr.source_id);
                 LOG("established tcp connection to node: ", hdr.source_id);
@@ -185,8 +186,8 @@ namespace eroil {
                 if (m_router.has_socket(id)) continue;
 
                 LOG("attempt connection to id=", id, " ip=", info.ip, ":", info.port);
-                sock::TCPClient client;
-                auto result = client.open_and_connect(info.ip.c_str(), info.port);
+                auto client = std::make_shared<sock::TCPClient>();
+                auto result = client->open_and_connect(info.ip.c_str(), info.port);
                 if (result.code != sock::SockErr::None) {
                     ERR_PRINT("connection to ", id, " failed");
                     //print_socket_result(result);
@@ -195,13 +196,13 @@ namespace eroil {
                 }
 
                 // send them a notice of who we are
-                send_id(&client);
-                client.set_destination_id(id);
+                send_id(client.get());
+                client->set_destination_id(id);
 
                 // insert socket into transport registry
                 m_router.upsert_socket(
                     id, 
-                    std::make_shared<sock::TCPClient>(std::move(client))
+                    std::move(client)
                 );
                 start_remote_recv_worker(id);
                 LOG("established tcp connection to node: ", id);
@@ -220,9 +221,12 @@ namespace eroil {
         while (true) {
             auto sockets = m_router.get_all_sockets();
             for (auto& sock : sockets) {
+                if (sock == nullptr) {
+                    ERR_PRINT("monitor got nullptr instead of socket ptr, socket list is correcpted");
+                    continue;
+                }
 
                 if (sock->is_connected()) {
-                    // we think the socket is connected, lets confirm that...
                     bool connected = send_ping(sock.get());
                     if (connected) continue;
                 }
@@ -251,7 +255,7 @@ namespace eroil {
                 
                 auto result = sock->open_and_connect(addr.ip.c_str(), addr.port);
                 if (result.code != sock::SockErr::None) {
-                    ERR_PRINT("connection to ", addr.id, " failed");
+                    ERR_PRINT("re-connect attempt to ", addr.id, " failed");
                     continue;
                 }
 
