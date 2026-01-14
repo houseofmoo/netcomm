@@ -31,25 +31,7 @@ namespace eroil {
             return;
         }
         
-        addr::insert_addresses(cfg.nodes[m_id], cfg.nodes);
-        switch (cfg.mode) {
-            case ManagerMode::ShmOnly: {
-                addr::set_all_local();
-                break;
-            }
-            case ManagerMode::SocketOnly: {
-                addr::set_all_remote();
-                break;
-            }
-            case ManagerMode::LocalOnlyTestMode: {
-                addr::split_by_id(m_id);
-                break;
-            }
-            case ManagerMode::Normal: // fallthrough
-            default: { break; }// do nothing
-        }
-
-        m_valid = true;
+        m_valid = addr::insert_addresses(cfg.nodes[m_id], cfg.nodes, cfg.mode);
     }
 
     bool Manager::init() {
@@ -210,7 +192,7 @@ namespace eroil {
                     break;
                 }
                 default: {
-                    ERR_PRINT("tried to add send subscriber but did not know routekind");
+                    ERR_PRINT("tried to add send subscriber but did not know routekind, ", (int)addr.kind);
                     break;
                 }
             }
@@ -248,7 +230,7 @@ namespace eroil {
                     break;
                 }
                 default: {
-                    ERR_PRINT("tried to add send subscriber but did not know routekind");
+                    ERR_PRINT("tried to remove send subscriber but did not know routekind, ", (int)addr.kind);
                     break;
                 }
             }
@@ -280,7 +262,7 @@ namespace eroil {
                     break;
                 }
                 default: {
-                    ERR_PRINT("tried to add send subscriber but did not know routekind");
+                    ERR_PRINT("tried to add recv publisher but did not know routekind, ", (int)addr.kind);
                     break;
                 }
             }
@@ -319,7 +301,7 @@ namespace eroil {
                     break;
                 }
                 default: {
-                    ERR_PRINT("tried to add send subscriber but did not know routekind");
+                    ERR_PRINT("tried to remove recv publisher but did not know routekind, ", (int)addr.kind);
                     break;
                 }
             }

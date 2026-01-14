@@ -6,15 +6,6 @@
 
 #ifndef EROIL_C_H
 #define EROIL_C_H
-    // windows or linux
-    #if defined(EROIL_LINUX)
-        #include <semaphore.h>
-        #define SEM_HANDLE sem_t*
-    #elif defined(EROIL_WIN32)
-        #define SEM_HANDLE void*
-    #else
-        #error "Must define EROIL_LINUX or EROIL_WIN32"
-    #endif
 
 // THIS IS SO WE CAN REPLACE NAE with eROIL without having to change roil at all
 
@@ -28,7 +19,7 @@ void* NAE_Open_Send_Label(
     void* pSendBuffer,
     int iSizeInWords,
     int iOffsetMode,
-    SEM_HANDLE iSem,
+    void* iSem,
     void* pIosb,
     int iNumIosbs
 );
@@ -52,7 +43,7 @@ void* NAE_Open_Receive_Label(  // change return to void*? or type...
     int iNumSlots,
     int iSizeInWords,
     char* pAuxBuffer,
-    SEM_HANDLE iSem,
+    void* iSem,
     void* pIosb,
     int iNumIosbs,
     int iSignalMode

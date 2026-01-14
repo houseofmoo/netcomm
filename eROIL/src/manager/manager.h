@@ -11,19 +11,6 @@
 #include "conn/connection_manager.h"
 
 namespace eroil {
-    enum class ManagerMode {
-        Normal,
-        ShmOnly,
-        SocketOnly,
-        LocalOnlyTestMode, // divides into some shm and some socket even if all apps are local
-    };
-
-    struct ManagerConfig {
-        NodeId id = 0;
-        ManagerMode mode = ManagerMode::Normal;
-        std::vector<NodeInfo> nodes = {};
-    };
-    
     class Manager {
         private:
             NodeId m_id;

@@ -3,6 +3,7 @@
 #include <eROIL/print.h>
 
 // PLATFORM SPECIFIC THINGS LIVE HERE
+// KEEP #IFDEF POLLUTION LOCATED IN AS FEW PLACES AS POSSIBLE
 
 #if defined(EROIL_LINUX)
     #include <semaphore.h>
@@ -21,10 +22,12 @@ namespace eroil {
 
     inline void signal_sem(sem_handle sem, int /*signal_mode*/) {
         #if defined(EROIL_LINUX)
-        if (sem) { sem_post(sem); }
+        if (sem != nullptr) { 
+            sem_post(sem); 
+        }
         #elif defined(EROIL_WIN32)
-        if (sem && !::ReleaseSemaphore(sem, 1, nullptr)) {
-            ERR_PRINT("sem signal failed, errno=",::GetLastError());
+        if (sem!= nullptr && !::ReleaseSemaphore(sem, 1, nullptr)) {
+            ERR_PRINT("sem signal failed, errno=", ::GetLastError());
         }
         #endif
     }

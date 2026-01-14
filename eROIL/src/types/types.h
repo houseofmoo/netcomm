@@ -4,8 +4,6 @@
 #include <array>
 
 namespace eroil {
-    // UNIVERSAL AND PLATFORM SPECIFIC TYPE NAMES
-
     using Label = std::int32_t;
     using NodeId = std::int32_t;
     using handle_uid = std::uint64_t;

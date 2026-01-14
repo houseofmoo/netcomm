@@ -22,11 +22,6 @@ namespace eroil::addr {
 
     const std::unordered_map<NodeId, NodeAddress>& get_address_book();
     NodeAddress get_address(NodeId id);
-    void insert_addresses(NodeInfo self, std::vector<NodeInfo> nodes);
+    bool insert_addresses(const NodeInfo self, const std::vector<NodeInfo> nodes, const ManagerMode mode);
     NodeAddress find_node_id(std::string ip, uint16_t port);
-
-    // testing options
-    void set_all_local();
-    void set_all_remote();
-    void split_by_id(int my_id);
 }

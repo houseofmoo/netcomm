@@ -100,11 +100,9 @@ namespace eroil::worker {
                         case SendOpErr::SizeMismatch:  // fallthrough
                         case SendOpErr::SizeTooLarge:  // fallthrough
                         case SendOpErr::NoPublishers: { break; }
-
-                        // see why we failed
-                        case SendOpErr::Failed: {
-                            // TODO: handle failed send error
-                        }
+                        // this may be caused by socket send fail (handled with reconnect)
+                        // or shm write/signal fail which means the shm memory is no longer open
+                        case SendOpErr::Failed: { break; } 
 
                         // no error
                         case SendOpErr::None: { break; }

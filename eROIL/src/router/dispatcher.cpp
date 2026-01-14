@@ -22,7 +22,7 @@ namespace eroil {
             }
 
             for (auto evt : targets.shm_signals) {
-                if (evt == nullptr) {
+                if (evt != nullptr) {
                     ERR_PRINT("shared memory named event was null");
                     continue;
                 }

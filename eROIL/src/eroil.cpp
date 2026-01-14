@@ -1,19 +1,20 @@
 #include <eROIL/eroil_c.h>
 #include <memory>
 #include <vector>
+#include <string_view>
 #include "config/config.h"
 #include "manager/manager.h"
 #include "types/handles.h"
 #include "types/types.h"
 
+
 static std::unique_ptr<eroil::Manager> manager;
 static eroil::ManagerConfig config{};
+
 static bool initialized = false;
 
 int NAE_Init(int /*iModuleId*/, int /*iProgramIDOffset*/, int /*iManager_CPU_ID*/, int /*iMaxNumCpus*/, int iNodeId) {
-    config.id = iNodeId;
-    config.nodes = eroil::GetTestNodeInfo();
-    config.mode = eroil::ManagerMode::LocalOnlyTestMode;
+    config = eroil::get_manager_cfg(iNodeId, eroil::ManagerMode::Normal);
     manager = std::make_unique<eroil::Manager>(config);
     initialized = manager->init();
     return initialized ? 1 : 0;
@@ -33,11 +34,8 @@ int NAE_Get_ROIL_Node_ID() {
 
 // old interface test
 void init_manager(int id) {
-    auto cfg = eroil::ManagerConfig();
-    cfg.id = id;
-    cfg.nodes = eroil::GetTestNodeInfo();
-    cfg.mode = eroil::ManagerMode::LocalOnlyTestMode;
-    manager = std::make_unique<eroil::Manager>(cfg);
+    config = eroil::get_manager_cfg(id, eroil::ManagerMode::TestMode_Sim_Network);
+    manager = std::make_unique<eroil::Manager>(config);
     manager->init();
     initialized = true;
 }
