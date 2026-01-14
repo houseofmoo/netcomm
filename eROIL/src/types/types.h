@@ -2,6 +2,9 @@
 #include <cstddef>
 #include <cstdint>
 #include <array>
+#if defined(EROIL_LINUX)
+    #include <semaphore.h>
+#endif
 
 namespace eroil {
     // UNIVERSAL AND PLATFORM SPECIFIC TYPE NAMES
@@ -28,20 +31,20 @@ namespace eroil {
     // using i32 = std::int32_t;
     // using i64 = std::int64_t;
     
-    #if defined(EROIL_WIN32)
-        using shm_handle = void*;
-        using sem_handle = void*;
-        using shm_view = void*;
-        using socket_handle = std::uintptr_t;
-    #elif defined(EROIL_LINUX)
-        //struct sem_t; // forward decl so we dont have to include <semaphore.h>
+    #if defined(EROIL_LINUX)
         constexpr int32_t INVALID_SOCKET = -1;
 
-        #include <semaphore.h>
         using shm_handle = int;
-        using sem_handle = sem_t*;
+        using sem_handle = sem_t;   // unnamed sems
+        using sem_ptr = sem_t*;     // named sems
         using shm_view = void*;
         using socket_handle = int;
+    #elif defined(EROIL_WIN32)
+        using shm_handle = void*;
+        using sem_handle = void*;   // unnamed sems
+        using sem_ptr = void*;      // named sems
+        using shm_view = void*;
+        using socket_handle = std::uintptr_t;
     #else
         #error "Must define EROIL_LINUX or EROIL_WIN32"
     #endif

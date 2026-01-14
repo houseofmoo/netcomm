@@ -14,7 +14,7 @@
 
 namespace eroil::worker {
     struct SendQEntry {
-        handle_uid handle_uid;
+        handle_uid uid;
         Label label;
         size_t data_size;
         std::unique_ptr<uint8_t[]> data;

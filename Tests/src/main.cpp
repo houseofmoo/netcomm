@@ -7,10 +7,8 @@
 #include <thread>
 #include <chrono>
 
-#include "windows_hdr.h"
 #include "tests.h"
 #include "labels.h"
-
 int main(int argc, char** argv) {
     int id = 0;
     if (argc >= 2) {

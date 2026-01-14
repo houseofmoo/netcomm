@@ -20,7 +20,7 @@ namespace eroil::sock {
         return m_ok;
     }
 
-    bool init_platform_sockets() {}
+    bool init_platform_sockets() { return true; }
     void cleanup_platform_sockets() {}
 }
 #endif

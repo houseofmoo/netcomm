@@ -1,4 +1,4 @@
-#ifdef EROIL_LINUX
+#if defined(EROIL_LINUX)
 
 #include "events/named_event.h"
 #include <eROIL/print.h>
@@ -12,13 +12,6 @@
 #include <string>
 
 namespace eroil::evt {
-    static sem_t* as_native(sem_handle p) noexcept {
-        return static_cast<sem_t*>(p);
-    }
-    static sem_handle from_native(sem_t* s) noexcept {
-        return static_cast<sem_handle>(s);
-    }
-
     static NamedEventErr map_wait_errno(int e) noexcept {
         switch (e) {
             case EINTR: return NamedEventErr::SysError; // normally retry on this... if we get here somethigns fooked
@@ -97,20 +90,19 @@ namespace eroil::evt {
         }
 
         constexpr mode_t perms = 0777;
-        sem_t* s = sem_open(n.c_str(), O_CREAT, perms, 0);
-        if (s == SEM_FAILED) {
+        m_sem = sem_open(n.c_str(), O_CREAT, perms, 0);
+        if (m_sem == SEM_FAILED) {
             m_sem = nullptr;
             return NamedEventErr::OpenFailed;
         }
 
-        m_sem = from_native(s);
         return NamedEventErr::None;
     }
 
     NamedEventErr NamedEvent::post() const {
         if (m_sem == nullptr) return NamedEventErr::NotInitialized;
 
-        if (sem_post(as_native(m_sem)) != 0) {
+        if (sem_post(m_sem) != 0) {
             if (errno == EOVERFLOW) return NamedEventErr::MaxCount;
             return NamedEventErr::SignalFailed;
         }
@@ -121,10 +113,8 @@ namespace eroil::evt {
     NamedEventErr NamedEvent::try_wait() const {
         if (m_sem == nullptr) return NamedEventErr::NotInitialized;
 
-        sem_t* s = as_native(m_sem);
-
         for (;;) {
-            if (sem_trywait(s) == 0) {
+            if (sem_trywait(m_sem) == 0) {
                 return NamedEventErr::None;
             }
             const int e = errno;
@@ -138,10 +128,9 @@ namespace eroil::evt {
     NamedEventErr NamedEvent::wait(uint32_t milliseconds) const {
         if (m_sem == nullptr) return NamedEventErr::NotInitialized;
 
-        sem_t* s = as_native(m_sem);
         if (milliseconds <= 0) {
             for (;;) {
-                if (sem_wait(s) == 0) {
+                if (sem_wait(m_sem) == 0) {
                     return NamedEventErr::None;
                 }
                 const int e = errno;
@@ -156,7 +145,7 @@ namespace eroil::evt {
         }
 
         for (;;) {
-            if (sem_timedwait(s, &deadline) == 0) {
+            if (sem_timedwait(m_sem, &deadline) == 0) {
                 return NamedEventErr::None;
             }
             const int e = errno;
@@ -167,7 +156,7 @@ namespace eroil::evt {
 
     void NamedEvent::close() {
         if (m_sem != nullptr) {
-            sem_close(as_native(m_sem));
+            sem_close(m_sem);
             //sem_unlink(name().c_str()); // deletes sem file
             m_sem = nullptr;
         }

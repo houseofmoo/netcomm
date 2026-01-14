@@ -59,7 +59,7 @@ namespace eroil {
             void create_send_route(Label label, SendHandle* handle);
             void create_recv_route(Label label, RecvHandle* handle);
 
-            SendRoute* require_send_route(eroil::Label label, const char* fn);
+            SendRoute* require_send_route(Label label, const char* fn);
             RecvRoute* require_recv_route(Label label, const char* fn);
             bool require_route_size(size_t expected, size_t actual, const char* fn);
             

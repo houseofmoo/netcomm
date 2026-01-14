@@ -9,7 +9,7 @@
     // windows or linux
     #ifdef EROIL_LINUX
         #include <semaphore.h>
-        #defime SEM_HANDLE sem_t*
+        #define SEM_HANDLE sem_t*
     #elif EROIL_WIN32
         #define SEM_HANDLE void*
     #else

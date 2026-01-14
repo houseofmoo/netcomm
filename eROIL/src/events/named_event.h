@@ -28,7 +28,7 @@ namespace eroil::evt {
             Label m_label_id;
             NodeId m_src_id;
             NodeId m_dst_id;
-            sem_handle m_sem;
+            sem_ptr m_sem;
 
         public:
             NamedEvent(Label label, NodeId src_id, NodeId dst_id);

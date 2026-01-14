@@ -10,7 +10,7 @@ set -euo pipefail
 #   ./build.sh --release --clean
 # ============================================================
 
-PRESET="debug"
+PRESET="linux-debug"
 BUILD_DIR="build"
 CLEAN="false"
 RUN_AFTER_BUILD="false"
@@ -28,11 +28,11 @@ while [[ $# -gt 0 ]]; do
       shift
       ;;
     --debug)
-      PRESET="debug"
+      PRESET="linux-debug"
       shift
       ;;
     --release)
-      PRESET="release"
+      PRESET="linux-release"
       shift
       ;;
     --clean)

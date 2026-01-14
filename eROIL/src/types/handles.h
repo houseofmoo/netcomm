@@ -10,7 +10,7 @@ namespace eroil {
         uint8_t* buf;
         size_t buf_size;
         uint32_t buf_offset;
-        sem_handle sem; // windows void*, linux sem_t*
+        sem_ptr sem; // windows void*, linux sem_t*
         SendIosb* iosb;
         uint32_t num_iosb;
         size_t iosb_index;
@@ -32,7 +32,7 @@ namespace eroil {
         size_t buf_slots;
         size_t buf_index;
         uint8_t* aux_buf;
-        sem_handle sem; // windows void*, linux sem_t*
+        sem_ptr sem; // windows void*, linux sem_t*
         ReceiveIosb* iosb;
         uint32_t num_iosb;
         size_t iosb_index;

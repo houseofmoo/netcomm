@@ -15,6 +15,7 @@ namespace eroil::evt {
         private:
             sem_handle m_sem;
             uint32_t m_max_count = 0;
+            bool m_valid; // mostly for linux side
 
         public:
             Semaphore();

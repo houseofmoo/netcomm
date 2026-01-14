@@ -5,15 +5,15 @@
 #include <eROIL/print.h>
 
 namespace eroil::evt {
-    static HANDLE as_native(sem_handle p) noexcept {
+    static HANDLE as_native(sem_ptr p) noexcept {
         return static_cast<HANDLE>(p);
     }
 
-    static sem_handle from_native(HANDLE h) noexcept {
-        return static_cast<sem_handle>(h);
+    static sem_ptr from_native(HANDLE h) noexcept {
+        return static_cast<sem_ptr>(h);
     }
 
-    static NamedEventErr do_wait(sem_handle handle, DWORD timeout_ms) {
+    static NamedEventErr do_wait(sem_ptr handle, DWORD timeout_ms) {
         if (handle == nullptr) return NamedEventErr::NotInitialized;
         DWORD rc = ::WaitForSingleObject(as_native(handle), timeout_ms);
         switch (rc) {

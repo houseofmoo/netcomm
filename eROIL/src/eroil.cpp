@@ -4,7 +4,7 @@
 #include "config/config.h"
 #include "manager/manager.h"
 #include "types/handles.h"
-
+#include "types/types.h"
 
 static std::unique_ptr<eroil::Manager> manager;
 static eroil::ManagerConfig config{};
@@ -43,35 +43,35 @@ void init_manager(int id) {
 }
 
 void* open_send(int label, void* buf, int size) {
-    auto ptr = manager->open_send({
-        label,
-        static_cast<uint8_t*>(buf),
-        static_cast<size_t>(size),
-        0,
-        nullptr,
-        nullptr,
-        0,
-        0
-    });
-    
+    eroil::OpenSendData data;
+    data.label = label;
+    data.buf = static_cast<uint8_t*>(buf);
+    data.buf_size = static_cast<size_t>(size);
+    data.buf_offset = 0;
+    data.sem = nullptr;
+    data.iosb = nullptr;
+    data.num_iosb = 0;
+    data.iosb_index = 0;
+
+    auto ptr = manager->open_send(data);
     return reinterpret_cast<void*>(ptr);
 }
 
 void* open_recv(int label, void* buf, int size, void* sem) {
-    auto ptr = manager->open_recv({
-        label,
-        0,
-        static_cast<uint8_t*>(buf),
-        static_cast<size_t>(size),
-        1,
-        0,
-        nullptr,
-        sem,
-        nullptr,
-        0,
-        0,
-        0
-    });
+    eroil::OpenReceiveData data;
+    data.label = label;
+    data.forward_label = 0;
+    data.buf = static_cast<uint8_t*>(buf);
+    data.buf_size = static_cast<size_t>(size);
+    data.buf_slots = 1;
+    data.buf_index = 0;
+    data.aux_buf = nullptr;
+    data.sem = static_cast<eroil::sem_ptr>(sem);
+    data.iosb = nullptr;
+    data.num_iosb = 0;
+    data.iosb_index = 0;
+    data.signal_mode = 0;
+    auto ptr = manager->open_recv(data);
 
     return reinterpret_cast<void*>(ptr);
 }

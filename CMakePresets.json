@@ -2,6 +2,27 @@
   "version": 3,
   "configurePresets": [
     {
+      "name": "linux-debug",
+      "displayName": "Linux Debug build",
+      "generator": "Unix Makefiles",
+      "binaryDir": "${sourceDir}/build/linux-debug",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Debug",
+        "PROFILER_ENABLED": "false"
+      }
+    },
+    {
+      "name": "linux-release",
+      "displayName": "Linux Release build",
+      "generator": "Unix Makefiles",
+      "binaryDir": "${sourceDir}/build/linux-release",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Release",
+        "PROFILER_ENABLED": "false"
+      }
+    },
+
+    {
       "name": "debug",
       "displayName": "Debug build",
       "description": "Builds in the 'build' directory using MinGW",
@@ -33,6 +54,18 @@
     }
   ],
   "buildPresets": [
+    {
+      "name": "linux-debug",
+      "displayName": "Build Linux Debug",
+      "configurePreset": "linux-debug",
+      "jobs": 0
+    },
+    {
+      "name": "linux-release",
+      "displayName": "Build Linux Release",
+      "configurePreset": "linux-release",
+      "jobs": 0
+    },
     {
       "name": "debug",
       "displayName": "Build Debug",
