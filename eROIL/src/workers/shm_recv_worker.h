@@ -1,5 +1,5 @@
 #pragma once
-
+#include <mutex>
 #include "types/types.h"
 #include "router/router.h"
 #include "shm/shm.h"
@@ -11,7 +11,9 @@ namespace eroil::worker {
             Router& m_router;
             Label m_label;
             size_t m_label_size;
-            std::shared_ptr<shm::Shm> m_recv_shm;
+
+            mutable std::mutex m_event_mtx;
+            std::shared_ptr<evt::NamedEvent> m_curr_event;
 
         public:
             ShmRecvWorker(Router& router, Label label, size_t label_size);
@@ -22,6 +24,7 @@ namespace eroil::worker {
 
         protected:
             void run() override;
+            void on_stop_requested() override;
     };
 }
 

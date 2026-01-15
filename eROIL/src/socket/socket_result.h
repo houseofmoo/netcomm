@@ -63,5 +63,6 @@ namespace eroil::sock {
         PRINT("    op=", (int)result.op);
         PRINT("    sys_error=", result.sys_error);
         PRINT("    bytes=", result.bytes);
+        (void)result; // in release build this function is empty, gotta appease the warning gods
     }
 }

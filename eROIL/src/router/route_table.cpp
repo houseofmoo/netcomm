@@ -160,9 +160,9 @@ namespace eroil {
             std::make_shared<evt::NamedEvent>(label, my_id, to_id)
         );
 
-        if (route->local_subscribers->shm_block != label) {
+        if (route->local_subscribers->shm_id != label) {
             ERR_PRINT(__func__, "(): had a different shm block index, label=", label,
-                      ", shm_index=", route->local_subscribers->shm_block);
+                      ", shm_index=", route->local_subscribers->shm_id);
         }
 
         return true;
@@ -191,7 +191,7 @@ namespace eroil {
             return false;
         }
 
-        (*it)->close(); // ensure event is closed and RAII does not keep it alive
+        //(*it)->close(); // ensure event is closed and RAII does not keep it alive
         route->local_subscribers->subscribe_events.erase(it);
         return true;
     }
@@ -207,7 +207,7 @@ namespace eroil {
             route->remote_subscribers.begin(),
             route->remote_subscribers.end(),
             [&](const RemoteSubscriber& r) {
-                return r.socket_index == to_id;
+                return r.socket_id == to_id;
             }
         );
 
@@ -230,7 +230,7 @@ namespace eroil {
             route->remote_subscribers.begin(),
             route->remote_subscribers.end(),
             [&](const RemoteSubscriber& r) {
-                return r.socket_index == to_id;
+                return r.socket_id == to_id;
             }
         );
 
@@ -296,7 +296,7 @@ namespace eroil {
             route->remote_subscribers.begin(),
             route->remote_subscribers.end(),
             [&](const RemoteSubscriber& r) {
-                return r.socket_index == to_id;
+                return r.socket_id == to_id;
             }
         );
         return it != route->remote_subscribers.end();
@@ -442,7 +442,7 @@ namespace eroil {
             return false;
         }
 
-        if (ptr->socket != from_id) {
+        if (ptr->socket_id != from_id) {
             ERR_PRINT(__func__, "(): id's do not match");
             return false;
         }
@@ -495,7 +495,7 @@ namespace eroil {
         if (route == nullptr) return false;
 
         if (auto* remote = std::get_if<RemotePublisher>(&route->publisher)) {
-            return remote->socket == from_id;
+            return remote->socket_id == from_id;
         }
         return false;
     }

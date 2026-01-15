@@ -11,34 +11,34 @@
 
 namespace eroil {
     struct LocalSubscriber {
-        Label shm_block{};
+        Label shm_id;
         std::vector<std::shared_ptr<evt::NamedEvent>> subscribe_events;
     };
 
     struct RemoteSubscriber {
-        NodeId socket_index{};
+        NodeId socket_id;
     };
 
     struct SendRoute {
-        Label label{};
-        size_t label_size{};
+        Label label;
+        size_t label_size;
         std::vector<handle_uid> publishers;
         std::vector<RemoteSubscriber> remote_subscribers;
         std::optional<LocalSubscriber> local_subscribers;
     };
 
     struct LocalPublisher {
-        Label shm_block{};
+        Label shm_id;
         std::shared_ptr<evt::NamedEvent> publish_event;
     };
 
     struct RemotePublisher {
-        NodeId socket;
+        NodeId socket_id;
     };
 
     struct RecvRoute {
-        Label label{};
-        size_t label_size{};
+        Label label;
+        size_t label_size;
         std::vector<handle_uid> subscribers;
         std::variant<std::monostate, RemotePublisher, LocalPublisher> publisher;
     };

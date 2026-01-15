@@ -47,6 +47,7 @@ void* open_send(int label, void* buf, int size) {
         ERR_PRINT("manager not initialized");
         return nullptr;
     }
+    
     eroil::OpenSendData data;
     data.label = label;
     data.buf = static_cast<uint8_t*>(buf);

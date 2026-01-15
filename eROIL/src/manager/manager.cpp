@@ -6,6 +6,7 @@
 #include <algorithm>
 #include <eROIL/print.h>
 #include "types/types.h"
+#include "timer/timer.h"
 
 namespace eroil {
     static int32_t unique_id() {
@@ -129,16 +130,16 @@ namespace eroil {
         msg.send_labels = m_router.get_send_labels();
         msg.recv_labels = m_router.get_recv_labels();
       
-        //PRINT(m_id, " sends broadcast");
         m_broadcast.send_broadcast(&msg, sizeof(msg));
     }
 
     void Manager::recv_broadcast() {
         BroadcastMessage msg;
         m_broadcast.recv_broadcast(&msg, sizeof(msg));
-        if (msg.id == m_id) return; // we got a broadcast from ourselves -.-
+        if (msg.id == m_id) return;
         
-        //PRINT(m_id, " recv broadcast from: ", msg.id);
+        // time how long this takes
+        //time::Timer t("recv_broadcast()");
 
         // filter out invalid labels
         std::vector<LabelInfo> recv_labels;
@@ -193,6 +194,9 @@ namespace eroil {
                     break;
                 }
             }
+
+            // check if they no longer want a label we send them
+            // if they are ensure that label appears in their list still
         }
     }
 
@@ -289,7 +293,7 @@ namespace eroil {
                 case addr::RouteKind::Shm: {
                     PRINT("removing local recv publisher, nodeid=", source_id, " label=", label);
                     m_router.remove_local_recv_publisher(label, source_id);
-                    // TODO: may need to kill the ShmRecvWorker if theres nothing to recv!
+                    m_comms.stop_local_recv_worker(label);
                     break;
                 }
                 case addr::RouteKind::Socket: {

@@ -307,7 +307,7 @@ namespace eroil {
 
             // snapshot local subs
             if (route->local_subscribers.has_value()) {
-                targets.shm = m_transports.get_send_shm(route->local_subscribers->shm_block);
+                targets.shm = m_transports.get_send_shm(route->local_subscribers->shm_id);
                 targets.shm_signals = route->local_subscribers->subscribe_events;
                 targets.has_local = true;
 
@@ -319,7 +319,7 @@ namespace eroil {
                 targets.sockets.reserve(route->remote_subscribers.size());
                 for (const auto remote : route->remote_subscribers) {
                     targets.sockets.push_back(
-                        m_transports.get_socket(remote.socket_index)
+                        m_transports.get_socket(remote.socket_id)
                     );
                 }
                 targets.has_remote = true;

@@ -86,6 +86,15 @@ namespace eroil {
         w_it->second->start();
     }
 
+    void ConnectionManager::stop_local_recv_worker(Label label) {
+        auto it = m_shm_recvrs.find(label);
+        if (it != m_shm_recvrs.end()) {
+            // this call has a thread.join(), if we see a "blocks forever" this may be the cause
+            it->second->stop();
+            m_shm_recvrs.erase(it);
+        }
+    }
+
     void ConnectionManager::start_remote_recv_worker(NodeId peer_id) {
         // if we find a worker that already exists, we cannot stop them unless we know
         // the socket has also been closed. The assumption is someone already did the clean up 

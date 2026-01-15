@@ -26,6 +26,7 @@ namespace eroil {
             void start();
             void send_label(handle_uid uid, Label label, size_t data_size, std::unique_ptr<uint8_t[]> data);
             void start_local_recv_worker(Label label, size_t label_size);
+            void stop_local_recv_worker(Label label);
             void start_remote_recv_worker(NodeId from_id);
 
         private:
