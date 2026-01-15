@@ -6,8 +6,7 @@
 
 namespace eroil::time {
     struct TimeInfo {
-        uint64_t start_time;
-        uint64_t end_time;
+        uint64_t time_ns;
     };
 
     class Timelog {
@@ -17,7 +16,7 @@ namespace eroil::time {
         public:
             Timelog();
             ~Timelog() = default;
-            void insert(std::string name, uint64_t start, uint64_t end);
+            void insert(std::string name, uint64_t time_ns);
     };
 
     extern Timelog time_log;

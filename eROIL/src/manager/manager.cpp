@@ -81,6 +81,7 @@ namespace eroil {
         auto data = std::make_unique<uint8_t[]>(data_size);
         std::memcpy(data.get(), &hdr, sizeof(hdr));
         std::memcpy(data.get() + sizeof(hdr), send_buf + send_offset, send_size);
+        
         m_comms.send_label(handle->uid, handle->data->label, data_size, std::move(data));
     }
 

@@ -6,9 +6,9 @@
 #include "platform.h"
 
 namespace eroil {
-    SendResult Dispatcher::dispatch_send(const SendTargets& targets,
-                                        const void* buf,
-                                        size_t size) const {
+    SendResult Dispatcher::dispatch_send_targets(const SendTargets& targets,
+                                                 const void* buf,
+                                                 size_t size) const {
         bool failed = false;
         SendResult result{};
 
@@ -39,7 +39,7 @@ namespace eroil {
 
 
         // remote
-        if (!targets.sockets.empty()) {
+        if (targets.has_remote) {
             for (const auto& sock : targets.sockets) {
                 if (sock == nullptr) continue;
 
@@ -68,12 +68,16 @@ namespace eroil {
             if (targets.publisher->iosb != nullptr && targets.publisher->num_iosb > 0) {
                 auto iosb = targets.publisher->iosb + targets.publisher->iosb_index;
 
+                // TODO: we need a way to tell what buffer was used the buf in the IOSB
+                // or a buffer that was provided, that way we can set iosb->pMsgAddr correctly
+                // this should also be true for MsgSize (but this one should alway be the same)
+
                 iosb->Status = size;  // number of bytes sent is status (-1 is error, 0 is disconnected)
                 iosb->Reserve1 = 0;
                 iosb->Header_Valid = 1;
                 iosb->Reserve2 = 0;  // 0 for send, 1 for receive (cause thats how they defined it)
                 iosb->Reserve3 = 0;
-                iosb->pMsgAddr = (char*)targets.publisher->buf;  // TODO: wrong if we used provided buffer instead of handler buffer
+                iosb->pMsgAddr = reinterpret_cast<char*>(targets.publisher->buf);
                 iosb->MsgSize = targets.publisher->buf_size;
                 iosb->Reserve4 = 0;
                 iosb->Reserve5 = 0;
@@ -85,8 +89,7 @@ namespace eroil {
                 iosb->Reserve10 = 0;
                 iosb->TimeStamp = 0x12345678;  // TODO: write real timestamp here
 
-                // push iosb index forward
-                targets.publisher->iosb_index = (targets.publisher->iosb_index + 1) & targets.publisher->num_iosb;
+                targets.publisher->iosb_index = (targets.publisher->iosb_index + 1) % targets.publisher->num_iosb;
             }
             
             signal_sem(targets.publisher->sem, 0);
@@ -113,7 +116,7 @@ namespace eroil {
             if (subs->iosb != nullptr && subs->num_iosb > 0) {
                 auto iosb = subs->iosb + subs->iosb_index;
 
-                iosb->Status = size;
+                iosb->Status = size; // number of bytes sent is status (-1 is error, 0 is disconnected)
                 iosb->Reserve1 = 0;
                 iosb->Header_Valid = 1;
                 iosb->Reserve2 = 1;  // 0 for send, 1 for receive (cause thats how they defined it)
@@ -122,7 +125,7 @@ namespace eroil {
                 iosb->Reserve4 = 0;
                 iosb->Messaage_Slot = subs->buf_index;
                 iosb->Reserve5 = 0;
-                iosb->pMsgAddr = (char*)dst;
+                iosb->pMsgAddr = reinterpret_cast<char*>(dst);
                 iosb->Reserve6 = 0;
                 iosb->Reserve7 = 0;
                 iosb->FC_Header = { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 };
@@ -131,10 +134,9 @@ namespace eroil {
                 iosb->E_EOF = 0;
                 iosb->TimeStamp = 0; // TODO: write real timestamp here
 
-                subs->iosb_index = (subs->iosb_index + 1) & subs->num_iosb;
+                subs->iosb_index = (subs->iosb_index + 1) % subs->num_iosb;
             }
             
-            // push buffer index forward
             subs->buf_index = (subs->buf_index + 1) % subs->buf_slots;
 
             signal_sem(subs->sem, subs->signal_mode);

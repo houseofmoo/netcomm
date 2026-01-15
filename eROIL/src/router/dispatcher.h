@@ -49,9 +49,9 @@ namespace eroil {
 
     class Dispatcher {
         public:
-            SendResult dispatch_send(const SendTargets& targets,
-                                    const void* buf,
-                                    size_t size) const;
+            SendResult dispatch_send_targets(const SendTargets& targets,
+                                             const void* buf,
+                                             size_t size) const;
 
            void  dispatch_recv_targets(const RecvTargets& targets,
                                        const void* buf,

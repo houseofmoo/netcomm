@@ -11,6 +11,6 @@ namespace eroil::time {
     Timer::~Timer() {
         auto end_now = std::chrono::steady_clock::now();
         auto end_ns = std::chrono::duration_cast<std::chrono::nanoseconds>(end_now.time_since_epoch()).count(); 
-        time_log.insert(std::move(m_name), m_start_ns, end_ns);
+        time_log.insert(std::move(m_name), end_ns - m_start_ns);
     }
 }

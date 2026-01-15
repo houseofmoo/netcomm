@@ -3,10 +3,13 @@
 namespace eroil::time {
     Timelog time_log;
 
-    Timelog::Timelog() : m_log({}) {}
+    Timelog::Timelog() : m_log({}) {
+        // reserve 30 slots a head of time to prevent rehashes unless we go over
+        m_log.reserve(30); 
+    }
 
-    void Timelog::insert(std::string name, uint64_t start, uint64_t end) {
+    void Timelog::insert(std::string name, uint64_t time_ns) {
         // creates index if it doesnt exist
-        m_log[name].push_back(TimeInfo{ start, end });
+        m_log[name].emplace_back(TimeInfo{ time_ns});
     }
 }

@@ -310,8 +310,6 @@ namespace eroil {
                 targets.shm = m_transports.get_send_shm(route->local_subscribers->shm_id);
                 targets.shm_signals = route->local_subscribers->subscribe_events;
                 targets.has_local = true;
-
-                
             }
             
             // snapshot remote subs
@@ -326,12 +324,12 @@ namespace eroil {
             }
 
             // no one to send to
-            if (targets.shm == nullptr && targets.sockets.empty()) {
+            if (!targets.has_local && !targets.has_remote) {
                 return { SendOpErr::None, {}, {} };
             }
         }
 
-        return m_dispatch.dispatch_send(targets, buf, size);
+        return m_dispatch.dispatch_send_targets(targets, buf, size);
     }
 
     void Router::recv_from_publisher(Label label, const void* buf, size_t size) {
