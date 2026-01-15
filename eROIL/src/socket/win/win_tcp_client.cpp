@@ -112,7 +112,7 @@ namespace eroil::sock {
 
         int err = ::WSAGetLastError();
         if (err == WSAECONNRESET) {
-            ERR_PRINT("send() errcode indicates socket closed")
+            ERR_PRINT("send() errcode indicates socket closed");
             m_connected = false;
         }
         

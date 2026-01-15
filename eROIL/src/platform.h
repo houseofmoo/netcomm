@@ -23,7 +23,7 @@ namespace eroil {
     inline void signal_sem(sem_handle sem, int /*signal_mode*/) {
         #if defined(EROIL_LINUX)
         if (sem != nullptr) { 
-            sem_post(sem); 
+            ::sem_post(sem); 
         }
         #elif defined(EROIL_WIN32)
         if (sem!= nullptr && !::ReleaseSemaphore(sem, 1, nullptr)) {

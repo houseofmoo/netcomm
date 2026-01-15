@@ -156,7 +156,7 @@ namespace eroil {
             route->local_subscribers = { label, {} };
         }
 
-        route->local_subscribers->subscribe_events.emplace_back(
+        auto it = route->local_subscribers->subscribe_events.emplace_back(
             std::make_shared<evt::NamedEvent>(label, my_id, to_id)
         );
 
@@ -173,7 +173,7 @@ namespace eroil {
         if (route == nullptr) return false;
 
         if (!route->local_subscribers.has_value()) {
-            ERR_PRINT(__func__, "(): not a local send subscriber is empty");
+            ERR_PRINT(__func__, "(): local send subscriber is unexpectedly empty");
             return false;
         }
 

@@ -26,7 +26,7 @@ namespace eroil::worker {
                 if (auto* ptr = std::get_if<LocalPublisher>(&route->publisher)) {
                     auto evt_err = ptr->publish_event->wait(); // blocks
                     if (evt_err != evt::NamedEventErr::None) {
-                        ERR_PRINT("named event err: ", (int)evt_err)
+                        ERR_PRINT("named event err: ", (int)evt_err);
                     }
                     if (stop_requested()) break;
 

@@ -1,46 +1,48 @@
 #pragma once
 
 #include <iostream>
+#include <utility>
 #include <mutex>
-#include <sstream>
 
 namespace print {
-    inline std::mutex print_mtx;
-    inline int my_id = 0;
+    namespace detail {
+        inline int __id;
+        inline std::mutex __mtx;
+    }
+
+    inline void set_id(int id) { detail::__id = id; }
 
     template <typename... Args>
     inline void write(Args&&... args) noexcept {
-        std::lock_guard<std::mutex> lock(print_mtx);
-        (std::cout << "[ " << my_id << " ] " << ... << args) << std::endl;
+        std::lock_guard<std::mutex> lock(detail::__mtx);
+        std::cout << "[ " << detail::__id << " ] ";
+        ((std::cout << std::forward<Args>(args)), ...);
+        std::cout << std::endl;
     }
 
     template <typename... Args>
-    inline void error(Args&&... args) noexcept {
-        std::lock_guard<std::mutex> lock(print_mtx);
-        (std::cerr << "[ " << my_id << " ] " << "ERROR: " << ... << args) << std::endl;
+    inline void ERR_PRINT(Args&&... args) noexcept {
+        std::lock_guard<std::mutex> lock(detail::__mtx);
+        std::cerr << "[ " << detail::__id << " ] ERROR: ";
+        ((std::cerr << std::forward<Args>(args)), ...);
+        std::cerr << std::endl;
     }
 
     template <typename... Args>
     inline void log(Args&&... args) noexcept {
-        std::lock_guard<std::mutex> lock(print_mtx);
-        (std::clog << "[ " << my_id << " ] " << ... << args) << std::endl;
+        std::lock_guard<std::mutex> lock(detail::__mtx);
+        std::clog << "[ " << detail::__id << " ] ";
+        ((std::clog << std::forward<Args>(args)), ...);
+        std::clog << std::endl;
     }
 }
 
 #ifndef NDEBUG // debug
-    #define PRINT_ID(...) print::write(this->LogId(), __VA_ARGS__);
-    #define ERR_PRINT_ID(...) print::error(this->LogId(), __VA_ARGS__);
-    #define LOG_ID(...) print::log(this->LogId(), __VA_ARGS__);
-
-    #define PRINT(...) print::write(__VA_ARGS__);
-    #define ERR_PRINT(...) print::error(__VA_ARGS__);
-    #define LOG(...) print::log(__VA_ARGS__);
+    #define PRINT(...) print::write(__VA_ARGS__)
+    #define ERR_PRINT(...) print::ERR_PRINT(__VA_ARGS__)
+    #define LOG(...) print::log(__VA_ARGS__)
 #else // release
-    #define PRINT_ID(...)
-    #define ERR_PRINT_ID(...) print::error(this->LogId(), __VA_ARGS__);
-    #define LOG_ID(...)
-
     #define PRINT(...)
-    #define ERR_PRINT(...) print::error(__VA_ARGS__);
-    #define LOG(...) print::log(__VA_ARGS__);
+    #define ERR_PRINT(...) print::ERR_PRINT(__VA_ARGS__)
+    #define LOG(...) print::log(__VA_ARGS__)
 #endif

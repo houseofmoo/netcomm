@@ -33,11 +33,13 @@ namespace seed {
 
     std::vector<int> random_unique_range(int min, int max, size_t count, std::mt19937& rng) {
         const size_t range_size = static_cast<size_t>(max - min + 1);
-        if (count > range_size)
+        if (count > range_size) {
             throw std::runtime_error("count exceeds range");
+        }
 
-        if (count > 10000)
+        if (count > 10000) {
             throw std::runtime_error("range exceeds 10,000, lets keep it reasonable");
+        }
 
         std::vector<int> values(range_size);
         std::iota(values.begin(), values.end(), min);

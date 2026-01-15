@@ -21,9 +21,6 @@ namespace eroil {
         m_broadcast{},
         m_valid(false) {
 
-        // set id so print shows the manager id
-        print::my_id = m_id;
-
         // confirm we know who the fuck we are
         if (static_cast<size_t>(m_id) > cfg.nodes.size()) {
             ERR_PRINT("manager has no entry in nodes info list, manager cannot initialize");

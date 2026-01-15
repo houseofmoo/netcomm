@@ -22,7 +22,7 @@ namespace eroil {
 
         // enforce IDs must be >= 0
         if (smallest_id < 0) {
-            print::error("node IDs in node info were invalid (id < 0)");
+            ERR_PRINT("node IDs in node info were invalid (id < 0)");
             return {};
         }
         
@@ -34,7 +34,7 @@ namespace eroil {
             const auto index = static_cast<size_t>(node.id);
             if (indexable[index].id >= 0) {
                 // duplicate found, this is a major config file problem
-                print::error("FOUND A DUPLICATE NODE ID IN NODEINFO LIST, exiting");
+                ERR_PRINT("FOUND A DUPLICATE NODE ID IN NODEINFO LIST, exiting");
                 return {};
             }
 
@@ -49,7 +49,7 @@ namespace eroil {
 
         std::ifstream file(filename);
         if (!file.is_open()) {
-            print::error("could not open file ", filename);
+            ERR_PRINT("could not open file ", filename);
             return rows;
         }
 
@@ -72,10 +72,10 @@ namespace eroil {
         return rows;
     }
 
-    std::vector<NodeInfo> GetNodeInfo(const std::string_view& filename) {
+    std::vector<NodeInfo> get_node_info(const std::string_view& filename) {
         auto rows = ParseCSV(std::string(filename));
         if (rows.size() <= 0) {
-            print::error("no node information, file did not exist or was empty/unparsable");
+            ERR_PRINT("no node information, file did not exist or was empty/unparsable");
             return {};
         }
         
@@ -90,16 +90,16 @@ namespace eroil {
         }
 
         if (nodes.empty()) {
-            print::error("no node information, could not build node info list from parsed data");
+            ERR_PRINT("no node information, could not build node info list from parsed data");
             return {};
         }
 
         return make_indexable_by_id(nodes);
     }
 
-    std::vector<NodeInfo> GetNodeInfo() {
+    std::vector<NodeInfo> get_node_info() {
         std::vector<NodeInfo> nodes;
-        print::write("building FAKE NodeInfo for testing (all local addrs)");
+        PRINT("building FAKE NodeInfo for testing (all local addrs)");
         for (int i = 0; i < 20; i++) {
             nodes.push_back(NodeInfo{
                 i,
@@ -117,10 +117,10 @@ namespace eroil {
          switch (mode) {
             case ManagerMode::TestMode_Local_ShmOnly: // fallthrough
             case ManagerMode::TestMode_Lopcal_SocketOnly: // fallthrough
-            case ManagerMode::TestMode_Sim_Network: nodes = GetNodeInfo(); break;
+            case ManagerMode::TestMode_Sim_Network: nodes = get_node_info(); break;
             
             case ManagerMode::Normal: // fallthrough
-            default: nodes = GetNodeInfo(MANAGE_CONFIG_FILE_PATH); break;
+            default: nodes = get_node_info(MANAGE_CONFIG_FILE_PATH); break;
         }
         
         return ManagerConfig{

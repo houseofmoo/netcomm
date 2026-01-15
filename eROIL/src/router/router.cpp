@@ -257,38 +257,37 @@ namespace eroil {
 
     SendResult Router::send_to_subscribers(Label label, const void* buf, size_t size, handle_uid uid) {
         if (!buf || size == 0) return { SendOpErr::Failed, {}, {} };
-        SendTargets targets{ {}, nullptr, {}, {} };
+        SendTargets targets{ label, nullptr, false, nullptr, {}, false, {} };
         {
             std::shared_lock lock(m_router_mtx);
 
+            if (size > SOCKET_DATA_MAX_SIZE) {
+                ERR_PRINT(__func__, "(): send size bigger than max label=", label,
+                          " size=", size, " max=", SOCKET_DATA_MAX_SIZE);
+                return { SendOpErr::SizeTooLarge, {}, {} };
+            }
+
             const SendRoute* route = m_routes.get_send_route(label);
             if (route == nullptr) {
-                ERR_PRINT("send_to_subscribers(): unknown label=", label);
+                ERR_PRINT(__func__, "(): no route for label=", label);
                 return { SendOpErr::RouteNotFound, {}, {} };
             }
 
             size_t total_size = route->label_size + sizeof(LabelHeader);
             if (total_size != size ) {
-                ERR_PRINT("send_to_subscribers(): size mismatch label=", label,
-                          " expected=", total_size, " got=", size);
+                ERR_PRINT(__func__, "(): size mismatch label=", label, " expected=", total_size, " got=", size);
                 return { SendOpErr::SizeMismatch, {}, {} };
-            }
-
-            if (size > SOCKET_DATA_MAX_SIZE) {
-                ERR_PRINT("send_to_subscribers(): send size bigger than max label=", label,
-                          " size=", size, " max=", SOCKET_DATA_MAX_SIZE);
-                return { SendOpErr::SizeTooLarge, {}, {} };
             }
 
             auto handle_it = m_send_handles.find(uid);
             if (handle_it == m_send_handles.end()) {
-                ERR_PRINT("send_to_subscribers(): got handle uid that does not match any known send handles, uid=", uid);
+                ERR_PRINT(__func__, "(): got handle uid that does not match any known send handles, uid=", uid);
                 return { SendOpErr::UnknownHandle, {}, {} };
             }
 
             auto uids = m_routes.snapshot_send_publishers(label);
             if (uids.empty()) {
-                ERR_PRINT("send_to_subscribers(): no send publishers for label=", label);
+                ERR_PRINT(__func__, "(): no send publishers for label=", label);
                 return { SendOpErr::NoPublishers, {}, {} };
             }
 
@@ -299,7 +298,7 @@ namespace eroil {
                 uid
             );
             if (uids_it == uids.end()) {
-                ERR_PRINT("send_to_subscribers(): handle was not a member of the send publishers list, uid=", uid);
+                ERR_PRINT(__func__, "(): handle was not a member of the send publishers list, uid=", uid);
                 return { SendOpErr::IncorrectPublisher, {}, {} };
             }
 
@@ -310,6 +309,9 @@ namespace eroil {
             if (route->local_subscribers.has_value()) {
                 targets.shm = m_transports.get_send_shm(route->local_subscribers->shm_block);
                 targets.shm_signals = route->local_subscribers->subscribe_events;
+                targets.has_local = true;
+
+                
             }
             
             // snapshot remote subs
@@ -320,11 +322,13 @@ namespace eroil {
                         m_transports.get_socket(remote.socket_index)
                     );
                 }
+                targets.has_remote = true;
             }
 
             // no one to send to
-            if (targets.shm == nullptr &&
-                targets.sockets.empty()) return { SendOpErr::None, {}, {} };
+            if (targets.shm == nullptr && targets.sockets.empty()) {
+                return { SendOpErr::None, {}, {} };
+            }
         }
 
         return m_dispatch.dispatch_send(targets, buf, size);
@@ -340,19 +344,19 @@ namespace eroil {
             
             const RecvRoute* route = m_routes.get_recv_route(label);
             if (route == nullptr) {
-                ERR_PRINT("recv_from_publisher(): unknown label=", label);
+                ERR_PRINT(__func__, "(): unknown label=", label);
                 return;
             }
 
             if (route->label_size != size) {
-                ERR_PRINT("recv_from_publisher(): size mismatch label=", label,
+                ERR_PRINT(__func__, "(): size mismatch label=", label,
                         " expected=", route->label_size, " got=", size);
                 return;
             }
 
             auto uids = m_routes.snapshot_recv_subscribers(label);
             if (uids.empty()) {
-                ERR_PRINT("recv_from_publisher(): no recv subscribers for label=", label);
+                ERR_PRINT(__func__, "(): no recv subscribers for label=", label);
                 return;
             }
 

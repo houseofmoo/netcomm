@@ -1,7 +1,8 @@
-#include <eROIL/eroil_c.h>
 #include <memory>
 #include <vector>
 #include <string_view>
+#include <eROIL/eroil_c.h>
+#include <eROIL/print.h>
 #include "config/config.h"
 #include "manager/manager.h"
 #include "types/handles.h"
@@ -33,14 +34,19 @@ int NAE_Get_ROIL_Node_ID() {
 }
 
 // old interface test
-void init_manager(int id) {
+bool init_manager(int id) {
+    print::set_id(id);
     config = eroil::get_manager_cfg(id, eroil::ManagerMode::TestMode_Sim_Network);
     manager = std::make_unique<eroil::Manager>(config);
-    manager->init();
-    initialized = true;
+    initialized = manager->init();
+    return initialized;
 }
 
 void* open_send(int label, void* buf, int size) {
+    if (manager == nullptr || !initialized) {
+        ERR_PRINT("manager not initialized");
+        return nullptr;
+    }
     eroil::OpenSendData data;
     data.label = label;
     data.buf = static_cast<uint8_t*>(buf);
@@ -56,6 +62,11 @@ void* open_send(int label, void* buf, int size) {
 }
 
 void* open_recv(int label, void* buf, int size, void* sem) {
+    if (manager == nullptr || !initialized) {
+        ERR_PRINT("manager not initialized");
+        return nullptr;
+    }
+
     eroil::OpenReceiveData data;
     data.label = label;
     data.forward_label = 0;
@@ -75,6 +86,11 @@ void* open_recv(int label, void* buf, int size, void* sem) {
 }
 
 void send_label(void* handle, void* buf, int buf_size, int buf_offset) {
+    if (manager == nullptr || !initialized) {
+        ERR_PRINT("manager not initialized");
+        return;
+    }
+
     manager->send_label(
         reinterpret_cast<eroil::SendHandle*>(handle), 
         buf, 

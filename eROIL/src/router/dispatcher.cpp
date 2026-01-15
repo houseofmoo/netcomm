@@ -13,22 +13,30 @@ namespace eroil {
         SendResult result{};
 
         // local
-        if (targets.shm != nullptr) {
-            auto shm_err = targets.shm->write(buf, size);
-            if (shm_err != shm::ShmOpErr::None) {
-                result.shm_err = shm_err;
-                failed = true;
-                ERR_PRINT("shared memory write error=", (int)shm_err);
-            }
-
-            for (auto evt : targets.shm_signals) {
-                if (evt != nullptr) {
-                    ERR_PRINT("shared memory named event was null");
-                    continue;
+        if (targets.has_local) {
+            if (targets.shm != nullptr) {
+                auto shm_err = targets.shm->write(buf, size);
+                if (shm_err != shm::ShmOpErr::None) {
+                    result.shm_err = shm_err;
+                    failed = true;
+                    ERR_PRINT("shared memory write for label=", targets.label, "err=", (int)shm_err);
                 }
-                evt->post();
+
+                for (auto evt : targets.shm_signals) {
+                    if (evt == nullptr) {
+                        ERR_PRINT("shared memory named event was null for label=", targets.label);
+                        continue;
+                    }
+                    evt->post();
+                }
+            } else {
+                ERR_PRINT(
+                    "expected to have local subscribers, but shm block is null for label=", 
+                    targets.label
+                );
             }
         }
+
 
         // remote
         if (!targets.sockets.empty()) {
@@ -46,7 +54,10 @@ namespace eroil {
                         sock->get_destination_id(),
                         sock_err
                     );
-                    ERR_PRINT("socket send errorcode=", (int)sock_err.code, ", op=", (int)sock_err.op);
+                    ERR_PRINT(
+                        "socket send for label=", targets.label, 
+                        "errorcode=", (int)sock_err.code, ", op=", (int)sock_err.op
+                    );
                 }
             }
         }

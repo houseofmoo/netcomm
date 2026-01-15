@@ -33,9 +33,12 @@ namespace eroil {
     };
 
     struct SendTargets {
+        Label label;
         std::shared_ptr<OpenSendData> publisher;
+        bool has_local;
         std::shared_ptr<shm::Shm> shm;
         std::vector<std::shared_ptr<evt::NamedEvent>> shm_signals;
+        bool has_remote;
         std::vector<std::shared_ptr<sock::TCPClient>> sockets;
     };
 

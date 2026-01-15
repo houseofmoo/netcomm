@@ -31,12 +31,18 @@ namespace eroil::worker {
                 }
                 
                 if (hdr.data_size > SOCKET_DATA_MAX_SIZE) {
-                    ERR_PRINT("socket recv got a header that indicated data size is > ", SOCKET_DATA_MAX_SIZE);
+                    ERR_PRINT(
+                        "socket recv got a header that indicated data size is > ", SOCKET_DATA_MAX_SIZE,
+                        " label=", hdr.label, ", sourceid=", hdr.source_id
+                    );
                     break;
                 }
                 
                 if (hdr.data_size <= 0 && has_flag(hdr.flags, LabelFlag::Data)) {
-                    ERR_PRINT("socket recv got a header that indicated data size is 0");
+                    ERR_PRINT(
+                        "socket recv got a header that indicated data size is 0, label=", hdr.label,
+                        ", sourceid=", hdr.source_id
+                    );
                     continue;
                 }
 

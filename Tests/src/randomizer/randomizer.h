@@ -10,8 +10,8 @@ namespace seed {
 }
 
 namespace rng {
-    inline float random_float(float min, float max);
-    inline double random_double(double min, double max);
-    inline int random_int(const int min, const int max);
-    inline std::vector<int> random_unique_range(int min, int max, size_t count);
+    float random_float(float min, float max);
+    double random_double(double min, double max);
+    int random_int(const int min, const int max);
+    std::vector<int> random_unique_range(int min, int max, size_t count);
 }

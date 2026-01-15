@@ -53,7 +53,7 @@ namespace eroil::evt {
     NamedEvent::NamedEvent(Label label, NodeId src_id, NodeId dst_id) 
         : m_label_id(label), m_src_id(src_id), m_dst_id(dst_id), m_sem(nullptr) {
             if (open() != NamedEventErr::None) {
-                ERR_PRINT("failed to open named event srcid=", src_id, ", dstid=", dst_id)
+                ERR_PRINT("failed to open named event srcid=", src_id, ", dstid=", dst_id);
             }
         }
 

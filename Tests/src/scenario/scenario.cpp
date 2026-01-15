@@ -1,40 +1,55 @@
 #include "scenario/scenario.h"
 #include "randomizer/randomizer.h"
 #include <random>
+#include <algorithm>
 #include <fstream>
+#include <iomanip>
+#include <array>
+#include "labels.h"
+#include <eROIL/print.h>
+
+struct ScenarioLabel {
+    int id;
+    size_t size;
+    bool is_sent;
+};
 
 int align_64_bit(int num) {
     return (num + 63) & ~63;;
 }
 
-std::vector<NodeScenario> generate_test_scenario() {
-    std::vector<NodeScenario> scenarios(NUM_NODES);
-    std::mt19937 rng(12345); // seed randomizer
+TestScenario generate_test_scenario(int seed) {
+    TestScenario scenario(seed, NUM_NODES);
+    std::mt19937 rng(scenario.seed); // seed randomizer
 
-    // genreate labels 0..199 and a random 64 bit aligned size
-    std::vector<ScenarioLabel> labels;
+    // genreate labels 0..MAX_LABELS and a random 64 bit aligned size
+    std::array<ScenarioLabel, MAX_LABELS> labels;
     for (int i = 0; i < MAX_LABELS; i++) {
         int size = align_64_bit(seed::random_int(KILOBYTE, 500*KILOBYTE, rng));
-        labels.push_back(ScenarioLabel{
+        labels[i] = (ScenarioLabel{
             i, 
             static_cast<size_t>(size),
             false
         });
     }
 
+    // generate everyones send labels list
     for (int i = 0; i < NUM_NODES; i++) {
-        scenarios[i].id = i;
+        auto& node = scenario.nodes[i];
+        node.id = i;
 
         // randomize number of labels to send
-        int num_to_send = seed::random_int(1, MAX_SEND_LABELS, rng);
-        auto send_label_indices = seed::random_unique_range(0, MAX_LABELS, num_to_send, rng);
+        int num_to_send = seed::random_int(MIN_SEND_LABELS, MAX_SEND_LABELS, rng);
+        auto send_label_indices = seed::random_unique_range(0, MAX_LABELS - 1, num_to_send, rng);
 
-        // pick send labels that are not already claimed
+        // pick labels to send that have not been picked by someone else
         for (const auto& lbl_idx : send_label_indices) {
-            if (labels[lbl_idx].is_sent) continue; // someone already sending this
+            // someone else sends this, skip it
+            if (labels[lbl_idx].is_sent) continue; 
 
-            int wait_ms = seed::random_int(50, 500, rng);
-            scenarios[i].send_labels.push_back(
+            // send this label
+            int wait_ms = seed::random_int(MIN_SEND_RATE, MAX_SEND_RATE, rng);
+            node.send_labels.push_back(
                 ScenarioSendLabel{
                     labels[lbl_idx].id,
                     labels[lbl_idx].size,
@@ -43,47 +58,84 @@ std::vector<NodeScenario> generate_test_scenario() {
             );
             labels[lbl_idx].is_sent = true;
         }
+        node.send_count = node.send_labels.size();
+    }
+
+    // generate everyones recv labels list
+    for (int i = 0; i < NUM_NODES; i++) {
+        auto& node = scenario.nodes[i];
+        node.id = i;
 
         // randomize number of labels to recv
-        int num_to_recv = seed::random_int(1, MAX_RECV_LABELS, rng);
-        auto recv_label_indices = seed::random_unique_range(0, MAX_LABELS, num_to_recv, rng);
+        int num_to_recv = seed::random_int(MIN_RECV_LABELS, MAX_RECV_LABELS, rng);
+        auto recv_label_indices = seed::random_unique_range(0, MAX_LABELS - 1, num_to_recv, rng);
 
-        // pick recv labels that are being sent
+        // pick labels to recv that is marked as being sent
         for (const auto& lbl_idx : recv_label_indices) {
-            if (!labels[lbl_idx].is_sent) continue; // no one sends this, skip it
+            // no one sends this, skip it
+            if (!labels[lbl_idx].is_sent) continue;
+            
+            // do not recv a label we send
+            auto it = std::find_if(
+                node.send_labels.begin(),
+                node.send_labels.end(),
+                [&](const ScenarioSendLabel& s){
+                    return s.id == labels[lbl_idx].id;
+                }
+            );
+            if (it != node.send_labels.end()) continue;
 
-            scenarios[i].recv_labels.push_back(
+            // recv this label
+            node.recv_labels.push_back(
                 ScenarioRecvLabel{
                     labels[lbl_idx].id,
                     labels[lbl_idx].size,
                 }
             );
         }
+        node.recv_count = node.recv_labels.size();
     }
 
-    return scenarios;
+    return scenario;
 }
 
-
-void write_to_file(const char* filepath, const std::vector<NodeScenario>& scenarios) {
-    if (scenarios.empty()) return;
-
+void write_scenario_to_file(const TestScenario& scenario) {
+    if (scenario.nodes.empty()) return;
+    std::string filepath = "scenarios/scenario_" + std::to_string(scenario.seed) +  ".txt";
     std::ofstream file(filepath);
-    file << "SCENARIOS:" << std::endl;
-    for (const auto& s : scenarios) {
-        file << "  ID: " << s.id << std::endl;
+    file << "SCENARIO " << scenario.seed << std::endl;
+    file << std::endl;
 
-        file << "    send labels:";
-        for (const auto& send : s.send_labels) {
-            file << "[" << send.id << ", " << send.size << ", " << send.send_rate_ms << "], ";
+    for (const auto& s : scenario.nodes) {
+        file << "  NODE ID: " << s.id << std::endl;
+
+        std::string send_labels_line = "    send labels (" + std::to_string(s.send_count) + "): ";
+        file << std::left << std::setw(22) << send_labels_line;
+
+        for (size_t i = 0; i < s.send_labels.size(); i++) {
+            auto slbl = s.send_labels[i];
+            std::string line = "[" + std::to_string(slbl.id) + ", " + std::to_string(slbl.size) + ", " + std::to_string(slbl.send_rate_ms) + "]";
+            if (i + 1 >= s.send_labels.size()) {
+                file << std::left << std::setw(20) << line << std::endl;
+            } else {
+                file << std::left << std::setw(20) << line;
+            }
+        }
+        if (s.send_labels.size() <= 0) file << std::endl;
+
+        std::string recv_labels_line = "    recv labels (" + std::to_string(s.recv_count) + "): ";
+        file << std::left << std::setw(22) << recv_labels_line;
+
+        for (size_t i = 0; i < s.recv_labels.size(); i++) {
+            auto rlbl = s.recv_labels[i];
+            std::string line = "[" + std::to_string(rlbl.id) + ", " + std::to_string(rlbl.size) + "]";
+            if (i + 1 >= s.recv_labels.size()) {
+                file << std::left << std::setw(20) << line << std::endl;;
+            } else {
+                file << std::left << std::setw(20) << line;
+            }
         }
         file << std::endl;
-
-        file << "    recv labels:";
-        for (const auto& recv : s.recv_labels) {
-            file << "[" << recv.id << ", " << recv.size << "], ";
-        }
-        file << std::endl;
-        file << std::endl;
+        if (s.recv_labels.size() <= 0) file << std::endl;
     }
 }

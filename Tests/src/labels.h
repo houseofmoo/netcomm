@@ -1,22 +1,42 @@
 #pragma once
 
 #include <memory>
+#include "scenario/scenario.h"
+#if defined(EROIL_WIN32)
 #include "windows_hdr.h"
+#elif defined(EROIL_LINUX)
+#include <semaphore.h>
+#endif
+
+
+constexpr size_t KILOBYTE = 1024;
 
 struct SendLabel {
     int id;
-    int size;
+    size_t size;
+    int sleep_time;
     std::unique_ptr<std::uint8_t[]> buf;
 
     std::uint8_t* get_buf() { return buf.get(); }
 };
 
-inline SendLabel make_send_label(int id, int size) {
+inline SendLabel make_send_label(int id, size_t size, int sleep_time) {
     return SendLabel {
         id,
         size,
+        sleep_time,
         std::make_unique<std::uint8_t[]>(size)
     };
+}
+
+inline std::vector<std::shared_ptr<SendLabel>> make_send_list(const std::vector<ScenarioSendLabel>& send_labels) {
+    std::vector<std::shared_ptr<SendLabel>> labels;
+    for(const auto& r : send_labels) {
+        labels.push_back(
+            std::make_shared<SendLabel>(make_send_label(r.id, r.size, r.send_rate_ms))
+        );
+    }   
+    return labels;
 }
 
 #if defined(EROIL_WIN32)
@@ -42,10 +62,7 @@ inline RecvLabel make_recv_label(int id, int size) {
         ::CreateSemaphoreW(nullptr, 0, 1000, nullptr)
     };
 }
-#endif
-
-#if defined(EROIL_LINUX)
-#include <semaphore.h>
+#elif defined(EROIL_LINUX)
 struct RecvLabel {
     int id;
     int size;
@@ -72,3 +89,13 @@ inline RecvLabel make_recv_label(int id, int size) {
     };
 }
 #endif
+
+inline std::vector<std::shared_ptr<RecvLabel>> make_recv_list(const std::vector<ScenarioRecvLabel>& recv_labels) {
+    std::vector<std::shared_ptr<RecvLabel>> labels;
+    for(const auto& r : recv_labels) {
+        labels.push_back(
+            std::make_shared<RecvLabel>(make_recv_label(r.id, r.size))
+        );
+    }   
+    return labels;
+}
