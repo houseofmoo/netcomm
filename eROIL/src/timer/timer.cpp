@@ -1,16 +1,13 @@
 #include "timer.h"
 #include "time_log.h"
-#include <chrono>
 
 namespace eroil::time {
-    Timer::Timer(std::string name) : m_name(std::move(name)), m_start_ns(0) {
-        auto start_now = std::chrono::steady_clock::now();
-        m_start_ns = std::chrono::duration_cast<std::chrono::nanoseconds>(start_now.time_since_epoch()).count(); 
+    Timer::Timer(std::string name) : m_name(std::move(name)), m_start{} {
+        m_start = std::chrono::steady_clock::now();
     }
 
     Timer::~Timer() {
-        auto end_now = std::chrono::steady_clock::now();
-        auto end_ns = std::chrono::duration_cast<std::chrono::nanoseconds>(end_now.time_since_epoch()).count(); 
-        time_log.insert(std::move(m_name), end_ns - m_start_ns);
+        auto end = std::chrono::steady_clock::now().time_since_epoch() - m_start.time_since_epoch();
+        time_log.insert(std::move(m_name), end.count() );
     }
 }

@@ -3,7 +3,7 @@
 #include <cstring>
 #include <eROIL/print.h>
 #include "types/types.h"
-#include "platform.h"
+#include "platform/platform.h"
 
 namespace eroil {
     SendResult Dispatcher::dispatch_send_targets(const SendTargets& targets,
@@ -92,7 +92,7 @@ namespace eroil {
                 targets.publisher->iosb_index = (targets.publisher->iosb_index + 1) % targets.publisher->num_iosb;
             }
             
-            signal_sem(targets.publisher->sem, 0);
+            plat::signal_sem(targets.publisher->sem, 0);
         }
 
         result.send_err = failed ? SendOpErr::Failed : SendOpErr::None;
@@ -139,7 +139,7 @@ namespace eroil {
             
             subs->buf_index = (subs->buf_index + 1) % subs->buf_slots;
 
-            signal_sem(subs->sem, subs->signal_mode);
+            plat::signal_sem(subs->sem, subs->signal_mode);
         }
     }
 }

@@ -7,6 +7,7 @@
 #include <eROIL/print.h>
 #include "types/types.h"
 #include "timer/timer.h"
+#include "platform/platform.h"
 
 namespace eroil {
     static int32_t unique_id() {
@@ -118,6 +119,7 @@ namespace eroil {
         send_broadcast_thread.detach();
 
         std::thread recv_broadcast_thread([this]() {
+            plat::affinitize_current_thread(2);
             while (true) { recv_broadcast(); }
         });
         recv_broadcast_thread.detach();
