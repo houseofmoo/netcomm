@@ -5,6 +5,7 @@
 #include <fstream>
 #include <iomanip>
 #include <array>
+#include <filesystem>
 #include "labels.h"
 #include <eROIL/print.h>
 
@@ -99,10 +100,17 @@ TestScenario generate_test_scenario(int seed) {
     return scenario;
 }
 
-void write_scenario_to_file(const TestScenario& scenario) {
+void write_scenario_to_file(const TestScenario& scenario, const bool detailed) {
     if (scenario.nodes.empty()) return;
-    std::string filepath = "scenarios/scenario_" + std::to_string(scenario.seed) +  ".txt";
+    std::string dir = "scenarios";
+    std::string filepath = dir + "/scenario_" + std::to_string(scenario.seed) +  ".txt";
+
+    if (!std::filesystem::exists("scenarios")) {
+        std::filesystem::create_directory("scenarios");
+    }
+
     std::ofstream file(filepath);
+
     file << "SCENARIO " << scenario.seed << std::endl;
     file << std::endl;
 
@@ -114,12 +122,17 @@ void write_scenario_to_file(const TestScenario& scenario) {
 
         for (size_t i = 0; i < s.send_labels.size(); i++) {
             auto slbl = s.send_labels[i];
-            std::string line = "[" + std::to_string(slbl.id) + ", " + std::to_string(slbl.size) + ", " + std::to_string(slbl.send_rate_ms) + "]";
-            if (i + 1 >= s.send_labels.size()) {
-                file << std::left << std::setw(20) << line << std::endl;
-            } else {
+            std::string line;
+            
+            if (detailed) {
+                line = "[" + std::to_string(slbl.id) + ", " + std::to_string(slbl.size) + ", " + std::to_string(slbl.send_rate_ms) + "]";
                 file << std::left << std::setw(20) << line;
+            } else {
+                line = line = "[" + std::to_string(slbl.id) + "]";
+                file << std::left << std::setw(6) << line;
             }
+
+            if (i + 1 >= s.send_labels.size()) file << std::endl;
         }
         if (s.send_labels.size() <= 0) file << std::endl;
 
@@ -128,12 +141,17 @@ void write_scenario_to_file(const TestScenario& scenario) {
 
         for (size_t i = 0; i < s.recv_labels.size(); i++) {
             auto rlbl = s.recv_labels[i];
-            std::string line = "[" + std::to_string(rlbl.id) + ", " + std::to_string(rlbl.size) + "]";
-            if (i + 1 >= s.recv_labels.size()) {
-                file << std::left << std::setw(20) << line << std::endl;;
-            } else {
+            std::string line;
+
+            if (detailed) {
+                line = "[" + std::to_string(rlbl.id) + ", " + std::to_string(rlbl.size) + "]";
                 file << std::left << std::setw(20) << line;
+            } else {
+                line = "[" + std::to_string(rlbl.id) + "]";
+                file << std::left << std::setw(6) << line;
             }
+
+            if (i + 1 >= s.recv_labels.size()) file  << std::endl;
         }
         file << std::endl;
         if (s.recv_labels.size() <= 0) file << std::endl;

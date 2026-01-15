@@ -56,7 +56,7 @@ namespace eroil {
                     );
                     ERR_PRINT(
                         "socket send for label=", targets.label, 
-                        "errorcode=", (int)sock_err.code, ", op=", (int)sock_err.op
+                        ", errorcode=", (int)sock_err.code, ", op=", (int)sock_err.op
                     );
                 }
             }

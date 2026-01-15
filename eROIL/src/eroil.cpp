@@ -36,7 +36,7 @@ int NAE_Get_ROIL_Node_ID() {
 // old interface test
 bool init_manager(int id) {
     print::set_id(id);
-    config = eroil::get_manager_cfg(id, eroil::ManagerMode::TestMode_Sim_Network);
+    config = eroil::get_manager_cfg(id, eroil::ManagerMode::TestMode_Local_ShmOnly);
     manager = std::make_unique<eroil::Manager>(config);
     initialized = manager->init();
     return initialized;

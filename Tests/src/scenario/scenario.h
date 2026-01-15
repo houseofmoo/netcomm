@@ -4,11 +4,11 @@
 constexpr int NUM_NODES = 20;
 constexpr int MAX_LABELS = 200;
 
-constexpr int MIN_SEND_LABELS = 5;
-constexpr int MAX_SEND_LABELS = 10;
+constexpr int MIN_SEND_LABELS = 10;
+constexpr int MAX_SEND_LABELS = 20;
 
-constexpr int MIN_RECV_LABELS = 5;
-constexpr int MAX_RECV_LABELS = 25;
+constexpr int MIN_RECV_LABELS = 20;
+constexpr int MAX_RECV_LABELS = 100;
 
 constexpr int MIN_SEND_RATE = 10;
 constexpr int MAX_SEND_RATE = 500;
@@ -43,4 +43,4 @@ struct TestScenario {
 };
 
 TestScenario generate_test_scenario(const int seed);
-void write_scenario_to_file(const TestScenario& scenario);
+void write_scenario_to_file(const TestScenario& scenario, const bool detailed);
