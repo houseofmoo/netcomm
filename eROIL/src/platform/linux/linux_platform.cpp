@@ -9,7 +9,32 @@ namespace eroil::plat {
     static_assert(std::is_same_v<sem_handle, void*>);
     void signal_sem(sem_handle sem, int /*signal_mode*/) {
         if (sem == nullptr) { 
-            ERR_PRINT("tried to post() a null semaphore");
+            ERR_PRINT("tried to signal null semaphore");
+            return;
+        }
+
+        ::sem_post(static_cast<sem_t*>(sem)); 
+    }
+
+    void signal_sem(sem_handle sem) {
+        if (sem == nullptr) { 
+            ERR_PRINT("tried to signal null semaphore");
+            return;
+        }
+
+        ::sem_post(static_cast<sem_t*>(sem)); 
+    }
+
+    void try_signal_sem(sem_handle sem, int /*signal_mode*/) {
+        if (sem == nullptr) { 
+            return;
+        }
+
+        ::sem_post(static_cast<sem_t*>(sem)); 
+    }
+
+    void try_signal_sem(sem_handle sem) {
+        if (sem == nullptr) { 
             return;
         }
 

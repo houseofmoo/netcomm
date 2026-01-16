@@ -10,30 +10,23 @@ namespace eroil {
                                                  const void* buf,
                                                  size_t size) const {
         bool failed = false;
-        SendResult result{};
+        SendResult result{ SendOpErr::None, shm::ShmOpErr::None, {} };
 
         // local
         if (targets.has_local) {
-            if (targets.shm != nullptr) {
-                auto shm_err = targets.shm->write(buf, size);
-                if (shm_err != shm::ShmOpErr::None) {
-                    result.shm_err = shm_err;
-                    failed = true;
-                    ERR_PRINT("shared memory write for label=", targets.label, "err=", (int)shm_err);
-                }
+            auto shm_err = targets.shm->write(buf, size);
+            if (shm_err != shm::ShmOpErr::None) {
+                result.shm_err = shm_err;
+                failed = true;
+                ERR_PRINT("shared memory write for label=", targets.label, "err=", (int)shm_err);
+            }
 
-                for (auto evt : targets.shm_signals) {
-                    if (evt == nullptr) {
-                        ERR_PRINT("shared memory named event was null for label=", targets.label);
-                        continue;
-                    }
-                    evt->post();
+            for (auto evt : targets.shm_signals) {
+                if (evt == nullptr) {
+                    ERR_PRINT("shared memory named event was null for label=", targets.label);
+                    continue;
                 }
-            } else {
-                ERR_PRINT(
-                    "expected to have local subscribers, but shm block is null for label=", 
-                    targets.label
-                );
+                evt->post();
             }
         }
 
@@ -66,7 +59,7 @@ namespace eroil {
         if (targets.publisher != nullptr) { 
             // ... there may not be a iosb
             if (targets.publisher->iosb != nullptr && targets.publisher->num_iosb > 0) {
-                auto iosb = targets.publisher->iosb + targets.publisher->iosb_index;
+                eroil::SendIosb* iosb = targets.publisher->iosb + targets.publisher->iosb_index;
 
                 // TODO: we need a way to tell what buffer was used the buf in the IOSB
                 // or a buffer that was provided, that way we can set iosb->pMsgAddr correctly
@@ -92,7 +85,7 @@ namespace eroil {
                 targets.publisher->iosb_index = (targets.publisher->iosb_index + 1) % targets.publisher->num_iosb;
             }
             
-            plat::signal_sem(targets.publisher->sem, 0);
+            plat::try_signal_sem(targets.publisher->sem);
         }
 
         result.send_err = failed ? SendOpErr::Failed : SendOpErr::None;
@@ -114,7 +107,7 @@ namespace eroil {
 
             // write recvrs IOSB 
             if (subs->iosb != nullptr && subs->num_iosb > 0) {
-                auto iosb = subs->iosb + subs->iosb_index;
+                eroil::ReceiveIosb* iosb = subs->iosb + subs->iosb_index;
 
                 iosb->Status = size; // number of bytes sent is status (-1 is error, 0 is disconnected)
                 iosb->Reserve1 = 0;
@@ -139,7 +132,7 @@ namespace eroil {
             
             subs->buf_index = (subs->buf_index + 1) % subs->buf_slots;
 
-            plat::signal_sem(subs->sem, subs->signal_mode);
+            plat::try_signal_sem(subs->sem, subs->signal_mode);
         }
     }
 }

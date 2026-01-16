@@ -17,20 +17,21 @@ namespace eroil {
 
     Manager::Manager(ManagerConfig cfg) 
         : m_id(cfg.id), 
+        m_cfg(cfg),
         m_router{}, 
         m_context{},
         m_comms{cfg.id, m_router},
         m_broadcast{},
         m_valid(false) {
-
+                
         // confirm we know who the fuck we are
-        if (static_cast<size_t>(m_id) > cfg.nodes.size()) {
+        if (static_cast<size_t>(m_id) > m_cfg.nodes.size()) {
             ERR_PRINT("manager has no entry in nodes info list, manager cannot initialize");
             m_valid = false;
             return;
         }
-        
-        m_valid = addr::insert_addresses(cfg.nodes[m_id], cfg.nodes, cfg.mode);
+
+        m_valid = addr::insert_addresses(m_cfg.nodes[m_id], m_cfg.nodes, m_cfg.mode);
     }
 
     bool Manager::init() {
@@ -41,6 +42,10 @@ namespace eroil {
 
         m_comms.start();
         start_broadcast();
+
+        // wait about 1 minute then dump time info
+        //time::time_log.timed_run(m_id, 60 * 1000);
+
         return true;
     }
 
@@ -102,10 +107,15 @@ namespace eroil {
     }
 
     bool Manager::start_broadcast() {
-        sock::UdpMcastConfig cfg;
-        auto result = m_broadcast.open_and_join(cfg);
+        auto result = m_broadcast.open_and_join(m_cfg.mcast_cfg);
         if (result.code != sock::SockErr::None) {
-            ERR_PRINT("udp multicast group join failed, broadcast exiting");
+            ERR_PRINT("udp multicast group join failed, config dump:");
+            ERR_PRINT("    group ip=   ", m_cfg.mcast_cfg.group_ip, ":", m_cfg.mcast_cfg.port);
+            ERR_PRINT("    bind ip=    ", m_cfg.mcast_cfg.bind_ip);
+            ERR_PRINT("    ttl=        ", m_cfg.mcast_cfg.ttl);
+            ERR_PRINT("    loopback=   ", m_cfg.mcast_cfg.loopback);
+            ERR_PRINT("    reuse_addr= ", m_cfg.mcast_cfg.reuse_addr);
+            ERR_PRINT("SOCKET ERROR DETAILS:");
             print_socket_result(result);
             return false;
         }
@@ -119,11 +129,12 @@ namespace eroil {
         send_broadcast_thread.detach();
 
         std::thread recv_broadcast_thread([this]() {
-            plat::affinitize_current_thread(2);
+            //plat::affinitize_current_thread(2);
             while (true) { recv_broadcast(); }
         });
         recv_broadcast_thread.detach();
         
+        LOG("udp multicast group joined, broadcast send/recv threads started");
         return true;
     }
 

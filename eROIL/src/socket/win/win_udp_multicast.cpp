@@ -51,8 +51,8 @@ namespace eroil::sock {
         result.op = SockOp::Open;
 
         if (handle_valid()) { result.code = SockErr::DoubleOpen; return result; }
-        if (!cfg.group_ip || *cfg.group_ip == '\0') { result.code = SockErr::InvalidIp; return result; }
-        if (!cfg.bind_ip  || *cfg.bind_ip  == '\0') { result.code = SockErr::InvalidIp; return result; }
+        if (cfg.group_ip.empty()) { result.code = SockErr::InvalidIp; return result; }
+        if (cfg.bind_ip.empty()) { result.code = SockErr::InvalidIp; return result; }
         if (cfg.port == 0) { result.code = SockErr::InvalidArgument; return result; }
 
         SOCKET sock = ::socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP);
@@ -78,7 +78,7 @@ namespace eroil::sock {
         local.sin_family = AF_INET;
         local.sin_port = htons(cfg.port);
 
-        if (::inet_pton(AF_INET, cfg.bind_ip, &local.sin_addr) != 1) {
+        if (::inet_pton(AF_INET, cfg.bind_ip.c_str(), &local.sin_addr) != 1) {
             close();
             result.code = SockErr::InvalidIp;
             return result;
@@ -110,7 +110,7 @@ namespace eroil::sock {
         // join group
         result.op = SockOp::Join;
         ip_mreq mreq{};
-        if (::inet_pton(AF_INET, cfg.group_ip, &mreq.imr_multiaddr) != 1) {
+        if (::inet_pton(AF_INET, cfg.group_ip.c_str(), &mreq.imr_multiaddr) != 1) {
             ERR_PRINT("err ::join()");
             close();
             result.code = SockErr::InvalidIp;
@@ -145,7 +145,7 @@ namespace eroil::sock {
         dst.sin_family = AF_INET;
         dst.sin_port = htons(m_cfg.port);
 
-        if (::inet_pton(AF_INET, m_cfg.group_ip, &dst.sin_addr) != 1) {
+        if (::inet_pton(AF_INET, m_cfg.group_ip.c_str(), &dst.sin_addr) != 1) {
             result.code = SockErr::InvalidIp;
             return result;
         }

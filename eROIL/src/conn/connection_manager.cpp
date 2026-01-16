@@ -44,7 +44,7 @@ namespace eroil {
             }
             case evt::SemOpErr::WouldBlock: // fallthrough
             case evt::SemOpErr::Timeout: {
-                ERR_PRINT("remote peer search took longer than 10 seconds to complete");
+                ERR_PRINT("remote peer search took longer than 10 seconds to complete, continuing to search in background");
                 break;
             }
             case evt::SemOpErr::NotInitialized: // fallthrough
@@ -172,7 +172,7 @@ namespace eroil {
     }
 
     void ConnectionManager::search_remote_peers() {
-        LOG("searching for peers...");
+        LOG("searching for remote peers...");
 
         // TODO: if not all peers start at the same time, this thread will
         // continue until we find every peer we expect to, searching every

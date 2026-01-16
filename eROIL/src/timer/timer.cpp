@@ -7,7 +7,10 @@ namespace eroil::time {
     }
 
     Timer::~Timer() {
-        auto end = std::chrono::steady_clock::now().time_since_epoch() - m_start.time_since_epoch();
-        time_log.insert(std::move(m_name), end.count() );
+        auto duration_us = std::chrono::duration_cast<std::chrono::microseconds>(
+            std::chrono::steady_clock::now() - m_start
+        ).count();
+
+        time_log.insert(std::move(m_name), duration_us );
     }
 }

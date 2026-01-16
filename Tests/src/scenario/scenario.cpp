@@ -105,8 +105,8 @@ void write_scenario_to_file(const TestScenario& scenario, const bool detailed) {
     std::string dir = "scenarios";
     std::string filepath = dir + "/scenario_" + std::to_string(scenario.seed) +  ".txt";
 
-    if (!std::filesystem::exists("scenarios")) {
-        std::filesystem::create_directory("scenarios");
+    if (!std::filesystem::exists(dir)) {
+        std::filesystem::create_directory(dir);
     }
 
     std::ofstream file(filepath);
@@ -155,5 +155,7 @@ void write_scenario_to_file(const TestScenario& scenario, const bool detailed) {
         }
         file << std::endl;
         if (s.recv_labels.size() <= 0) file << std::endl;
+
+        file.close();
     }
 }

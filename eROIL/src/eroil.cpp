@@ -15,7 +15,7 @@ static eroil::ManagerConfig config{};
 static bool initialized = false;
 
 int NAE_Init(int /*iModuleId*/, int /*iProgramIDOffset*/, int /*iManager_CPU_ID*/, int /*iMaxNumCpus*/, int iNodeId) {
-    config = eroil::get_manager_cfg(iNodeId, eroil::ManagerMode::Normal);
+    config = eroil::get_manager_cfg(iNodeId);
     manager = std::make_unique<eroil::Manager>(config);
     initialized = manager->init();
     return initialized ? 1 : 0;
@@ -36,7 +36,7 @@ int NAE_Get_ROIL_Node_ID() {
 // old interface test
 bool init_manager(int id) {
     print::set_id(id);
-    config = eroil::get_manager_cfg(id, eroil::ManagerMode::TestMode_Local_ShmOnly);
+    config = eroil::get_manager_cfg(id);
     manager = std::make_unique<eroil::Manager>(config);
     initialized = manager->init();
     return initialized;

@@ -3,22 +3,10 @@
 #include <utility>
 
 #include "types/types.h"
+#include "config/config.h"
 #include "socket_result.h"
 
 namespace eroil::sock {
-
-    struct UdpMcastConfig {
-        const char* group_ip = "239.255.0.1"; // administratively-scoped example
-        uint16_t port = 30001;
-        const char* bind_ip = "0.0.0.0"; // INADDR_ANY
-        int ttl = 1;
-        bool loopback = true;
-        bool reuse_addr = true;
-
-        // optional: choose NIC for multicast (Windows uses interface index or local IP)
-        // let OS choose default route for now
-    };
-
     class UDPMulticastSocket final {
         private:
             socket_handle m_handle;

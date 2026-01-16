@@ -50,3 +50,4 @@ libs/raylib/.github
 libs/raylib/.zig-cache
 .VSCodeCounter/
 scenarios/
+timelog/

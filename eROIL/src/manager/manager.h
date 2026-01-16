@@ -14,6 +14,7 @@ namespace eroil {
     class Manager {
         private:
             NodeId m_id;
+            ManagerConfig m_cfg;
             Router m_router;
             sock::SocketContext m_context;
             ConnectionManager m_comms;
