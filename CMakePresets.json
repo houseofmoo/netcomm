@@ -7,8 +7,7 @@
       "generator": "Unix Makefiles",
       "binaryDir": "${sourceDir}/build/linux-debug",
       "cacheVariables": {
-        "CMAKE_BUILD_TYPE": "Debug",
-        "PROFILER_ENABLED": "false"
+        "CMAKE_BUILD_TYPE": "Debug"
       }
     },
     {
@@ -18,7 +17,7 @@
       "binaryDir": "${sourceDir}/build/linux-release",
       "cacheVariables": {
         "CMAKE_BUILD_TYPE": "Release",
-        "PROFILER_ENABLED": "false"
+        "EROIL_ELOG_ENABLED": "0"
       }
     },
 
@@ -29,8 +28,7 @@
       "generator": "MinGW Makefiles",
       "binaryDir": "${sourceDir}/build/debug",
       "cacheVariables": {
-        "CMAKE_BUILD_TYPE": "Debug",
-        "PROFILER_ENABLED": "false"
+        "CMAKE_BUILD_TYPE": "Debug"
       }
     },
     {
@@ -40,7 +38,8 @@
       "generator": "MinGW Makefiles",
       "binaryDir": "${sourceDir}/build/release",
       "cacheVariables": {
-        "CMAKE_BUILD_TYPE": "Release"
+        "CMAKE_BUILD_TYPE": "Release",
+        "EROIL_ELOG_ENABLED": "0"
       }
     },
     {

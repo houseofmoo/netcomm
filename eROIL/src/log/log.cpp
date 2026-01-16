@@ -3,6 +3,13 @@
 #include <chrono>
 #include <cstring>
 
+// leaving this in as a sanity check during builds
+#if EROIL_ELOG_ENABLED
+#   pragma message("EROIL ELOG ENABLED")
+#else
+#   pragma message("EROIL ELOG DISABLED")
+#endif
+
 namespace eroil::elog {
     EventLog g_event_log;
 
