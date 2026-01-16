@@ -4,11 +4,13 @@
 #include <vector>
 #include "types/types.h"
 
-namespace eroil {
-    constexpr std::string_view MANAGE_CONFIG_FILE_PATH = "etc/manager.cfg";
-    constexpr std::string_view PEER_IP_FILE_PATH = "etc/peer_ips.cfg";
-    constexpr const char* LOCAL_HOST = "127.0.0.1";
-    constexpr uint16_t PORT_START = 8080;
+namespace eroil::cfg {
+    namespace detail {
+        constexpr std::string_view MANAGE_CONFIG_FILE_PATH = "etc/manager.cfg";
+        constexpr std::string_view PEER_IP_FILE_PATH = "etc/peer_ips.cfg";
+        constexpr const char* LOCAL_HOST = "127.0.0.1";
+        constexpr uint16_t PORT_START = 8080;
+    }
 
     struct NodeInfo {
         NodeId id;

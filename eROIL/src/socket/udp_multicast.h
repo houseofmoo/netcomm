@@ -12,7 +12,7 @@ namespace eroil::sock {
             socket_handle m_handle;
             bool m_open;
             bool m_joined;
-            UdpMcastConfig m_cfg{};
+            cfg::UdpMcastConfig m_cfg{};
 
         public:
             UDPMulticastSocket();
@@ -27,7 +27,7 @@ namespace eroil::sock {
             UDPMulticastSocket& operator=(UDPMulticastSocket&& other) noexcept;
 
             bool is_open() const noexcept;
-            SockResult open_and_join(const UdpMcastConfig& cfg);
+            SockResult open_and_join(const cfg::UdpMcastConfig& cfg);
 
             SockResult send_broadcast(const void* data, size_t size) noexcept;
             SockResult recv_broadcast(void* data, size_t size) noexcept;

@@ -42,7 +42,7 @@ namespace print {
     #define ERR_PRINT(...) print::ERR_PRINT(__VA_ARGS__)
     #define LOG(...) print::log(__VA_ARGS__)
 #else // release
-    #define PRINT(...)
+    #define PRINT(...) do { (void)0; } while (0)
     #define ERR_PRINT(...) print::ERR_PRINT(__VA_ARGS__)
     #define LOG(...) print::log(__VA_ARGS__)
 #endif

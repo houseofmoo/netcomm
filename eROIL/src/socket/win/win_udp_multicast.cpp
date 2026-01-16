@@ -45,7 +45,7 @@ namespace eroil::sock {
         return m_open && handle_valid();
     }
 
-    SockResult UDPMulticastSocket::open_and_join(const UdpMcastConfig& cfg) {
+    SockResult UDPMulticastSocket::open_and_join(const cfg::UdpMcastConfig& cfg) {
         // open
         SockResult result{};
         result.op = SockOp::Open;

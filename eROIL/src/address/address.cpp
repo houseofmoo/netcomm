@@ -16,7 +16,7 @@ namespace eroil::addr {
         return it->second;
     }
 
-    void insert_normal(const NodeInfo self, const std::vector<NodeInfo> nodes) {
+    void insert_normal(const cfg::NodeInfo self, const std::vector<cfg::NodeInfo> nodes) {
         for (const auto& node : nodes) {
             if (node.id < 0) continue; // expected when node IDs are not sequential
             
@@ -40,7 +40,7 @@ namespace eroil::addr {
         }
     }
 
-    void insert_as_shm(const NodeInfo self, const std::vector<NodeInfo> nodes) {
+    void insert_as_shm(const cfg::NodeInfo self, const std::vector<cfg::NodeInfo> nodes) {
         PRINT("making shm only address book");
         for (const auto& node : nodes) {
             if (node.id < 0) continue; // expected when node IDs are not sequential
@@ -63,7 +63,7 @@ namespace eroil::addr {
         }
     }
 
-    void insert_as_socket(const NodeInfo self, const std::vector<NodeInfo> nodes) {
+    void insert_as_socket(const cfg::NodeInfo self, const std::vector<cfg::NodeInfo> nodes) {
         PRINT("making socket only address book");
         for (const auto& node : nodes) {
             if (node.id < 0) continue; // expected when node IDs are not sequential
@@ -86,7 +86,7 @@ namespace eroil::addr {
         }
     }
 
-    void make_test_network(const NodeInfo self, const std::vector<NodeInfo> nodes) {
+    void make_test_network(const cfg::NodeInfo self, const std::vector<cfg::NodeInfo> nodes) {
         PRINT("making test network address book");
 
         for (const auto& node : nodes) {
@@ -113,7 +113,7 @@ namespace eroil::addr {
         }
     }
 
-    bool insert_addresses(const NodeInfo self, const std::vector<NodeInfo> nodes, const ManagerMode mode) {
+    bool insert_addresses(const cfg::NodeInfo self, const std::vector<cfg::NodeInfo> nodes, const cfg::ManagerMode mode) {
         if (self.id < 0) {
             ERR_PRINT("address book recvd a self.id < 0, which makes no sense");
             return false;
@@ -125,11 +125,11 @@ namespace eroil::addr {
         }
 
         switch (mode) {
-            case ManagerMode::TestMode_Local_ShmOnly: insert_as_shm(self, nodes); break;
-            case ManagerMode::TestMode_Lopcal_SocketOnly: insert_as_socket(self, nodes); break;
-            case ManagerMode::TestMode_Sim_Network: make_test_network(self, nodes); break;
+            case cfg::ManagerMode::TestMode_Local_ShmOnly: insert_as_shm(self, nodes); break;
+            case cfg::ManagerMode::TestMode_Lopcal_SocketOnly: insert_as_socket(self, nodes); break;
+            case cfg::ManagerMode::TestMode_Sim_Network: make_test_network(self, nodes); break;
             
-            case ManagerMode::Normal: // fall through
+            case cfg::ManagerMode::Normal: // fall through
             default: insert_normal(self, nodes); break;
         }
 

@@ -8,6 +8,7 @@
 #include "types/types.h"
 #include "timer/timer.h"
 #include "platform/platform.h"
+#include "log/log.h"
 
 namespace eroil {
     static int32_t unique_id() {
@@ -15,7 +16,7 @@ namespace eroil {
         return next_id.fetch_add(1, std::memory_order_relaxed);
     }
 
-    Manager::Manager(ManagerConfig cfg) 
+    Manager::Manager(cfg::ManagerConfig cfg) 
         : m_id(cfg.id), 
         m_cfg(cfg),
         m_router{}, 
@@ -151,6 +152,8 @@ namespace eroil {
         BroadcastMessage msg;
         m_broadcast.recv_broadcast(&msg, sizeof(msg));
         if (msg.id == m_id) return;
+
+        elog::info_fast(elog_kind::Broadcast_Recv_Start, elog_cat::Broadcast);
         
         // time how long this takes
         //time::Timer t("recv_broadcast()");
@@ -180,6 +183,8 @@ namespace eroil {
 
         // check if they are no longer the publisher of a label we want
         remove_publisher(msg.id, send_labels);
+
+        elog::info_fast(elog_kind::Broadcast_Recv_End, elog_cat::Broadcast);
     }
 
     void Manager::add_new_subscribers(const NodeId source_id, const std::vector<LabelInfo>& recv_labels) {

@@ -14,7 +14,7 @@ namespace eroil {
     class Manager {
         private:
             NodeId m_id;
-            ManagerConfig m_cfg;
+            cfg::ManagerConfig m_cfg;
             Router m_router;
             sock::SocketContext m_context;
             ConnectionManager m_comms;
@@ -22,7 +22,7 @@ namespace eroil {
             bool m_valid;
 
         public:
-            Manager(ManagerConfig cfg);
+            Manager(cfg::ManagerConfig cfg);
             ~Manager() = default;
 
             bool init();

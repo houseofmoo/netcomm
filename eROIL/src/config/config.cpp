@@ -8,7 +8,7 @@
 #include <unordered_map>
 #include <eROIL/print.h>
 
-namespace eroil {
+namespace eroil::cfg {
     std::unordered_map<std::string, std::string> parse_kv_file(const std::string& path) {
         std::unordered_map<std::string, std::string> out;
 
@@ -126,8 +126,8 @@ namespace eroil {
         for (int i = 0; i < 20; i++) {
             nodes.push_back(NodeInfo{
                 i,
-                LOCAL_HOST,
-                static_cast<uint16_t>(PORT_START + i)
+                detail::LOCAL_HOST,
+                static_cast<uint16_t>(detail::PORT_START + i)
             });
         }
         
@@ -139,7 +139,7 @@ namespace eroil {
         cfg.id = id;
         cfg.mode = ManagerMode::Normal;
 
-        auto kv = parse_kv_file(std::string(MANAGE_CONFIG_FILE_PATH));
+        auto kv = parse_kv_file(std::string(detail::MANAGE_CONFIG_FILE_PATH));
 
         // get mode
         if (kv.count("mode")) {
@@ -160,7 +160,7 @@ namespace eroil {
             case ManagerMode::TestMode_Sim_Network: cfg.nodes = build_fake_node_info(); break;
             
             case ManagerMode::Normal: // fallthrough
-            default: cfg.nodes = build_node_info(PEER_IP_FILE_PATH); break;
+            default: cfg.nodes = build_node_info(detail::PEER_IP_FILE_PATH); break;
         }
 
         // get udp config
