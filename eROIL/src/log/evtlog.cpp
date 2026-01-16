@@ -1,22 +1,38 @@
-#include "log.h"
+#include "evtlog.h"
 // #include <thread>
-#include <chrono>
 #include <cstring>
 
-// leaving this in as a sanity check during builds
-#if EROIL_ELOG_ENABLED
-#   pragma message("EROIL ELOG ENABLED")
-#else
-#   pragma message("EROIL ELOG DISABLED")
+#if defined(__x86_64__) || defined(_M_X64) || defined(__i386__) || defined(_M_IX86)
+    // for __rdtsc()
+    #if defined(_MSC_VER)
+        #include <intrin.h>
+    #elif defined(__GNUC__) || defined(__clang__)
+        #include <x86intrin.h>
+    #endif
 #endif
 
-namespace eroil::elog {
+// notify build system of elog status, just nice to confirm
+#if defined(EROIL_ELOG_ENABLED) && EROIL_ELOG_ENABLED == 1
+#pragma message("EROIL ELOG ENABLED")
+#else
+#pragma message("EROIL ELOG DISABLED")
+#endif
+
+namespace eroil::evtlog {
     EventLog g_event_log;
 
-    static uint64_t now_ns() noexcept {
-        return (std::uint64_t)std::chrono::duration_cast<std::chrono::nanoseconds>(
-            std::chrono::steady_clock::now().time_since_epoch()
-        ).count();
+    // inline uint64_t now_ns_steady() noexcept {
+    //     return (std::uint64_t)std::chrono::duration_cast<std::chrono::nanoseconds>(
+    //         std::chrono::steady_clock::now().time_since_epoch()
+    //     ).count();
+    // }
+
+    inline uint64_t now_fast() noexcept {
+        #if defined(__x86_64__) || defined(_M_X64) || defined(__i386__) || defined(_M_IX86)
+        return __rdtsc();
+        #else
+        return 0;//now_ns_steady();
+        #endif
     }
 
     // static std::uint32_t hash_tid() noexcept {
@@ -24,21 +40,21 @@ namespace eroil::elog {
     //     return (std::uint32_t)std::hash<std::thread::id>{}(id);
     // }
 
-    void EventLog::log(EventKind kind,
-                       Severity sev,
-                       Category cat,
-                       std::uint32_t a,
-                       std::uint32_t b,
-                       std::uint32_t c,
-                       const void* payload,
-                       std::uint32_t payload_size) noexcept {
+    void EventLog::log_payload(EventKind kind,
+                               Severity sev,
+                               Category cat,
+                               std::uint32_t a,
+                               std::uint32_t b,
+                               std::uint32_t c,
+                               const void* payload,
+                               std::uint32_t payload_size) noexcept {
 
             const std::uint32_t seq = m_seq.fetch_add(1, std::memory_order_relaxed);
             const std::size_t idx = m_idx.fetch_add(1, std::memory_order_relaxed) & (EVENT_LOG_CAPACITY - 1);
 
             EventRecord& r = m_evt_logs[idx];
 
-            r.time_ns = now_ns();
+            r.tick = now_fast();
             r.seq = seq;
             //r.thread_id = hash_tid();
             r.a = a;
@@ -69,7 +85,7 @@ namespace eroil::elog {
             const std::size_t idx = m_idx.fetch_add(1, std::memory_order_relaxed) & (EVENT_LOG_CAPACITY - 1);
 
             EventRecord& r = m_evt_logs[idx];
-            r.time_ns = now_ns();
+            r.tick = now_fast();
             r.seq = seq;
             //r.thread_id = hash_tid();
             r.a = a;
@@ -90,7 +106,7 @@ namespace eroil::elog {
             const std::size_t idx = m_idx.fetch_add(1, std::memory_order_relaxed) & (EVENT_LOG_CAPACITY - 1);
 
             EventRecord& r = m_evt_logs[idx];
-            r.time_ns = 0;
+            r.tick = 0;
             r.seq = seq;
             //r.thread_id = hash_tid();
             r.a = a;

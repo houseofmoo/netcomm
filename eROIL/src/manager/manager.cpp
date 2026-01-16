@@ -8,7 +8,7 @@
 #include "types/types.h"
 #include "timer/timer.h"
 #include "platform/platform.h"
-#include "log/log.h"
+#include "log/evtlog.h"
 
 namespace eroil {
     static int32_t unique_id() {
@@ -140,20 +140,24 @@ namespace eroil {
     }
 
     void Manager::send_broadcast() {
+        evtlog::info(elog_kind::Send_Start, elog_cat::Broadcast);
         BroadcastMessage msg;
         msg.id = m_id;
         msg.send_labels = m_router.get_send_labels();
         msg.recv_labels = m_router.get_recv_labels();
       
+
         m_broadcast.send_broadcast(&msg, sizeof(msg));
+
+        evtlog::info(elog_kind::Send_End, elog_cat::Broadcast);
     }
 
     void Manager::recv_broadcast() {
         BroadcastMessage msg;
         m_broadcast.recv_broadcast(&msg, sizeof(msg));
         if (msg.id == m_id) return;
-
-        elog::info_fast(elog_kind::Broadcast_Recv_Start, elog_cat::Broadcast);
+        
+        evtlog::info(elog_kind::Recv_Start, elog_cat::Broadcast);
         
         // time how long this takes
         //time::Timer t("recv_broadcast()");
@@ -184,7 +188,7 @@ namespace eroil {
         // check if they are no longer the publisher of a label we want
         remove_publisher(msg.id, send_labels);
 
-        elog::info_fast(elog_kind::Broadcast_Recv_End, elog_cat::Broadcast);
+        evtlog::info(elog_kind::Recv_End, elog_cat::Broadcast);
     }
 
     void Manager::add_new_subscribers(const NodeId source_id, const std::vector<LabelInfo>& recv_labels) {

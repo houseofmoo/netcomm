@@ -3,6 +3,7 @@
 #include <chrono>
 #include "types/types.h"
 #include <eROIL/print.h>
+#include "log/evtlog.h"
 
 namespace eroil {
     static bool map_sock_failures(sock::SockErr err) {
@@ -26,8 +27,14 @@ namespace eroil {
 
     void ConnectionManager::start() {
         m_sender.start();
-        start_tcp_server();
 
+        // tcp server listener thread
+        std::thread tcp_server([this]() {
+            run_tcp_server();
+        });
+        tcp_server.detach();
+
+        // remote peer search thread
         auto search_complete = std::make_shared<evt::Semaphore>();
         std::thread search([this, search_complete]() { 
             search_remote_peers(); 
@@ -55,6 +62,7 @@ namespace eroil {
             }
         }
 
+        // socket monitor thread
         std::thread monitor([this]() { monitor_sockets(); });
         monitor.detach();
     }
@@ -117,58 +125,72 @@ namespace eroil {
         w_it->second->start();
     }
 
-    void ConnectionManager::start_tcp_server() {
+    void ConnectionManager::stop_remote_recv_worker(NodeId from_id) {
+        auto it = m_sock_recvrs.find(from_id);
+        if (it != m_sock_recvrs.end()) {
+            // this call has a thread.join(), if we see a "blocks forever" this may be the cause
+            it->second->stop();
+            m_sock_recvrs.erase(it);
+        }
+    }
+
+    void ConnectionManager::run_tcp_server() {
         auto info = addr::get_address(m_id);
         LOG("tcp server listen start at ", info.ip, ":", info.port);
-        std::thread tcp_server_thread([this, info]() {
-            auto ts_result = m_tcp_server.open_and_listen(info.port);
-            if (ts_result.code != sock::SockErr::None) {
-                ERR_PRINT("tcp server open failed, exiting");
-                print_socket_result(ts_result);
-                return;
+        evtlog::info(elog_kind::TCPServer_Start, elog_cat::TCPServer, info.port);
+
+        auto ts_result = m_tcp_server.open_and_listen(info.port);
+        if (ts_result.code != sock::SockErr::None) {
+            ERR_PRINT("tcp server open failed, exiting");
+            evtlog::crit(elog_kind::StartFailed, elog_cat::TCPServer);
+            print_socket_result(ts_result);
+            return;
+        }
+
+        while (true) {
+            auto [client, result] = m_tcp_server.accept();
+            if (result.code != sock::SockErr::None ||
+                client == nullptr) {
+                ERR_PRINT("tcp server accepted connection but there was an error");
+                evtlog::warn(elog_kind::AcceptFailed, elog_cat::TCPServer);
+                print_socket_result(result);
+                continue;
             }
 
-            while (true) {
-                auto [client, result] = m_tcp_server.accept();
-                if (result.code != sock::SockErr::None ||
-                    client == nullptr) {
-                    ERR_PRINT("tcp server accepted connection but there was an error");
-                    print_socket_result(result);
-                    continue;
-                }
-
-                // they connected to us, they'll send a follow up message
-                LabelHeader hdr{};
-                auto recv_result = client->recv_all(&hdr, sizeof(hdr));
-                if (recv_result.code != sock::SockErr::None) {
-                    ERR_PRINT("tcp server had an error recving client information");
-                    print_socket_result(recv_result);
-                    client->disconnect();
-                    continue;
-                }
-
-                if (hdr.magic != MAGIC_NUM || hdr.version != VERSION) {
-                    ERR_PRINT("tcp server recvd invalid header from client");
-                    client->disconnect();
-                    continue;
-                }
-
-                if (!has_flag(hdr.flags, LabelFlag::Connect)) {
-                    ERR_PRINT("tcp server recvd invalid request type");
-                    client->disconnect();
-                    continue;
-                }
-                
-                client->set_destination_id(hdr.source_id);
-                m_router.upsert_socket(
-                    hdr.source_id,
-                    std::move(client)
-                );
-                start_remote_recv_worker(hdr.source_id);
-                LOG("established tcp connection to node: ", hdr.source_id);
+            // they connected to us, they'll send a follow up message
+            LabelHeader hdr{};
+            auto recv_result = client->recv_all(&hdr, sizeof(hdr));
+            if (recv_result.code != sock::SockErr::None) {
+                ERR_PRINT("tcp server had an error recving client information");
+                evtlog::warn(elog_kind::ConnectionFailed, elog_cat::TCPServer);
+                print_socket_result(recv_result);
+                client->disconnect();
+                continue;
             }
-        });
-        tcp_server_thread.detach();
+
+            if (hdr.magic != MAGIC_NUM || hdr.version != VERSION) {
+                ERR_PRINT("tcp server recvd invalid header from client");
+                evtlog::warn(elog_kind::InvalidHeader, elog_cat::TCPServer);
+                client->disconnect();
+                continue;
+            }
+
+            if (!has_flag(hdr.flags, LabelFlag::Connect)) {
+                ERR_PRINT("tcp server recvd invalid request type");
+                evtlog::warn(elog_kind::InvalidHeader, elog_cat::TCPServer, hdr.source_id);
+                client->disconnect();
+                continue;
+            }
+            
+            client->set_destination_id(hdr.source_id);
+            m_router.upsert_socket(
+                hdr.source_id,
+                std::move(client)
+            );
+            start_remote_recv_worker(hdr.source_id);
+            LOG("established tcp connection to node: ", hdr.source_id);
+            evtlog::info(elog_kind::NewConnection, elog_cat::TCPServer, hdr.source_id);
+        }
     }
 
     void ConnectionManager::search_remote_peers() {
@@ -228,10 +250,12 @@ namespace eroil {
         // every couple of seconds we need to check that the sockets are still alive
         // if theyre dead, stop recv worker and attempt re-connection
         while (true) {
+            evtlog::info(elog_kind::SocketMonitor_Start, elog_cat::SocketMonitor);
             auto sockets = m_router.get_all_sockets();
             for (auto& sock : sockets) {
                 if (sock == nullptr) {
-                    ERR_PRINT("monitor got nullptr instead of socket ptr, socket list is correcpted");
+                    ERR_PRINT("monitor got nullptr instead of socket ptr, socket list is corrupted");
+                    evtlog::crit(elog_kind::MissingSocket, elog_cat::SocketMonitor);
                     continue;
                 }
 
@@ -244,14 +268,10 @@ namespace eroil {
                 NodeId peer_id = sock->get_destination_id();
                 sock->disconnect();
                 LOG("found dead socket to nodeid=", peer_id);
+                evtlog::info(elog_kind::DeadSocket_Found, elog_cat::SocketMonitor, peer_id);
 
                 // if worker is still listening to dead socket, stop and erase them
-                auto worker_it = m_sock_recvrs.find(peer_id);
-                if (worker_it != m_sock_recvrs.end()) {
-                    // this call has a thread.join(), if monitor thread stops responding likely this is the cause
-                    worker_it->second->stop(); 
-                    m_sock_recvrs.erase(worker_it);
-                }
+                stop_remote_recv_worker(peer_id);
 
                 // if they'll reconnect to us dont attempt reconnect
                 if (peer_id >= m_id) {
@@ -264,15 +284,18 @@ namespace eroil {
                 
                 auto result = sock->open_and_connect(addr.ip.c_str(), addr.port);
                 if (result.code != sock::SockErr::None) {
-                    ERR_PRINT("re-connect attempt to ", addr.id, " failed");
+                    evtlog::info(elog_kind::Reconnect_Failed, elog_cat::SocketMonitor, peer_id);
+                    LOG("re-connect attempt to ", addr.id, " failed");
                     continue;
                 }
 
                 send_id(sock.get());
                 LOG("re-established tcp connection to node: ", addr.id);
+                evtlog::info(elog_kind::Reconnect_Success, elog_cat::SocketMonitor, peer_id);
                 start_remote_recv_worker(peer_id);
             }
-            
+
+            evtlog::info(elog_kind::SocketMonitor_End, elog_cat::SocketMonitor);
             std::this_thread::sleep_for(std::chrono::milliseconds(5 * 1000));
         }   
     }

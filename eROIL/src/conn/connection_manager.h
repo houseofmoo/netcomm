@@ -28,9 +28,10 @@ namespace eroil {
             void start_local_recv_worker(Label label, size_t label_size);
             void stop_local_recv_worker(Label label);
             void start_remote_recv_worker(NodeId from_id);
+            void stop_remote_recv_worker(NodeId from_id);
 
         private:
-            void start_tcp_server();
+            void run_tcp_server();
             void search_remote_peers();
             void monitor_sockets();
             bool send_id(sock::TCPClient* sock);
