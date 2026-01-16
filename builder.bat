@@ -3,7 +3,7 @@ setlocal enabledelayedexpansion
 
 rem ============================================================
 rem Usage:
-rem   build.bat [--debug | --release] [--clean] [--run]
+rem   build.bat [--debug | --release] [--clean] [--run] [--log]
 rem ------------------------------------------------------------
 rem Examples:
 rem   build.bat --debug
@@ -18,7 +18,7 @@ set PRESET=debug
 set BUILD_DIR=build
 set CLEAN=false
 set RUN_AFTER_BUILD=false
-set PROFILE=false
+set LOG=0
 
 rem Clean screen
 cls
@@ -34,6 +34,8 @@ cls
         set PRESET=release
     ) else if /I "%~1"=="--clean" (
         set CLEAN=true
+    ) else if /I "%~1"=="--log" (
+        set LOG=1
     ) else (
         echo Unknown option: %~1
         echo Usage: build.bat [--debug^|--release] [--clean] [--install]
@@ -59,7 +61,7 @@ if "%CLEAN%"=="true" (
 
 echo.
 echo Running CMake configure preset "%PRESET%"
-cmake --preset %PRESET% -DPROFILER_ENABLED=%PROFILE%
+cmake --preset %PRESET% -DEROIL_ELOG_ENABLED="%LOG%
 REM cmake --preset msvc-release
 
 if errorlevel 1 (

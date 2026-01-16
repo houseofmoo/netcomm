@@ -14,10 +14,10 @@ PRESET="linux-debug"
 BUILD_DIR="build"
 CLEAN="false"
 RUN_AFTER_BUILD="false"
-PROFILE="false"
+LOG="0"
 
 usage() {
-  echo "Usage: ./build.sh [--debug|--release] [--clean] [--run]"
+  echo "Usage: ./build.sh [--debug|--release] [--clean] [--run] [--log]"
 }
 
 # -------- parse args --------
@@ -37,6 +37,10 @@ while [[ $# -gt 0 ]]; do
       ;;
     --clean)
       CLEAN="true"
+      shift
+      ;;
+    --log)
+      LOG="1"
       shift
       ;;
     *)
@@ -59,7 +63,7 @@ fi
 
 echo
 echo "Running CMake configure preset \"$PRESET\""
-cmake --preset "$PRESET" -DPROFILER_ENABLED="$PROFILE"
+cmake --preset "$PRESET" -DEROIL_ELOG_ENABLED="$LOG"
 
 echo
 echo "Building project for preset \"$PRESET\""

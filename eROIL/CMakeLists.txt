@@ -22,9 +22,13 @@ set_target_properties(eROIL PROPERTIES
 #     CXX_EXTENSIONS NO
 # )
 
-# linux vs windows macro defs
+# options
+option(EROIL_ELOG_ENABLED "Enable eROIL event logging" OFF)
+
+# macro defs
 target_compile_definitions(eROIL
     PRIVATE
+        EROIL_ELOG_ENABLED=$<BOOL:${EROIL_ELOG_ENABLED}>
         $<$<PLATFORM_ID:Windows>:EROIL_WIN32>
         $<$<PLATFORM_ID:Linux>:EROIL_LINUX>
 )

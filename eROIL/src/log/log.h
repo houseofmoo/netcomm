@@ -64,9 +64,15 @@ namespace eroil::elog {
     static_assert((EVENT_LOG_CAPACITY & (EVENT_LOG_CAPACITY - 1)) == 0,
                   "EVENT_LOG_CAPACITY must be a power of two");
 
+                  
+    
+    #ifndef EROIL_ELOG_ENABLED // if cmake has not defined EROIL_ELOG_ENABLED=0, enable logging by default
+    #define EROIL_ELOG_ENABLED 1
+    #endif
+    
     // controls for compile-time logging enable/disable and min severity
     struct EventLogBuildConfig {
-        static constexpr bool enabled = true;
+        static constexpr bool enabled = (EROIL_ELOG_ENABLED != 0);
         static constexpr Severity min_severity = Severity::Info;
     };
 
