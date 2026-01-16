@@ -11,7 +11,7 @@
     #endif
 #endif
 
-// notify build system of elog status, just nice to confirm
+// notify build system of evtlog status, just nice to confirm
 #if defined(EROIL_ELOG_ENABLED) && EROIL_ELOG_ENABLED == 1
 #pragma message("EROIL ELOG ENABLED")
 #else

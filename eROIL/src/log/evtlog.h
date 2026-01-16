@@ -130,6 +130,7 @@ namespace eroil::evtlog {
         inline void log_payload(EventKind kind, Category cat, std::uint32_t a=0, std::uint32_t b=0, std::uint32_t c=0, const void* payload=nullptr, std::uint32_t payload_size=0) noexcept {
             if constexpr (EventLogBuildConfig::enabled && 
                static_cast<std::uint8_t>(Sev) >= static_cast<std::uint8_t>(EventLogBuildConfig::min_severity)) {
+                static_assert(EventLogBuildConfig::enabled, "should never compile when disabled");
                 eroil::evtlog::g_event_log.log_payload(kind, Sev, cat, a, b, c, payload, payload_size);
             }
         }
@@ -138,6 +139,7 @@ namespace eroil::evtlog {
         inline void log_hot(EventKind kind, Category cat, std::uint32_t a=0, std::uint32_t b=0, std::uint32_t c=0) noexcept {
             if constexpr (EventLogBuildConfig::enabled && 
                static_cast<std::uint8_t>(Sev) >= static_cast<std::uint8_t>(EventLogBuildConfig::min_severity)) {
+                static_assert(EventLogBuildConfig::enabled, "should never compile when disabled");
                 eroil::evtlog::g_event_log.log_hot(kind, Sev, cat, a, b, c);
             }
         }
@@ -146,7 +148,8 @@ namespace eroil::evtlog {
         inline void log_hot_no_time(EventKind kind, Category cat, std::uint32_t a=0, std::uint32_t b=0, std::uint32_t c=0) noexcept {
             if constexpr (EventLogBuildConfig::enabled && 
                static_cast<std::uint8_t>(Sev) >= static_cast<std::uint8_t>(EventLogBuildConfig::min_severity)) {
-                eroil::evtlog::g_event_log.log_hot(kind, Sev, cat, a, b, c);
+                static_assert(EventLogBuildConfig::enabled, "should never compile when disabled");
+                eroil::evtlog::g_event_log.log_hot_no_time(kind, Sev, cat, a, b, c);
             }
         }
     }
