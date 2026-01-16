@@ -17,7 +17,7 @@ namespace eroil::evt {
     
     Semaphore::Semaphore() : Semaphore(0) {}
 
-    Semaphore::Semaphore(uint32_t max_count) : m_sem(null_ptr), m_max_count(max_count) {
+    Semaphore::Semaphore(uint32_t max_count) : m_sem(nullptr), m_max_count(max_count) {
         m_sem = from_native(new sem_t());
         sem_init(as_native(m_sem), 0, 0);
     }
@@ -64,7 +64,7 @@ namespace eroil::evt {
     }
 
     SemOpErr Semaphore::post() {
-        if (m_sem != null_ptr) return SemOpErr::NotInitialized;
+        if (m_sem != nullptr) return SemOpErr::NotInitialized;
 
         if (sem_post(as_native(m_sem)) == -1) {
             int err = errno;
@@ -140,7 +140,7 @@ namespace eroil::evt {
     void Semaphore::close() {
         if (m_sem != nullptr) {
             sem_destroy(as_native(m_sem));
-            delete m_sem; // TODO: double check this is correct
+            //delete m_sem; // TODO: double check this is correct
             m_sem = nullptr;
         }
     }

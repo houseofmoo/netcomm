@@ -11,35 +11,35 @@
 #include <errno.h>
 
 namespace eroil::sock {
-    static int as_native(socket_handle handle) noexcept {
-        return static_cast<int>(handle);
-    }
+    // static int as_native(socket_handle handle) noexcept {
+    //     return static_cast<int>(handle);
+    // }
 
-    static socket_handle from_native(int fd) noexcept {
-        return static_cast<socket_handle>(fd);
-    }
+    // static socket_handle from_native(int fd) noexcept {
+    //     return static_cast<socket_handle>(fd);
+    // }
 
-    TCPSocket::TCPSocket() : m_handle(from_native(INVALID_SOCKET)), m_connected(false) {}
+    TCPSocket::TCPSocket() : m_handle(INVALID_SOCKET), m_connected(false) {}
 
     TCPSocket::~TCPSocket() {
         disconnect();
     }
 
     TCPSocket::TCPSocket(TCPSocket&& other) noexcept
-        : m_handle(std::exchange(other.m_handle, from_native(INVALID_SOCKET))),
+        : m_handle(std::exchange(other.m_handle, INVALID_SOCKET)),
           m_connected(std::exchange(other.m_connected, false)) {}
 
     TCPSocket& TCPSocket::operator=(TCPSocket&& other) noexcept {
         if (this != &other) {
             close();
-            m_handle = std::exchange(other.m_handle, from_native(INVALID_SOCKET));
+            m_handle = std::exchange(other.m_handle, INVALID_SOCKET);
             m_connected = std::exchange(other.m_connected, false);
         }
         return *this;
     }
 
     bool TCPSocket::handle_valid() const noexcept {
-        return as_native(m_handle) != INVALID_SOCKET;
+        return m_handle != INVALID_SOCKET;
     }
 
     bool TCPSocket::is_connected() const noexcept {
@@ -59,7 +59,7 @@ namespace eroil::sock {
 
         int fd = ::socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
         if (fd >= 0) {
-            m_handle = from_native(fd);
+            m_handle = fd;
             return SockResult{ SockErr::None, SockOp::Open, 0, 0 };
         }
 
@@ -74,19 +74,17 @@ namespace eroil::sock {
 
     void TCPSocket::shutdown() noexcept {
         if (handle_valid()) {
-            ::shutdown(as_native(m_handle), SHUT_RDWR);
+            ::shutdown(m_handle, SHUT_RDWR);
         }
         m_connected = false;
     }
 
     void TCPSocket::close() noexcept {
         if (handle_valid()) {
-            ::close(as_native(m_handle));
+            ::close(m_handle);
         }
-        m_handle = from_native(INVALID_SOCKET);
+        m_handle = INVALID_SOCKET;
         m_connected = false;
     }
-
-} // namespace eroil::sock
-
-#endif // EROIL_LINUX
+}
+#endif

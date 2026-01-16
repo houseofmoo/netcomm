@@ -165,7 +165,7 @@ namespace eroil::evt {
 
     void NamedEvent::close() {
         if (m_sem != nullptr) {
-            sem_close(m_sem);
+            sem_close(as_native(m_sem));
             //sem_unlink(name().c_str()); // deletes sem file
             m_sem = nullptr;
         }

@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 
 # Number of processes to launch
-N=2
+N=20
 
 echo "Launching $N instances of ./build/debug/bin/eROIL_Tests.exe..."
 

@@ -10,8 +10,8 @@
 
 namespace eroil::sock {
 
-    static int as_native(socket_handle h) noexcept { return h; }
-    static socket_handle from_native(int fd) noexcept { return fd; }
+    // static int as_native(socket_handle h) noexcept { return h; }
+    // static socket_handle from_native(int fd) noexcept { return fd; }
 
     SockResult TCPServer::bind(uint16_t port, const char* ip) {
         if (!handle_valid()) {
@@ -31,9 +31,9 @@ namespace eroil::sock {
         }
 
         int reuse = 1;
-        (void)::setsockopt(as_native(m_handle), SOL_SOCKET, SO_REUSEADDR, &reuse, (socklen_t)sizeof(reuse));
+        (void)::setsockopt(m_handle, SOL_SOCKET, SO_REUSEADDR, &reuse, (socklen_t)sizeof(reuse));
 
-        if (::bind(as_native(m_handle), reinterpret_cast<sockaddr*>(&addr), (socklen_t)sizeof(addr)) != 0) {
+        if (::bind(m_handle, reinterpret_cast<sockaddr*>(&addr), (socklen_t)sizeof(addr)) != 0) {
             const int err = errno;
             return SockResult{ map_err(err), SockOp::Bind, err, 0 };
         }
@@ -48,7 +48,7 @@ namespace eroil::sock {
 
         if (backlog == 0) backlog = SOMAXCONN;
 
-        if (::listen(as_native(m_handle), backlog) != 0) {
+        if (::listen(m_handle, backlog) != 0) {
             const int err = errno;
             return SockResult{ map_err(err), SockOp::Listen, err, 0 };
         }
@@ -77,7 +77,7 @@ namespace eroil::sock {
         sockaddr_in conn{};
         socklen_t conn_size = (socklen_t)sizeof(conn);
 
-        int fd = ::accept(as_native(m_handle), reinterpret_cast<sockaddr*>(&conn), &conn_size);
+        int fd = ::accept(m_handle, reinterpret_cast<sockaddr*>(&conn), &conn_size);
         if (fd < 0) {
             result.sys_error = errno;
 
@@ -92,7 +92,7 @@ namespace eroil::sock {
         }
 
         auto client = std::make_shared<TCPClient>();
-        client->adopt(from_native(fd), true);
+        client->adopt(fd, true);
 
         result.code = SockErr::None;
         return { std::move(client), result };
@@ -101,6 +101,5 @@ namespace eroil::sock {
     void TCPServer::request_stop() noexcept {
         close();
     }
-
 }
 #endif

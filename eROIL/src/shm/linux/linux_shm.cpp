@@ -24,13 +24,13 @@ namespace eroil::shm {
         return "/eroil.label." + std::to_string(m_label);
     }
 
-    static int as_native(shm_handle h) noexcept {
-        return static_cast<int>(h);
-    }
+    // static int as_native(shm_handle h) noexcept {
+    //     return static_cast<int>(h);
+    // }
 
-    static shm_handle from_native(int fd) noexcept {
-        return static_cast<shm_handle>(fd);
-    }
+    // static shm_handle from_native(int fd) noexcept {
+    //     return static_cast<shm_handle>(fd);
+    // }
 
     std::byte* Shm::data_ptr() const noexcept {
         if (m_view == nullptr) return nullptr;
@@ -114,8 +114,8 @@ namespace eroil::shm {
             return ShmErr::FileMapFailed;
         }
 
-        m_handle = from_native(fd);
-        m_view   = view;
+        m_handle = fd;
+        m_view = view;
 
         // write header to block
         auto* hdr = static_cast<ShmHeader*>(m_view);
@@ -156,7 +156,7 @@ namespace eroil::shm {
             return ShmErr::FileMapFailed;
         }
 
-        m_handle = from_native(fd);
+        m_handle = fd;
         m_view = view;
 
         // read header and validate
@@ -230,7 +230,7 @@ namespace eroil::shm {
         }
 
         if (m_handle >= 0) {
-            ::close(as_native(m_handle));
+            ::close(m_handle);
             m_handle = -1;
         }
 

@@ -43,15 +43,15 @@ namespace eroil::plat {
 
     void affinitize_thread(std::thread& t, int cpu) {
         cpu_set_t set;
-        ::CPU_ZERO(&set);
-        ::CPU_SET(cpu, &set);
+        CPU_ZERO(&set);
+        CPU_SET(cpu, &set);
         ::pthread_setaffinity_np(t.native_handle(), sizeof(set), &set);
     }
 
     void affinitize_current_thread(int cpu) {
         cpu_set_t set;
-        ::CPU_ZERO(&set);
-        ::CPU_SET(cpu, &set);
+        CPU_ZERO(&set);
+        CPU_SET(cpu, &set);
         ::pthread_setaffinity_np(pthread_self(), sizeof(set), &set);
     }
 }
