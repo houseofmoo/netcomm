@@ -64,5 +64,10 @@ namespace eroil::plat {
     void affinitize_current_thread(int cpu) {
         ::SetThreadAffinityMask(::GetCurrentThread(), 1ull << cpu);
     }
+
+    void affinitize_current_thread_to_current_cpu() {
+        auto cpu = ::GetCurrentProcessorNumber();
+        affinitize_current_thread(cpu);
+    }
 }
 #endif

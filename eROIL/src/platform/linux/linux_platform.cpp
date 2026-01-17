@@ -54,5 +54,12 @@ namespace eroil::plat {
         CPU_SET(cpu, &set);
         ::pthread_setaffinity_np(pthread_self(), sizeof(set), &set);
     }
+
+    void affinitize_current_thread_to_current_cpu() {
+        int cpu = sched_getcpu();
+        if (cpu >= 0) {
+            plat::affinitize_current_thread(cpu);
+        }
+    }
 }
 #endif

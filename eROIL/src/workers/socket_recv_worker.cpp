@@ -2,15 +2,15 @@
 #include <eROIL/print.h>
 #include "types/types.h"
 #include "address/address.h"
+#include "log/evtlog_api.h"
 
 namespace eroil::worker {
     SocketRecvWorker::SocketRecvWorker(Router& router, NodeId id, NodeId peer_id)
-        : m_router(router), m_id(id), m_peer_id(peer_id), m_is_active(false), m_sock(nullptr) {
+        : m_router(router), m_id(id), m_peer_id(peer_id), m_sock(nullptr) {
             m_sock = m_router.get_socket(m_peer_id);
         }
 
     void SocketRecvWorker::run() {
-        m_is_active = true;
         try {
             std::vector<std::byte> payload;
             while (!stop_requested()) {
@@ -22,11 +22,14 @@ namespace eroil::worker {
                     ERR_PRINT("socket recv failed to get expected header size");
                     break;
                 }
-
+                
                 if (stop_requested()) break;
+                evtlog::info(elog_kind::SocketRecvWorker_Start, elog_cat::Worker, hdr.label, hdr.data_size, m_peer_id);
 
                 if (hdr.magic != MAGIC_NUM || hdr.version != VERSION) {
                     ERR_PRINT("socket recv got a header that did not have the correct magic and/or version");
+                    evtlog::warn(elog_kind::SocketRecvWorker_Warning, elog_cat::Worker, hdr.label, hdr.data_size, m_peer_id);
+                    evtlog::info(elog_kind::SocketRecvWorker_End, elog_cat::Worker, hdr.label, hdr.data_size, m_peer_id);
                     continue;
                 }
                 
@@ -35,6 +38,7 @@ namespace eroil::worker {
                         "socket recv got a header that indicated data size is > ", SOCKET_DATA_MAX_SIZE,
                         " label=", hdr.label, ", sourceid=", hdr.source_id
                     );
+                    evtlog::error(elog_kind::SocketRecvWorker_Error, elog_cat::Worker, hdr.label, hdr.data_size, m_peer_id);
                     break;
                 }
                 
@@ -43,6 +47,8 @@ namespace eroil::worker {
                         "socket recv got a header that indicated data size is 0, label=", hdr.label,
                         ", sourceid=", hdr.source_id
                     );
+                    evtlog::warn(elog_kind::SocketRecvWorker_Warning, elog_cat::Worker, hdr.label, hdr.data_size, m_peer_id);
+                    evtlog::info(elog_kind::SocketRecvWorker_End, elog_cat::Worker, hdr.label, hdr.data_size, m_peer_id);
                     continue;
                 }
 
@@ -50,24 +56,29 @@ namespace eroil::worker {
                     if (!has_flag(hdr.flags, LabelFlag::Ping)) {
                         ERR_PRINT("got a hdr that indicated it was not a ping or data, hdr.flag=", hdr.flags);
                     }
+                    evtlog::warn(elog_kind::SocketRecvWorker_Warning, elog_cat::Worker, hdr.label, hdr.data_size, m_peer_id);
+                    evtlog::info(elog_kind::SocketRecvWorker_End, elog_cat::Worker, hdr.label, hdr.data_size, m_peer_id);
                     continue;
                 }
 
                 payload.resize(hdr.data_size);
                 if (!recv_exact(payload.data(), payload.size())) {
                     ERR_PRINT("socket recv failed to get expected data size, size=", hdr.data_size);
+                    evtlog::error(elog_kind::SocketRecvWorker_Error, elog_cat::Worker, hdr.label, hdr.data_size, m_peer_id);
                     break;
                 }
                 if (stop_requested()) break;
 
                 m_router.recv_from_publisher(static_cast<Label>(hdr.label), payload.data(), payload.size());
+                evtlog::info(elog_kind::SocketRecvWorker_End, elog_cat::Worker, hdr.label, hdr.data_size, m_peer_id);
             }
         } catch (const std::exception& e) {
             ERR_PRINT("socket recv exception, attempting re-connect: ", e.what());
         } catch (...) {
             ERR_PRINT("unknown socket recv exception, re-connect");
         }
-        m_is_active = false;
+
+        evtlog::info(elog_kind::SocketRecvWorker_Exit, elog_cat::Worker, 0, 0, m_peer_id);
     }
 
     bool SocketRecvWorker::recv_exact(void* dst, size_t size) {

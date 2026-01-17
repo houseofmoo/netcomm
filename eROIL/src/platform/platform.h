@@ -10,4 +10,5 @@ namespace eroil::plat {
 
     void affinitize_thread(std::thread& t, int cpu);
     void affinitize_current_thread(int cpu);
+    void affinitize_current_thread_to_current_cpu();
 }

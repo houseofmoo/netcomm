@@ -12,7 +12,6 @@ namespace eroil::worker {
             Router& m_router;
             NodeId m_id;
             NodeId m_peer_id;
-            bool m_is_active;
             std::shared_ptr<sock::TCPClient> m_sock;
 
         public:

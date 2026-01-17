@@ -2,6 +2,7 @@
 #include <string>
 #include <optional>
 #include <eROIL/print.h>
+#include "log/evtlog_api.h"
 
 namespace eroil::worker {
     
@@ -93,27 +94,39 @@ namespace eroil::worker {
                 if (!entry) break;
 
                 try {
+                    evtlog::info(elog_kind::SendWorker_Start, elog_cat::Worker, entry->label, entry->data_size);
                     auto result = m_router.send_to_subscribers(entry->label, entry->data.get(), entry->data_size, entry->uid);
                     switch (result.send_err) {
-                        // validation error
+                        // TODO: how do we want to handle errors?
                         case SendOpErr::RouteNotFound: // fallthrough
                         case SendOpErr::SizeMismatch:  // fallthrough
                         case SendOpErr::SizeTooLarge:  // fallthrough
-                        case SendOpErr::NoPublishers: { break; }
+                        case SendOpErr::NoPublishers: { 
+                            evtlog::warn(elog_kind::SendWorker_Warning, elog_cat::Worker, entry->label, entry->data_size);
+                            break; 
+                        }
+
                         // this may be caused by socket send fail (handled with reconnect)
                         // or shm write/signal fail which means the shm memory is no longer open
-                        case SendOpErr::Failed: { break; } 
+                        case SendOpErr::Failed: {
+                            evtlog::error(elog_kind::SendWorker_Error, elog_cat::Worker, entry->label, entry->data_size);
+                            break; 
+                        } 
 
                         // no error
                         case SendOpErr::None: { break; }
                         default: { break; } // unknown error?
                     }
+                    evtlog::info(elog_kind::SendWorker_End, elog_cat::Worker, entry->label, entry->data_size);
                 } catch (const std::exception& e) {
                     ERR_PRINT("Exception in worker thread, entry.label: ", entry->label, ", exception: ", e.what());
                 } catch (...) {
                     ERR_PRINT("Unknown exception in worker thread, entry.label: ", entry->label);
                 }
             }
+
+            
+            evtlog::info(elog_kind::SendWorker_Exits, elog_cat::Worker);
         }
     }
 }

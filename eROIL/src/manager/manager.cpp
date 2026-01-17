@@ -8,7 +8,7 @@
 #include "types/types.h"
 #include "timer/timer.h"
 #include "platform/platform.h"
-#include "log/evtlog.h"
+#include "log/evtlog_api.h"
 
 namespace eroil {
     static int32_t unique_id() {
@@ -40,6 +40,13 @@ namespace eroil {
             ERR_PRINT("manager cannot initialize! figure out wtf is wrong");
             return false;
         }
+
+        // estimate tsc frequency (100 ms sleep)
+        std::thread([]{
+            plat::affinitize_current_thread_to_current_cpu();
+            uint64_t tsc_hz = evtlog::estimate_tsc_hz();
+            LOG("tsc frequency estimated: ", tsc_hz, " Hz");
+        }).join();
 
         m_comms.start();
         start_broadcast();
@@ -121,19 +128,17 @@ namespace eroil {
             return false;
         }
 
-        std::thread send_broadcast_thread([this]() {
+        std::thread([this]() {
             while (true) {
                 send_broadcast();
                 std::this_thread::sleep_for(std::chrono::milliseconds(3000));
             }
-        });
-        send_broadcast_thread.detach();
+        }).detach();
 
-        std::thread recv_broadcast_thread([this]() {
+        std::thread([this]() {
             //plat::affinitize_current_thread(2);
             while (true) { recv_broadcast(); }
-        });
-        recv_broadcast_thread.detach();
+        }).detach();
         
         LOG("udp multicast group joined, broadcast send/recv threads started");
         return true;
@@ -145,9 +150,13 @@ namespace eroil {
         msg.id = m_id;
         msg.send_labels = m_router.get_send_labels();
         msg.recv_labels = m_router.get_recv_labels();
-      
 
-        m_broadcast.send_broadcast(&msg, sizeof(msg));
+        auto err = m_broadcast.send_broadcast(&msg, sizeof(msg));
+        if (err.code != sock::SockErr::None) {
+            evtlog::warn(elog_kind::Send_Failed, elog_cat::Broadcast);
+            ERR_PRINT("broadcast send failed!");
+            print_socket_result(err);
+        }
 
         evtlog::info(elog_kind::Send_End, elog_cat::Broadcast);
     }
@@ -205,11 +214,13 @@ namespace eroil {
                 case addr::RouteKind::Shm: {
                     PRINT("adding local send subscriber, nodeid=", source_id, " label=", info.label);
                     m_router.add_local_send_subscriber(info.label, info.size, m_id, source_id);
+                    evtlog::info(elog_kind::AddLocalSendSubscriber, elog_cat::Router, source_id, info.label);
                     break;
                 }
                 case addr::RouteKind::Socket: {
                     PRINT("adding remote send subscriber, nodeid=", source_id, " label=", info.label);
                     m_router.add_remote_send_subscriber(info.label, info.size, source_id);
+                    evtlog::info(elog_kind::AddRemoteSendSubscriber, elog_cat::Router, source_id, info.label);
                     break;
                 }
                 default: {
@@ -217,9 +228,6 @@ namespace eroil {
                     break;
                 }
             }
-
-            // check if they no longer want a label we send them
-            // if they are ensure that label appears in their list still
         }
     }
 
@@ -246,11 +254,13 @@ namespace eroil {
                 case addr::RouteKind::Shm: {
                     PRINT("removing local send subscriber, nodeid=", source_id, " label=", label);
                     m_router.remove_local_send_subscriber(label, source_id);
+                    evtlog::info(elog_kind::RemoveLocalSendSubscriber, elog_cat::Router, source_id, label);
                     break;
                 }
                 case addr::RouteKind::Socket: {
                     PRINT("removing remote send subscriber, nodeid=", source_id, " label=", label);
                     m_router.remove_remote_send_subscriber(label, source_id);
+                    evtlog::info(elog_kind::RemoveRemoteSendSubscriber, elog_cat::Router, source_id, label);
                     break;
                 }
                 default: {
@@ -276,6 +286,7 @@ namespace eroil {
                     // add local recv pub and start recv worker to watch shared memory block
                     PRINT("adding local recv publisher, nodeid=", source_id, " label=", info.label);
                     m_router.add_local_recv_publisher(info.label, info.size, m_id, source_id);
+                    evtlog::info(elog_kind::AddLocalRecvPublisher, elog_cat::Router, source_id, info.label);
                     m_comms.start_local_recv_worker(info.label, info.size);
                     break;
                 }
@@ -283,6 +294,7 @@ namespace eroil {
                     // add remote recv pub, recv worker should already be listening to this socket
                     PRINT("adding remote recv publisher, nodeid=", source_id, " label=", info.label);
                     m_router.add_remote_recv_publisher(info.label, info.size, source_id);
+                    evtlog::info(elog_kind::AddRemoteRecvPublisher, elog_cat::Router, source_id, info.label);
                     break;
                 }
                 default: {
@@ -316,12 +328,14 @@ namespace eroil {
                 case addr::RouteKind::Shm: {
                     PRINT("removing local recv publisher, nodeid=", source_id, " label=", label);
                     m_router.remove_local_recv_publisher(label, source_id);
+                    evtlog::info(elog_kind::RemoveLocalRecvPublisher, elog_cat::Router, source_id, label);
                     m_comms.stop_local_recv_worker(label);
                     break;
                 }
                 case addr::RouteKind::Socket: {
                     PRINT("removing remote recv publisher, nodeid=", source_id, " label=", label);
                     m_router.remove_remote_recv_publisher(label,source_id);
+                    evtlog::info(elog_kind::RemoveRemoteRecvPublisher, elog_cat::Router, source_id, label);
                     break;
                 }
                 default: {

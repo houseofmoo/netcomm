@@ -3,7 +3,7 @@
 #include <chrono>
 #include "types/types.h"
 #include <eROIL/print.h>
-#include "log/evtlog.h"
+#include "log/evtlog_api.h"
 
 namespace eroil {
     static bool map_sock_failures(sock::SockErr err) {
@@ -29,18 +29,16 @@ namespace eroil {
         m_sender.start();
 
         // tcp server listener thread
-        std::thread tcp_server([this]() {
+        std::thread([this]() {
             run_tcp_server();
-        });
-        tcp_server.detach();
+        }).detach();
 
         // remote peer search thread
         auto search_complete = std::make_shared<evt::Semaphore>();
-        std::thread search([this, search_complete]() { 
+        std::thread([this, search_complete]() { 
             search_remote_peers(); 
             search_complete->post();
-        });
-        search.detach();
+        }).detach();
 
         // wait 10 seconds for peer search, otherwise continue normally
         auto wait_err = search_complete->wait(10 * 1000);
@@ -63,8 +61,9 @@ namespace eroil {
         }
 
         // socket monitor thread
-        std::thread monitor([this]() { monitor_sockets(); });
-        monitor.detach();
+        std::thread([this]() { 
+            monitor_sockets(); 
+        }).detach();
     }
 
     void ConnectionManager::send_label(handle_uid uid, Label label, size_t buf_size, std::unique_ptr<uint8_t[]> data) {
