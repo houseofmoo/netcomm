@@ -15,6 +15,30 @@ namespace eroil {
         return std::holds_alternative<LocalPublisher>(publisher);
     }
 
+    SendRoute* RouteTable::require_send_route(Label label, const char* fn) {
+        auto* route = get_send_route(label);
+        if (!route) {
+            ERR_PRINT(fn, "(): send route not found, label=", label);
+        }
+        return route;
+    }
+
+    RecvRoute* RouteTable::require_recv_route(Label label, const char* fn) {
+        auto* route = get_recv_route(label);
+        if (!route) {
+            ERR_PRINT(fn, "(): recv route not found, label=", label);
+        }
+        return route;
+    }
+
+    bool RouteTable::require_route_size(size_t expected, size_t actual, const char* fn) {
+        if (expected != actual) {
+            ERR_PRINT(fn, "(): size mismatch, expected=", expected, ", actual=", actual);
+            return false;
+        }
+        return true;
+    }
+
     std::array<LabelInfo, MAX_LABELS> RouteTable::get_send_labels() const {
         std::array<LabelInfo, MAX_LABELS> labels;
         labels.fill(LabelInfo{ INVALID_LABEL, 0 });
@@ -43,30 +67,6 @@ namespace eroil {
             labels[index++] = LabelInfo{ label, static_cast<uint32_t>(route.label_size) };
         }
         return labels;
-    }
-
-    SendRoute* RouteTable::require_send_route(Label label, const char* fn) {
-        auto* route = get_send_route(label);
-        if (!route) {
-            ERR_PRINT(fn, "(): send route not found, label=", label);
-        }
-        return route;
-    }
-
-    RecvRoute* RouteTable::require_recv_route(Label label, const char* fn) {
-        auto* route = get_recv_route(label);
-        if (!route) {
-            ERR_PRINT(fn, "(): recv route not found, label=", label);
-        }
-        return route;
-    }
-
-    bool RouteTable::require_route_size(size_t expected, size_t actual, const char* fn) {
-        if (expected != actual) {
-            ERR_PRINT(fn, "(): size mismatch, expected=", expected, ", actual=", actual);
-            return false;
-        }
-        return true;
     }
 
     // send route

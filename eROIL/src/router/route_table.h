@@ -51,11 +51,6 @@ namespace eroil {
             std::unordered_map<Label, SendRoute> m_send_routes;
             std::unordered_map<Label, RecvRoute> m_recv_routes;
 
-        public:
-            std::array<LabelInfo, MAX_LABELS> get_send_labels() const;
-            std::array<LabelInfo, MAX_LABELS> get_recv_labels() const;
-
-        private:
             void create_send_route(Label label, SendHandle* handle);
             void create_recv_route(Label label, RecvHandle* handle);
 
@@ -64,6 +59,9 @@ namespace eroil {
             bool require_route_size(size_t expected, size_t actual, const char* fn);
             
         public:
+            std::array<LabelInfo, MAX_LABELS> get_send_labels() const;
+            std::array<LabelInfo, MAX_LABELS> get_recv_labels() const;
+
             // send route ops
             bool add_send_publisher(Label label, SendHandle* handle);
             bool remove_send_publisher(Label label, handle_uid uid);

@@ -7,7 +7,7 @@
 #include "types/types.h"
 #include "route_table.h"
 #include "transport_registry.h"
-#include "dispatcher.h"
+#include "dispatch.h"
 
 namespace eroil {
     class Router {
@@ -27,9 +27,9 @@ namespace eroil {
 
             // open/close send/recv
             void register_send_publisher(std::unique_ptr<SendHandle> handle);
-            void unregister_send_publisher(SendHandle* handle);
+            void unregister_send_publisher(const SendHandle* handle);
             void register_recv_subscriber(std::unique_ptr<RecvHandle> handle);
-            void unregister_recv_subscriber(RecvHandle* handle);
+            void unregister_recv_subscriber(const RecvHandle* handle);
 
             // route interface
             void add_local_send_subscriber(Label label, size_t label_size, NodeId my_id, NodeId to_id);
@@ -42,24 +42,23 @@ namespace eroil {
             void remove_local_recv_publisher(Label label, NodeId my_id);
             void remove_remote_recv_publisher(Label label, NodeId from_id);
 
-            // for broadcasts checks
             std::array<LabelInfo, MAX_LABELS> get_send_labels() const;
             std::array<LabelInfo, MAX_LABELS> get_recv_labels() const;
-            bool has_send_route(Label label) const;
-            bool has_recv_route(Label label) const;
-            bool is_send_subscriber(Label label, NodeId to_id) const;
-            bool is_recv_publisher(Label label, NodeId from_id) const;
+            bool has_send_route(Label label) const noexcept;
+            bool has_recv_route(Label label) const noexcept;
+            bool is_send_subscriber(Label label, NodeId to_id) const noexcept;
+            bool is_recv_publisher(Label label, NodeId from_id) const noexcept;
 
-            // for recv workers
             bool upsert_socket(NodeId id, std::shared_ptr<sock::TCPClient> sock);
-            std::shared_ptr<sock::TCPClient> get_socket(NodeId id);
-            std::vector<std::shared_ptr<sock::TCPClient>> get_all_sockets();
-            bool has_socket(NodeId id) const;
-            std::shared_ptr<shm::Shm> get_send_shm(Label label);
-            std::shared_ptr<shm::Shm> get_recv_shm(Label label);
-            RecvRoute* get_recv_route(Label label);
+            std::shared_ptr<sock::TCPClient> get_socket(NodeId id) const noexcept;
+            bool has_socket(NodeId id) const noexcept;
+            std::vector<std::shared_ptr<sock::TCPClient>> get_all_sockets() const;
+            std::shared_ptr<shm::Shm> get_send_shm(Label label) const noexcept;
+            std::shared_ptr<shm::Shm> get_recv_shm(Label label) const noexcept;
+            const RecvRoute* get_recv_route(Label label) const noexcept;
 
-            SendResult send_to_subscribers(Label label, const void* buf, size_t size, handle_uid uid);
-            void recv_from_publisher(Label label, const void* buf, size_t size);
+            SendResult send_to_subscribers(Label label, const void* buf, size_t size, handle_uid uid) const;
+            void recv_from_publisher(Label label, const void* buf, size_t size) const;
+
     };
 }

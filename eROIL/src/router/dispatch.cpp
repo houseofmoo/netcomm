@@ -1,4 +1,4 @@
-#include "dispatcher.h"
+#include "dispatch.h"
 
 #include <cstring>
 #include <eROIL/print.h>

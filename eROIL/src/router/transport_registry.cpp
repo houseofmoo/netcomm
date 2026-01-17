@@ -26,18 +26,18 @@ namespace eroil {
         return true;
     }
 
-    std::shared_ptr<sock::TCPClient> TransportRegistry::get_socket(NodeId id) const {
+    std::shared_ptr<sock::TCPClient> TransportRegistry::get_socket(NodeId id) const noexcept {
         auto it = m_sockets.find(id);
         if (it == m_sockets.end()) return nullptr;
         return it->second;
     }
 
-    bool TransportRegistry::has_socket(NodeId id) const {
+    bool TransportRegistry::has_socket(NodeId id) const noexcept {
         auto it = m_sockets.find(id);
         return (it != m_sockets.end()) && (it->second != nullptr);
     }
 
-    std::vector<std::shared_ptr<sock::TCPClient>> TransportRegistry::get_all_sockets() {
+    std::vector<std::shared_ptr<sock::TCPClient>> TransportRegistry::get_all_sockets() const {
         std::vector<std::shared_ptr<sock::TCPClient>> out;
         for (auto [id, sock] : m_sockets) {
             out.push_back(sock);
@@ -69,13 +69,13 @@ namespace eroil {
         return true;
     }
 
-    std::shared_ptr<shm::Shm> TransportRegistry::get_send_shm(Label label) {
+    std::shared_ptr<shm::Shm> TransportRegistry::get_send_shm(Label label) const noexcept {
         auto it = m_send_shm.find(label);
         if (it == m_send_shm.end()) return nullptr;
         return it->second;
     }
 
-    bool TransportRegistry::has_send_shm(Label label) {
+    bool TransportRegistry::has_send_shm(Label label) const noexcept {
         auto it = m_send_shm.find(label);
         return (it != m_send_shm.end()) && (it->second != nullptr);
     }
@@ -104,13 +104,13 @@ namespace eroil {
         return true;
     }
 
-    std::shared_ptr<shm::Shm> TransportRegistry::get_recv_shm(Label label) {
+    std::shared_ptr<shm::Shm> TransportRegistry::get_recv_shm(Label label) const noexcept {
         auto it = m_recv_shm.find(label);
         if (it == m_recv_shm.end()) return nullptr;
         return it->second;
     }
 
-    bool TransportRegistry::has_recv_shm(Label label) {
+    bool TransportRegistry::has_recv_shm(Label label) const noexcept {
         auto it = m_recv_shm.find(label);
         return (it != m_recv_shm.end()) && (it->second != nullptr);
     }

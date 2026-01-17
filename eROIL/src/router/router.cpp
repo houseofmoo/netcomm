@@ -31,7 +31,7 @@ namespace eroil {
         }
     }
 
-    void Router::unregister_send_publisher(SendHandle* handle) {
+    void Router::unregister_send_publisher(const SendHandle* handle) {
         if (!handle) return;
 
         std::unique_lock lock(m_router_mtx);
@@ -87,7 +87,7 @@ namespace eroil {
         }
     }
 
-    void Router::unregister_recv_subscriber(RecvHandle* handle) {
+    void Router::unregister_recv_subscriber(const RecvHandle* handle) {
         if (!handle) return;
 
         std::unique_lock lock(m_router_mtx);
@@ -201,17 +201,17 @@ namespace eroil {
         return m_routes.get_recv_labels();
     }
 
-    bool Router::has_send_route(Label label) const {
+    bool Router::has_send_route(Label label) const noexcept {
         std::shared_lock lock(m_router_mtx);
         return m_routes.has_send_route(label);
     }
 
-    bool Router::has_recv_route(Label label) const {
+    bool Router::has_recv_route(Label label) const noexcept {
         std::shared_lock lock(m_router_mtx);
         return m_routes.has_recv_route(label);
     }
 
-    bool Router::is_send_subscriber(Label label, NodeId to_id) const {
+    bool Router::is_send_subscriber(Label label, NodeId to_id) const noexcept {
         std::shared_lock lock(m_router_mtx);
         if (m_routes.is_remote_send_subscriber(label, to_id)) {
             return true;
@@ -219,7 +219,7 @@ namespace eroil {
         return m_routes.is_local_send_subscriber(label, to_id);
     }
 
-    bool Router::is_recv_publisher(Label label, NodeId from_id) const {
+    bool Router::is_recv_publisher(Label label, NodeId from_id) const noexcept {
         std::shared_lock lock(m_router_mtx);
         if (m_routes.is_remote_recv_publisher(label, from_id)) {
             return true;
@@ -231,31 +231,31 @@ namespace eroil {
         return m_transports.upsert_socket(id, sock);
     }
 
-    std::shared_ptr<sock::TCPClient> Router::get_socket(NodeId id) {
+    std::shared_ptr<sock::TCPClient> Router::get_socket(NodeId id) const noexcept {
         return m_transports.get_socket(id);
     }
 
-    std::vector<std::shared_ptr<sock::TCPClient>> Router::get_all_sockets() {
-        return m_transports.get_all_sockets();
-    }
-
-    bool Router::has_socket(NodeId id) const {
+    bool Router::has_socket(NodeId id) const noexcept {
         return m_transports.has_socket(id);
     }
 
-    std::shared_ptr<shm::Shm> Router::get_send_shm(Label label) {
+    std::vector<std::shared_ptr<sock::TCPClient>> Router::get_all_sockets() const {
+        return m_transports.get_all_sockets();
+    }
+
+    std::shared_ptr<shm::Shm> Router::get_send_shm(Label label) const noexcept {
         return m_transports.get_send_shm(label);
     }
 
-    std::shared_ptr<shm::Shm> Router::get_recv_shm(Label label) {
+    std::shared_ptr<shm::Shm> Router::get_recv_shm(Label label) const noexcept {
         return m_transports.get_recv_shm(label);
     }
 
-    RecvRoute* Router::get_recv_route(Label label) {
+    const RecvRoute* Router::get_recv_route(Label label) const noexcept {
         return m_routes.get_recv_route(label);
     }
 
-    SendResult Router::send_to_subscribers(Label label, const void* buf, size_t size, handle_uid uid) {
+    SendResult Router::send_to_subscribers(Label label, const void* buf, size_t size, handle_uid uid) const {
         if (!buf || size == 0) return { SendOpErr::Failed, {}, {} };
         SendTargets targets{ label, nullptr, false, nullptr, {}, false, {} };
         {
@@ -332,7 +332,7 @@ namespace eroil {
         return m_dispatch.dispatch_send_targets(targets, buf, size);
     }
 
-    void Router::recv_from_publisher(Label label, const void* buf, size_t size) {
+    void Router::recv_from_publisher(Label label, const void* buf, size_t size) const {
         if (!buf || size == 0) return;
         
         RecvTargets targets{};

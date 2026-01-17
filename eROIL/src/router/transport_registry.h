@@ -19,20 +19,20 @@ namespace eroil {
             // socket
             bool upsert_socket(NodeId id, std::shared_ptr<sock::TCPClient> sock);
             bool delete_socket(NodeId id);
-            std::shared_ptr<sock::TCPClient> get_socket(NodeId id) const;
-            bool has_socket(NodeId id) const;
-            std::vector<std::shared_ptr<sock::TCPClient>> get_all_sockets();
+            std::shared_ptr<sock::TCPClient> get_socket(NodeId id) const noexcept;
+            bool has_socket(NodeId id) const noexcept;
+            std::vector<std::shared_ptr<sock::TCPClient>> get_all_sockets() const;
 
             // send shm
             bool open_send_shm(Label label, size_t label_size);
             bool delete_send_shm(Label label);
-            std::shared_ptr<shm::Shm> get_send_shm(Label label);
-            bool has_send_shm(Label label);
+            std::shared_ptr<shm::Shm> get_send_shm(Label label) const noexcept;
+            bool has_send_shm(Label label) const noexcept;
 
             // recv shm
             bool open_recv_shm(Label label, size_t label_size);
             bool delete_recv_shm(Label label);
-            std::shared_ptr<shm::Shm> get_recv_shm(Label label);
-            bool has_recv_shm(Label label);
+            std::shared_ptr<shm::Shm> get_recv_shm(Label label) const noexcept;
+            bool has_recv_shm(Label label) const noexcept;
     };
 }
