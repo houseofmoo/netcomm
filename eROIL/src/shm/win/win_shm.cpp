@@ -133,31 +133,8 @@ namespace eroil::shm {
             m_handle = nullptr;
             return ShmErr::FileMapFailed;
         }
-
-        // read header and validate
-        const auto* hdr = static_cast<const ShmHeader*>(m_view);
-
-        // wait for initialization
-        constexpr uint32_t tries = 100;
-        for (uint32_t i = 0; i < tries; ++i) {
-            if (hdr->state.load(std::memory_order_acquire) == SHM_READY) break;
-            ::Sleep(1); // yield to any ready thread and come back to me later
-        }
-
-        if (hdr->state.load(std::memory_order_acquire) != SHM_READY) {
-            close();
-            return ShmErr::NotInitialized; 
-        }
-
-        if (hdr->magic != MAGIC_NUM ||
-            hdr->version != VERSION ||
-            hdr->header_size != sizeof(ShmHeader) ||
-            hdr->data_size != static_cast<uint32_t>(size_with_header())) {
-            close();
-            return ShmErr::LayoutMismatch;
-        }
-
-        return ShmErr::None;
+   
+        return validate_shm_header();
     }
 
     void Shm::close() noexcept {

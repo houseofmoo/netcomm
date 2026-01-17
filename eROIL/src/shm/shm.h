@@ -66,5 +66,6 @@ namespace eroil::shm {
         private:
             std::byte* data_ptr() const noexcept;
             void write_shm_header();
+            ShmErr validate_shm_header();
     };
 }

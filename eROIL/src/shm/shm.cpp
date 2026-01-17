@@ -76,4 +76,29 @@ namespace eroil::shm {
         // publish readiness
         hdr->state.store(SHM_READY, std::memory_order_release);
     }
+
+    ShmErr Shm::validate_shm_header() {
+        const auto* hdr = static_cast<const ShmHeader*>(m_view);
+
+        constexpr uint32_t tries = 100;
+        for (uint32_t i = 0; i < tries; ++i) {
+            if (hdr->state.load(std::memory_order_acquire) == SHM_READY) break;
+            std::this_thread::sleep_for(std::chrono::milliseconds(1));
+        }
+
+        if (hdr->state.load(std::memory_order_acquire) != SHM_READY) {
+            close();
+            return ShmErr::NotInitialized;
+        }
+
+        if (hdr->magic != MAGIC_NUM ||
+            hdr->version != VERSION ||
+            hdr->header_size != sizeof(ShmHeader) ||
+            hdr->data_size != static_cast<uint32_t>(size_with_header())) {
+            close();
+            return ShmErr::LayoutMismatch;
+        }
+
+        return ShmErr::None;
+    }
 }

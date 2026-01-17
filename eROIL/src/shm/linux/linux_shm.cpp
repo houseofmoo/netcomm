@@ -6,8 +6,6 @@
 #include <sys/stat.h>   // mode_t
 #include <unistd.h>     // ftruncate, close
 #include <cerrno>
-#include <thread>
-#include <chrono>
 
 #include "shm/shm_header.h"
 #include "types/types.h"
@@ -103,46 +101,21 @@ namespace eroil::shm {
             return ShmErr::InvalidName;
         }
 
-        int fd = ::shm_open(n.c_str(), O_RDWR, 0777);
-        if (fd < 0) {
+        m_handle = ::shm_open(n.c_str(), O_RDWR, 0777);
+        if (m_handle < 0) {
             if (errno == ENOENT) return ShmErr::DoesNotExist;
             return ShmErr::UnknownError;
         }
 
         const size_t total = total_size();
 
-        void* view = ::mmap(nullptr, total, PROT_READ | PROT_WRITE, MAP_SHARED, fd, 0);
-        if (view == MAP_FAILED) {
-            ::close(fd);
+        m_view = ::mmap(nullptr, total, PROT_READ | PROT_WRITE, MAP_SHARED, fd, 0);
+        if (m_view == MAP_FAILED) {
+            ::close(m_handle);
             return ShmErr::FileMapFailed;
         }
 
-        m_handle = fd;
-        m_view = view;
-
-        // read header and validate
-        const auto* hdr = static_cast<const ShmHeader*>(m_view);
-
-        constexpr uint32_t tries = 100;
-        for (uint32_t i = 0; i < tries; ++i) {
-            if (hdr->state.load(std::memory_order_acquire) == SHM_READY) break;
-            std::this_thread::sleep_for(std::chrono::milliseconds(1));
-        }
-
-        if (hdr->state.load(std::memory_order_acquire) != SHM_READY) {
-            close();
-            return ShmErr::NotInitialized;
-        }
-
-        if (hdr->magic != MAGIC_NUM ||
-            hdr->version != VERSION ||
-            hdr->header_size != sizeof(ShmHeader) ||
-            hdr->data_size != static_cast<uint32_t>(size_with_header())) {
-            close();
-            return ShmErr::LayoutMismatch;
-        }
-
-        return ShmErr::None;
+        return validate_shm_header();
     }
 
     void Shm::close() noexcept {
