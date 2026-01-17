@@ -31,7 +31,6 @@ namespace eroil::sock {
             return SockResult{ SockErr::InvalidIp, SockOp::Bind, 0, 0 };
         }
 
-        // set re-use address
         BOOL reuse = TRUE;
         ::setsockopt(
             as_native(m_handle), 
@@ -41,7 +40,6 @@ namespace eroil::sock {
             sizeof(reuse)
         );
 
-        // bind to port
         if (::bind(as_native(m_handle), reinterpret_cast<sockaddr*>(&addr), sizeof(addr)) != 0) {
             int err = ::WSAGetLastError();
             return SockResult{ map_err(err), SockOp::Bind, err, 0 };

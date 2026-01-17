@@ -8,7 +8,7 @@ namespace eroil::cfg {
     namespace detail {
         constexpr std::string_view MANAGE_CONFIG_FILE_PATH = "etc/manager.cfg";
         constexpr std::string_view PEER_IP_FILE_PATH = "etc/peer_ips.cfg";
-        constexpr const char* LOCAL_HOST = "127.0.0.1";
+        constexpr std::string_view LOCAL_HOST = "127.0.0.1";
         constexpr uint16_t PORT_START = 8080;
     }
 
@@ -46,6 +46,5 @@ namespace eroil::cfg {
         UdpMcastConfig mcast_cfg{};
     };
 
-    // build manager cfg based on manager mode
     ManagerConfig get_manager_cfg(int id);
 }

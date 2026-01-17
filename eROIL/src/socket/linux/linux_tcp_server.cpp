@@ -9,10 +9,6 @@
 #include <errno.h>
 
 namespace eroil::sock {
-
-    // static int as_native(socket_handle h) noexcept { return h; }
-    // static socket_handle from_native(int fd) noexcept { return fd; }
-
     SockResult TCPServer::bind(uint16_t port, const char* ip) {
         if (!handle_valid()) {
             return SockResult{ SockErr::InvalidHandle, SockOp::Bind, 0, 0 };

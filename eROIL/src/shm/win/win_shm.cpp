@@ -2,14 +2,18 @@
 
 #include "shm/shm.h"
 #include "windows_hdr.h"
-#include <cstring>
-#include <thread>
-#include <chrono>
-#include "shm/shm_header.h"
 #include "types/types.h"
-#include <eROIL/print.h>
+#include "shm/shm_header.h"
 
 namespace eroil::shm {
+    // static HANDLE as_native(shm_handle h) noexcept {
+    //     return static_cast<HANDLE>(h);
+    // }
+
+    // static shm_handle from_native(HANDLE fd) noexcept {
+    //     return static_cast<shm_handle>(fd);
+    // }
+
     static std::wstring to_windows_wstring(const std::string& s) {
         if (s.empty()) return {};
 
@@ -21,17 +25,8 @@ namespace eroil::shm {
         return out;
     }
 
-    std::byte* Shm::data_ptr() const noexcept {
-        if (m_view == nullptr) return nullptr;
-        return static_cast<std::byte*>(m_view) + sizeof(ShmHeader);
-    }
-
     Shm::Shm(const Label label, const size_t label_size) : 
         m_label(label), m_label_size(label_size), m_handle(nullptr), m_view(nullptr) {}
-
-    Shm::~Shm() {
-        close();
-    }
 
     Shm::Shm(Shm&& other) noexcept : 
         m_label(other.m_label),
@@ -74,14 +69,6 @@ namespace eroil::shm {
         return "Local\\eroil.label." + std::to_string(m_label);
     }
 
-    size_t Shm::size_bytes_total() const noexcept {
-        return m_label_size + sizeof(ShmHeader) + sizeof(LabelHeader);
-    }
-
-    size_t Shm::size_with_label_header() const noexcept {
-        return  m_label_size + sizeof(LabelHeader);
-    }
-
     ShmErr Shm::create() {
         if (is_valid()) return ShmErr::DoubleOpen;
 
@@ -95,7 +82,7 @@ namespace eroil::shm {
             nullptr,
             PAGE_READWRITE,
             0,
-            static_cast<DWORD>(size_bytes_total()),
+            static_cast<DWORD>(total_size()),
             wname.c_str()
         );
 
@@ -115,19 +102,7 @@ namespace eroil::shm {
             return ShmErr::FileMapFailed;
         }
 
-        // write header to block
-        auto* hdr = static_cast<ShmHeader*>(m_view);
-        hdr->state.store(SHM_INITING, std::memory_order_relaxed);
-        hdr->magic = MAGIC_NUM;
-        hdr->version = VERSION;
-        hdr->header_size = static_cast<uint16_t>(sizeof(ShmHeader));
-        hdr->data_size = static_cast<uint32_t>(size_with_label_header());
-
-        // zero data block
-        std::memset(data_ptr(), 0, size_with_label_header());
-
-        // publish readiness
-        hdr->state.store(SHM_READY, std::memory_order_release);
+        write_shm_header();
  
         return ShmErr::None;
     }
@@ -140,19 +115,19 @@ namespace eroil::shm {
             return ShmErr::InvalidName;
         }
 
-         m_handle = OpenFileMappingW(
+         m_handle = ::OpenFileMappingW(
             FILE_MAP_ALL_ACCESS,
             FALSE,
             wname.c_str()
         );
 
         if (m_handle == nullptr) {
-            DWORD e = GetLastError();
+            DWORD e = ::GetLastError();
             if (e == ERROR_FILE_NOT_FOUND) return ShmErr::DoesNotExist;
             return ShmErr::UnknownError;
         }
 
-        m_view = MapViewOfFile(m_handle, FILE_MAP_ALL_ACCESS, 0, 0, 0);
+        m_view = ::MapViewOfFile(m_handle, FILE_MAP_ALL_ACCESS, 0, 0, 0);
         if (m_view == nullptr) {
             close();
             m_handle = nullptr;
@@ -177,51 +152,12 @@ namespace eroil::shm {
         if (hdr->magic != MAGIC_NUM ||
             hdr->version != VERSION ||
             hdr->header_size != sizeof(ShmHeader) ||
-            hdr->data_size != static_cast<uint32_t>(size_with_label_header())) {
+            hdr->data_size != static_cast<uint32_t>(size_with_header())) {
             close();
             return ShmErr::LayoutMismatch;
         }
 
         return ShmErr::None;
-    }
-
-    ShmErr Shm::create_or_open(const uint32_t attempts, const uint32_t wait_ms) {
-        if (is_valid()) return ShmErr::DoubleOpen;
-        ShmErr err = ShmErr::None;
-
-        for (uint32_t i = 0; i < attempts; ++i) {
-            err = create();
-            if (err == ShmErr::None) return err;
-
-            if (err != ShmErr::AlreadyExists) {
-                ERR_PRINT("shm::create_or_open() got unexpected error from open_new(): ", static_cast<int>(err));
-                return err; // some other failure state
-            }
-
-            err = open();
-            if (err == ShmErr::None) return err;
-
-            // wait and try again
-            std::this_thread::sleep_for(std::chrono::milliseconds(wait_ms));
-        }
-
-        return err;
-    }
-
-    ShmOpErr Shm::read(void* buf, const size_t size) const noexcept {
-        if (!is_valid()) return ShmOpErr::NotOpen;
-        if (size > size_with_label_header()) return ShmOpErr::TooLarge;
-
-        std::memcpy(buf, data_ptr(), size);
-        return ShmOpErr::None;
-    }
-    
-    ShmOpErr Shm::write(const void* buf, const size_t size) noexcept {
-        if (!is_valid()) return ShmOpErr::NotOpen;
-        if (size > size_with_label_header()) return ShmOpErr::TooLarge;
-
-        std::memcpy(data_ptr(), buf, size);
-        return ShmOpErr::None;
     }
 
     void Shm::close() noexcept {

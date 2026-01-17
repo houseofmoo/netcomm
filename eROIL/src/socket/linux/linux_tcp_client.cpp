@@ -76,15 +76,12 @@ namespace eroil::sock {
         }
 
         if (sent_bytes == 0) {
-            // This is unusual for send(); treat as closed to match your Windows logic.
             ERR_PRINT("send() sent 0 bytes, considering the socket closed");
             m_connected = false;
             return SockResult{ SockErr::Closed, SockOp::Send, 0, 0 };
         }
 
         const int err = errno;
-
-        // Match your Windows behavior: mark disconnected on fatal errors.
         if (is_fatal_send_err(err)) {
             ERR_PRINT("send() fatal error indicates socket closed/unusable, errno=", err);
             m_connected = false;
@@ -113,7 +110,6 @@ namespace eroil::sock {
         while (total < size) {
             const size_t remaining = size - total;
 
-            // send() takes size_t on Linux, returns ssize_t
             const ssize_t sent = ::send(
                 m_handle,
                 ptr + total,
@@ -198,19 +194,19 @@ namespace eroil::sock {
         size_t total = 0;
 
         while (total < size) {
-            const ssize_t r = ::recv(
+            const ssize_t recv_bytes = ::recv(
                 m_handle,
                 out + total,
                 size - total,
                 0
             );
 
-            if (r > 0) {
+            if (recv_bytes > 0) {
                 total += static_cast<size_t>(r);
                 continue;
             }
 
-            if (r == 0) {
+            if (recv_bytes == 0) {
                 m_connected = false;
                 return SockResult{
                     SockErr::Closed,
@@ -221,9 +217,8 @@ namespace eroil::sock {
             }
 
             const int err = errno;
-
             if (err == EINTR) {
-                continue; // retry
+                continue; // retry, we were interrupted
             }
 
             return SockResult{
@@ -241,6 +236,5 @@ namespace eroil::sock {
             static_cast<int>(total)
         };
     }
-
 }
 #endif

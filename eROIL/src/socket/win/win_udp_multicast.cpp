@@ -92,6 +92,7 @@ namespace eroil::sock {
             return result;
         }
 
+        // TTL
         result.op = SockOp::Send;
         int ttl = cfg.ttl;
         if (::setsockopt(as_native(m_handle), IPPROTO_IP, IP_MULTICAST_TTL,

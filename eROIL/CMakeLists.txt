@@ -46,6 +46,7 @@ target_sources(eROIL
         ${CMAKE_CURRENT_SOURCE_DIR}/src/router/route_table.cpp
         ${CMAKE_CURRENT_SOURCE_DIR}/src/router/router.cpp
         ${CMAKE_CURRENT_SOURCE_DIR}/src/router/transport_registry.cpp
+        ${CMAKE_CURRENT_SOURCE_DIR}/src/shm/shm.cpp
         ${CMAKE_CURRENT_SOURCE_DIR}/src/timer/time_log.cpp
         ${CMAKE_CURRENT_SOURCE_DIR}/src/timer/timer.cpp
         ${CMAKE_CURRENT_SOURCE_DIR}/src/workers/send_worker.cpp

@@ -26,9 +26,9 @@ namespace eroil::evtlog {
 
     class EventLog {
         private:
-        alignas(64) std::atomic<uint32_t> m_seq{};
-        alignas(64) std::atomic<size_t> m_idx{};
-        alignas(64) std::array<EventRecord, EVENT_LOG_CAPACITY> m_evt_logs{};
+            alignas(64) std::atomic<uint32_t> m_seq{};
+            alignas(64) std::atomic<size_t> m_idx{};
+            alignas(64) std::array<EventRecord, EVENT_LOG_CAPACITY> m_evt_logs{};
 
         public:
             // full log with payload copy
@@ -49,7 +49,7 @@ namespace eroil::evtlog {
                          std::uint32_t b=0,
                          std::uint32_t c=0) noexcept;
 
-            // does no memcset/memcpy of payload, and does not set tock, for extremely hot paths
+            // does no memcset/memcpy of payload, and does not set tick, for extremely hot paths
             void log_hot_no_time(EventKind kind, 
                                  Severity sev, 
                                  Category cat,

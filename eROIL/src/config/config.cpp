@@ -123,10 +123,10 @@ namespace eroil::cfg {
     std::vector<NodeInfo> build_fake_node_info() {
         std::vector<NodeInfo> nodes;
         PRINT("building FAKE NodeInfo for testing");
-        for (int i = 0; i < 20; i++) {
+        for (uint32_t i = 0; i < 20; i++) {
             nodes.push_back(NodeInfo{
-                i,
-                detail::LOCAL_HOST,
+                static_cast<NodeId>(i),
+                std::string(detail::LOCAL_HOST),
                 static_cast<uint16_t>(detail::PORT_START + i)
             });
         }

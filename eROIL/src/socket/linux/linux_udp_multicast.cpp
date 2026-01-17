@@ -111,7 +111,6 @@ namespace eroil::sock {
 
         // join group
         result.op = SockOp::Join;
-
         ip_mreq mreq{};
         if (::inet_pton(AF_INET, cfg.group_ip.c_str(), &mreq.imr_multiaddr) != 1) {
             ERR_PRINT("err ::join()");
@@ -120,7 +119,6 @@ namespace eroil::sock {
             return result;
         }
 
-        // Match your Windows behavior: join on "any" interface
         mreq.imr_interface.s_addr = htonl(INADDR_ANY);
 
         if (::setsockopt(m_handle, IPPROTO_IP, IP_ADD_MEMBERSHIP, &mreq, (socklen_t)sizeof(mreq)) != 0) {
@@ -212,16 +210,10 @@ namespace eroil::sock {
 
     void UDPMulticastSocket::close() noexcept {
         if (handle_valid()) {
-            // Optional: drop membership before closing (recommended if you track group/interface).
-            // Your Windows version didn’t, so this is kept minimal.
-            // If you want it, store `ip_mreq` in the class and call:
-            // ::setsockopt(fd, IPPROTO_IP, IP_DROP_MEMBERSHIP, &mreq, sizeof(mreq));
-
             int rc;
             do { rc = ::close(m_handle); }
             while (rc != 0 && errno == EINTR);
         }
-
         m_handle = INVALID_SOCKET;
         m_open = false;
         m_joined = false;
