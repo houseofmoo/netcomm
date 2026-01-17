@@ -23,12 +23,26 @@ namespace eroil::sock {
             TCPSocket(TCPSocket&& other) noexcept;
             TCPSocket& operator=(TCPSocket&& other) noexcept;
 
-            bool is_connected() const noexcept;
-            void adopt(socket_handle handle, bool connected = true) noexcept;
             SockResult open();
-            void disconnect() noexcept;
             void shutdown() noexcept;
             void close() noexcept;
+
+            // shared implementation
+            bool is_connected() const noexcept { 
+                return m_connected && handle_valid(); 
+            }
+
+            void adopt(socket_handle handle, bool connected = true) noexcept {
+                close();
+                m_handle = handle;
+                m_connected = connected;
+            }
+
+            void disconnect() noexcept {
+                shutdown();
+                close();
+            }
+
 
         protected:
             bool handle_valid() const noexcept;
@@ -60,11 +74,19 @@ namespace eroil::sock {
             NodeId get_destination_id() { return m_dest_id; }
 
             SockResult connect(const char* ip, uint16_t port);
-            SockResult open_and_connect(const char* ip, uint16_t port);
             SockResult send(const void* data, const size_t size);
             SockResult send_all(const void* data, const size_t size);
             SockResult recv(void* data, const size_t size);
             SockResult recv_all(void* data, const size_t size);
+
+            // shared implementation
+            SockResult open_and_connect(const char* ip, uint16_t port) {
+                const auto open_err = open();
+                if (open_err.code != SockErr::None) {
+                    return open_err;
+                }
+                return connect(ip, port);
+            }
     };
 
     class TCPServer final : public TCPSocket {
@@ -82,9 +104,20 @@ namespace eroil::sock {
 
             SockResult bind(uint16_t port, const char* ip = "0.0.0.0");
             SockResult listen(int backlog = 0);
-            SockResult open_and_listen(uint16_t port, const char* ip = "0.0.0.0");
-
             std::pair<std::shared_ptr<TCPClient>, SockResult> accept();
-            void request_stop() noexcept;
+
+            // shared implementation
+            SockResult open_and_listen(uint16_t port, const char* ip = "0.0.0.0") {
+                auto err = open();
+                if (err.code != SockErr::None) return err;
+
+                err = bind(port, ip);
+                if (err.code != SockErr::None) return err;
+
+                return listen(0);
+            }
+            
+            void request_stop() noexcept { close(); }
+
     };
 }

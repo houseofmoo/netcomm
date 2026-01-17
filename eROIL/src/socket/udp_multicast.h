@@ -26,14 +26,22 @@ namespace eroil::sock {
             UDPMulticastSocket(UDPMulticastSocket&& other) noexcept;
             UDPMulticastSocket& operator=(UDPMulticastSocket&& other) noexcept;
 
-            bool is_open() const noexcept;
             SockResult open_and_join(const cfg::UdpMcastConfig& cfg);
 
             SockResult send_broadcast(const void* data, size_t size) noexcept;
             SockResult recv_broadcast(void* data, size_t size) noexcept;
 
-            void request_stop() noexcept;
             void close() noexcept;
+
+            // shared implementation
+            bool is_open() const noexcept {
+                return m_open && handle_valid();
+            }
+
+            
+            void request_stop() noexcept {
+                close(); // breaks blocking recvfrom
+            }
 
         private:
             bool handle_valid() const noexcept;

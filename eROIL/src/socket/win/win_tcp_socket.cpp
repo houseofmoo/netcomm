@@ -37,15 +37,15 @@ namespace eroil::sock {
         return m_handle != INVALID_SOCKET;
     }
 
-    bool TCPSocket::is_connected() const noexcept {
-        return m_connected && handle_valid();
-    }
+    // bool TCPSocket::is_connected() const noexcept {
+    //     return m_connected && handle_valid();
+    // }
 
-    void TCPSocket::adopt(socket_handle handle, bool connected) noexcept {
-        close();
-        m_handle = handle;
-        m_connected = connected;
-    }
+    // void TCPSocket::adopt(socket_handle handle, bool connected) noexcept {
+    //     close();
+    //     m_handle = handle;
+    //     m_connected = connected;
+    // }
 
     SockResult TCPSocket::open() {
         if (handle_valid()) return SockResult{ SockErr::DoubleOpen, SockOp::Open, 0, 0 };
@@ -59,10 +59,10 @@ namespace eroil::sock {
         return SockResult{ map_err(err), SockOp::Open, err, 0 };
     }
 
-    void TCPSocket::disconnect() noexcept {
-        shutdown();
-        close();
-    }
+    // void TCPSocket::disconnect() noexcept {
+    //     shutdown();
+    //     close();
+    // }
 
     void TCPSocket::shutdown() noexcept {
         if (handle_valid()) {

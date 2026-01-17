@@ -52,16 +52,6 @@ namespace eroil::sock {
         return SockResult{ SockErr::None, SockOp::Listen, 0, 0 };
     }
 
-    SockResult TCPServer::open_and_listen(uint16_t port, const char* ip) {
-        auto err = open();
-        if (err.code != SockErr::None) return err;
-
-        err = bind(port, ip);
-        if (err.code != SockErr::None) return err;
-
-        return listen(0);
-    }
-
     std::pair<std::shared_ptr<TCPClient>, SockResult> TCPServer::accept() {
         SockResult result{ SockErr::Unknown, SockOp::Accept, 0, 0 };
 
@@ -92,10 +82,6 @@ namespace eroil::sock {
 
         result.code = SockErr::None;
         return { std::move(client), result };
-    }
-
-    void TCPServer::request_stop() noexcept {
-        close();
     }
 }
 #endif

@@ -42,10 +42,6 @@ namespace eroil::sock {
         return *this;
     }
 
-    bool UDPMulticastSocket::is_open() const noexcept {
-        return m_open && handle_valid();
-    }
-
     SockResult UDPMulticastSocket::open_and_join(const UdpMcastConfig& cfg) {
         SockResult result{};
         result.op = SockOp::Open;
@@ -68,10 +64,8 @@ namespace eroil::sock {
 
         if (cfg.reuse_addr) {
             int reuse = 1;
-            (void)::setsockopt(m_handle, SOL_SOCKET, SO_REUSEADDR, &reuse, (socklen_t)sizeof(reuse));
-
-            // Optional on Linux for multicast fanout if you want multiple listeners reliably:
-            (void)::setsockopt(m_handle, SOL_SOCKET, SO_REUSEPORT, &reuse, (socklen_t)sizeof(reuse));
+            ::setsockopt(m_handle, SOL_SOCKET, SO_REUSEADDR, &reuse, (socklen_t)sizeof(reuse));
+            ::setsockopt(m_handle, SOL_SOCKET, SO_REUSEPORT, &reuse, (socklen_t)sizeof(reuse));
         }
 
         // bind
@@ -202,10 +196,6 @@ namespace eroil::sock {
         result.bytes = static_cast<int>(recvd);
         result.code = SockErr::None;
         return result;
-    }
-
-    void UDPMulticastSocket::request_stop() noexcept {
-        close(); // attempts to break blocking recvfrom
     }
 
     void UDPMulticastSocket::close() noexcept {

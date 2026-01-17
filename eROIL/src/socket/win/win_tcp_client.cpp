@@ -44,14 +44,6 @@ namespace eroil::sock {
         return SockResult{ SockErr::None, SockOp::Connect, 0, 0 };
     }
 
-    SockResult TCPClient::open_and_connect(const char* ip, uint16_t port) {
-        const auto open_err = open();
-        if (open_err.code != SockErr::None) {
-            return open_err;
-        }
-        return connect(ip, port);
-    }
-
     SockResult TCPClient::send(const void* data, const size_t size) {
         if (!is_connected()) {
             return SockResult{ SockErr::NotConnected, SockOp::Send, 0, 0 };

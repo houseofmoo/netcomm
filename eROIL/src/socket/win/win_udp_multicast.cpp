@@ -41,10 +41,6 @@ namespace eroil::sock {
         return *this;
     }
 
-    bool UDPMulticastSocket::is_open() const noexcept {
-        return m_open && handle_valid();
-    }
-
     SockResult UDPMulticastSocket::open_and_join(const cfg::UdpMcastConfig& cfg) {
         // open
         SockResult result{};
@@ -67,8 +63,13 @@ namespace eroil::sock {
 
         if (cfg.reuse_addr) {
             BOOL reuse = TRUE;
-            ::setsockopt(as_native(m_handle), SOL_SOCKET, SO_REUSEADDR,
-                        reinterpret_cast<const char*>(&reuse), sizeof(reuse));
+            ::setsockopt(
+                as_native(m_handle), 
+                SOL_SOCKET, 
+                SO_REUSEADDR, 
+                reinterpret_cast<const char*>(&reuse),
+                 sizeof(reuse)
+            );
         }
 
         // bind
@@ -117,6 +118,7 @@ namespace eroil::sock {
             result.code = SockErr::InvalidIp;
             return result;
         }
+        
         mreq.imr_interface.s_addr = htonl(INADDR_ANY);
 
         if (::setsockopt(as_native(m_handle), IPPROTO_IP, IP_ADD_MEMBERSHIP,
@@ -197,10 +199,6 @@ namespace eroil::sock {
         result.bytes = recvd;
         result.code = SockErr::None;
         return result;
-    }
-
-    void UDPMulticastSocket::request_stop() noexcept {
-        close(); // breaks blocking recvfrom
     }
 
     void UDPMulticastSocket::close() noexcept {
