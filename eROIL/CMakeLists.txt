@@ -39,7 +39,7 @@ target_sources(eROIL
         ${CMAKE_CURRENT_SOURCE_DIR}/src/eroil.cpp
         ${CMAKE_CURRENT_SOURCE_DIR}/src/address/address.cpp
         ${CMAKE_CURRENT_SOURCE_DIR}/src/config/config.cpp
-        ${CMAKE_CURRENT_SOURCE_DIR}/src/conn/connection_manager.cpp
+        ${CMAKE_CURRENT_SOURCE_DIR}/src/comm/connection_manager.cpp
         ${CMAKE_CURRENT_SOURCE_DIR}/src/log/evtlog.cpp
         ${CMAKE_CURRENT_SOURCE_DIR}/src/manager/manager.cpp
         ${CMAKE_CURRENT_SOURCE_DIR}/src/router/dispatch.cpp
@@ -96,7 +96,7 @@ target_include_directories(eROIL
         ${CMAKE_CURRENT_SOURCE_DIR}/src
         # ${CMAKE_CURRENT_SOURCE_DIR}/src/address
         # ${CMAKE_CURRENT_SOURCE_DIR}/src/config
-        # ${CMAKE_CURRENT_SOURCE_DIR}/src/conn
+        # ${CMAKE_CURRENT_SOURCE_DIR}/src/comm
         # ${CMAKE_CURRENT_SOURCE_DIR}/src/events
         # ${CMAKE_CURRENT_SOURCE_DIR}/src/manager
         # ${CMAKE_CURRENT_SOURCE_DIR}/src/router

@@ -33,12 +33,6 @@ namespace eroil::worker {
         // do not allow new work if continue work is false
         if (!continue_work.load(std::memory_order_acquire)) return;
 
-        // do not allow bad data to enter queue
-        if (entry.data == nullptr || entry.data_size == 0) {
-            ERR_PRINT("tried to enqueue null or empty data");
-            return;
-        }
-
         {
             std::lock_guard lock(m_mtx);
             m_send_data_q.push(std::move(entry));
@@ -94,22 +88,25 @@ namespace eroil::worker {
                 if (!entry) break;
 
                 try {
-                    evtlog::info(elog_kind::SendWorker_Start, elog_cat::Worker, entry->label, entry->data_size);
-                    auto result = m_router.send_to_subscribers(entry->label, entry->data.get(), entry->data_size, entry->uid);
+                    const size_t data_size = entry->send_buf.total_size; // store size for logs
+                    evtlog::info(elog_kind::SendWorker_Start, elog_cat::Worker, entry->label, data_size);
+
+                    auto result = m_router.send_to_subscribers(entry->label, entry->uid, std::move(entry->send_buf));
+
                     switch (result.send_err) {
                         // TODO: how do we want to handle errors?
                         case SendOpErr::RouteNotFound: // fallthrough
                         case SendOpErr::SizeMismatch:  // fallthrough
                         case SendOpErr::SizeTooLarge:  // fallthrough
                         case SendOpErr::NoPublishers: { 
-                            evtlog::warn(elog_kind::SendWorker_Warning, elog_cat::Worker, entry->label, entry->data_size);
+                            evtlog::warn(elog_kind::SendWorker_Warning, elog_cat::Worker, entry->label, data_size);
                             break; 
                         }
 
                         // this may be caused by socket send fail (handled with reconnect)
                         // or shm write/signal fail which means the shm memory is no longer open
                         case SendOpErr::Failed: {
-                            evtlog::error(elog_kind::SendWorker_Error, elog_cat::Worker, entry->label, entry->data_size);
+                            evtlog::error(elog_kind::SendWorker_Error, elog_cat::Worker, entry->label, data_size);
                             break; 
                         } 
 
@@ -117,7 +114,7 @@ namespace eroil::worker {
                         case SendOpErr::None: { break; }
                         default: { break; } // unknown error?
                     }
-                    evtlog::info(elog_kind::SendWorker_End, elog_cat::Worker, entry->label, entry->data_size);
+                    evtlog::info(elog_kind::SendWorker_End, elog_cat::Worker, entry->label, data_size);
                 } catch (const std::exception& e) {
                     ERR_PRINT("Exception in worker thread, entry.label: ", entry->label, ", exception: ", e.what());
                 } catch (...) {

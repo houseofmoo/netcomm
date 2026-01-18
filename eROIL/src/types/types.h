@@ -2,6 +2,8 @@
 #include <cstddef>
 #include <cstdint>
 #include <array>
+#include <memory>
+#include "assertion.h"
 
 namespace eroil {
     using Label = std::int32_t;
@@ -71,6 +73,46 @@ namespace eroil {
         Ping = 1 << 3,
     };
 
+    struct SendBuf {
+        void* data_src_addr = nullptr; // where the data was copied from (for send IOSB)
+        std::unique_ptr<uint8_t[]> data;
+        size_t data_size = 0;
+        size_t total_size = 0;  // size of data + header
+
+        SendBuf(void* src_buf, const size_t size) : data_src_addr(src_buf) {
+            DB_ASSERT(data_src_addr != nullptr, "cannot have nullptr src addr for send label");
+            DB_ASSERT(size != 0, "cannot have 0 data size for send label");
+
+            data_size = size;
+            total_size = size + sizeof(LabelHeader);
+            data = std::make_unique<uint8_t[]>(total_size);
+        }
+            
+        // move ok
+        SendBuf(SendBuf&&) noexcept = default;
+        SendBuf& operator=(SendBuf&&) noexcept = default;
+
+        // copy deleted
+        SendBuf(const SendBuf&) = delete;
+        SendBuf& operator=(const SendBuf&) = delete;
+    };
+
+
+    // helper funcs
     inline void set_flag(std::uint16_t& flags, const LabelFlag flag) { flags |= static_cast<std::uint16_t>(flag); }
     inline bool has_flag(const std::uint16_t flags, const LabelFlag flag) { return flags & static_cast<std::uint16_t>(flag); }
+
+    inline LabelHeader get_send_header(NodeId id, Label label, size_t data_size) {
+        uint16_t flags = 0;
+        set_flag(flags, LabelFlag::Data);
+
+        LabelHeader hdr;
+        hdr.magic = MAGIC_NUM;
+        hdr.version = VERSION;
+        hdr.source_id = id;
+        hdr.flags = flags;
+        hdr.label = label;
+        hdr.data_size = data_size;
+        return hdr;
+    }
 }

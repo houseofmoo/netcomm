@@ -37,7 +37,7 @@ namespace print {
     }
 }
 
-#ifndef NDEBUG // debug
+#if !defined(NDEBUG) // debug
     #define PRINT(...) print::write(__VA_ARGS__)
     #define ERR_PRINT(...) print::ERR_PRINT(__VA_ARGS__)
     #define LOG(...) print::log(__VA_ARGS__)

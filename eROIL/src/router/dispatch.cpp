@@ -4,17 +4,18 @@
 #include <eROIL/print.h>
 #include "types/types.h"
 #include "platform/platform.h"
+#include "assertion.h"
+#include <cassert>
 
 namespace eroil {
-    SendResult Dispatcher::dispatch_send_targets(const SendTargets& targets,
-                                                 const void* buf,
-                                                 size_t size) const {
+    SendResult Dispatcher::dispatch_send_targets(const SendTargets& targets, SendBuf send_buf) const {
         bool failed = false;
         SendResult result{ SendOpErr::None, shm::ShmOpErr::None, {} };
 
         // local
         if (targets.has_local) {
-            auto shm_err = targets.shm->write(buf, size);
+            DB_ASSERT(targets.shm != nullptr, "dispatch_send_targets(): unexpected nullptr to shm memory block");
+            auto shm_err = targets.shm->write(send_buf.data.get(), send_buf.total_size);
             if (shm_err != shm::ShmOpErr::None) {
                 result.shm_err = shm_err;
                 failed = true;
@@ -23,7 +24,7 @@ namespace eroil {
 
             for (auto evt : targets.shm_signals) {
                 if (evt == nullptr) {
-                    ERR_PRINT("shared memory named event was null for label=", targets.label);
+                    ERR_PRINT("shared memory write named event was null for label=", targets.label);
                     continue;
                 }
                 evt->post();
@@ -33,6 +34,7 @@ namespace eroil {
 
         // remote
         if (targets.has_remote) {
+            DB_ASSERT(!targets.sockets.empty(), "dispatch_send_targets(): unexpected empty socket list");
             for (const auto& sock : targets.sockets) {
                 if (sock == nullptr) continue;
 
@@ -40,7 +42,7 @@ namespace eroil {
                 // we're trying to reconnect in in comms handler
                 if (!sock->is_connected()) continue;
                 
-                auto sock_err = sock->send(buf, size);
+                auto sock_err = sock->send(send_buf.data.get(), send_buf.total_size);
                 if (sock_err.code != sock::SockErr::None) {
                     failed = true;
                     result.sock_err.emplace(
@@ -65,13 +67,13 @@ namespace eroil {
                 // or a buffer that was provided, that way we can set iosb->pMsgAddr correctly
                 // this should also be true for MsgSize (but this one should alway be the same)
 
-                iosb->Status = size;  // number of bytes sent is status (-1 is error, 0 is disconnected)
+                iosb->Status = send_buf.total_size;  // number of bytes sent is status (-1 is error, 0 is disconnected)
                 iosb->Reserve1 = 0;
                 iosb->Header_Valid = 1;
                 iosb->Reserve2 = 0;  // 0 for send, 1 for receive (cause thats how they defined it)
                 iosb->Reserve3 = 0;
-                iosb->pMsgAddr = reinterpret_cast<char*>(targets.publisher->buf);
-                iosb->MsgSize = targets.publisher->buf_size;
+                iosb->pMsgAddr = reinterpret_cast<char*>(send_buf.data_src_addr);
+                iosb->MsgSize = send_buf.data_size;
                 iosb->Reserve4 = 0;
                 iosb->Reserve5 = 0;
                 iosb->Reserve6 = 0;
@@ -95,11 +97,28 @@ namespace eroil {
     void Dispatcher::dispatch_recv_targets(const RecvTargets& targets,
                                            const void* buf,
                                            size_t size) const {
+
+        
         for (const auto& subs : targets.subscribers) {
-            if (subs == nullptr) continue;
-            if (subs->buf == nullptr) continue;
-            if (subs->buf_slots == 0) continue;
-            if (subs->buf_size == 0) continue;
+            if (subs == nullptr) {
+                ERR_PRINT(__func__, "(): got null subscriber for label=", targets.label);
+                continue;
+            }
+
+            if (subs->buf == nullptr) { 
+                ERR_PRINT(__func__, "(): subscriber has no buffer for label=", targets.label);
+                continue;
+            }
+
+            if (subs->buf_slots == 0) {
+                ERR_PRINT(__func__, "(): subscriber has no buffer slots for label=", targets.label);
+                continue;
+            }
+
+            if (subs->buf_size == 0) { 
+                ERR_PRINT(__func__, "(): subscriber buffer size is 0 for label=", targets.label);
+                continue;
+            }
 
             const size_t slot = subs->buf_index % subs->buf_slots;
             uint8_t* dst = subs->buf + (slot * subs->buf_size);

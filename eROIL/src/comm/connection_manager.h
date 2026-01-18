@@ -7,6 +7,7 @@
 #include "workers/send_worker.h"
 #include "workers/socket_recv_worker.h"
 #include "workers/shm_recv_worker.h"
+#include "types/types.h"
 
 namespace eroil {
     class ConnectionManager {
@@ -24,7 +25,7 @@ namespace eroil {
             ~ConnectionManager() = default;
 
             void start();
-            void send_label(handle_uid uid, Label label, size_t data_size, std::unique_ptr<uint8_t[]> data);
+            void send_label(handle_uid uid, Label label, SendBuf send_buf);
             void start_local_recv_worker(Label label, size_t label_size);
             void stop_local_recv_worker(Label label);
             void start_remote_recv_worker(NodeId from_id);

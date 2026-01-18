@@ -255,15 +255,14 @@ namespace eroil {
         return m_routes.get_recv_route(label);
     }
 
-    SendResult Router::send_to_subscribers(Label label, const void* buf, size_t size, handle_uid uid) const {
-        if (!buf || size == 0) return { SendOpErr::Failed, {}, {} };
+    SendResult Router::send_to_subscribers(Label label, handle_uid uid, SendBuf send_buf) const {
         SendTargets targets{ label, nullptr, false, nullptr, {}, false, {} };
         {
             std::shared_lock lock(m_router_mtx);
 
-            if (size > SOCKET_DATA_MAX_SIZE) {
+            if (send_buf.total_size > SOCKET_DATA_MAX_SIZE) {
                 ERR_PRINT(__func__, "(): send size bigger than max label=", label,
-                          " size=", size, " max=", SOCKET_DATA_MAX_SIZE);
+                          " size=", send_buf.total_size, " max=", SOCKET_DATA_MAX_SIZE);
                 return { SendOpErr::SizeTooLarge, {}, {} };
             }
 
@@ -273,9 +272,9 @@ namespace eroil {
                 return { SendOpErr::RouteNotFound, {}, {} };
             }
 
-            size_t total_size = route->label_size + sizeof(LabelHeader);
-            if (total_size != size ) {
-                ERR_PRINT(__func__, "(): size mismatch label=", label, " expected=", total_size, " got=", size);
+            size_t expected_size = route->label_size + sizeof(LabelHeader);
+            if (expected_size != send_buf.total_size ) {
+                ERR_PRINT(__func__, "(): size mismatch label=", label, " expected=", expected_size, " got=", send_buf.total_size);
                 return { SendOpErr::SizeMismatch, {}, {} };
             }
 
@@ -329,7 +328,7 @@ namespace eroil {
             }
         }
 
-        return m_dispatch.dispatch_send_targets(targets, buf, size);
+        return m_dispatch.dispatch_send_targets(targets, std::move(send_buf));
     }
 
     void Router::recv_from_publisher(Label label, const void* buf, size_t size) const {

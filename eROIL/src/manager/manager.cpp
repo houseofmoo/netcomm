@@ -65,38 +65,56 @@ namespace eroil {
     }
 
     void Manager::send_label(SendHandle* handle, void* buf, size_t buf_size, size_t buf_offset) {
-        // figure out which buffer to use
-        uint8_t* send_buf = nullptr;
-        size_t send_size = 0;
-        size_t send_offset = 0;
-        if (buf != nullptr) {
-            send_buf = reinterpret_cast<uint8_t*>(buf);
-            send_size = buf_size;
-            send_offset = buf_offset;
-        } else {
-            send_buf = handle->data->buf;
-            send_size = handle->data->buf_size;
-            send_offset = handle->data->buf_offset;
+        if (handle == nullptr) {
+            ERR_PRINT(__func__, "(): got null send handle");
+            return;
         }
 
+        void* src_addr = nullptr;
+        uint8_t* data_buf = nullptr;
+        size_t data_size = 0;
+        size_t data_offset = 0;
+        
+        // figure out which buffer to use
+        if (buf != nullptr) {
+            src_addr = buf;
+            data_buf = reinterpret_cast<uint8_t*>(buf);
+            data_size = buf_size;
+            data_offset = buf_offset;
+        } else {
+            src_addr = handle->data->buf;
+            data_buf = handle->data->buf;
+            data_size = handle->data->buf_size;
+            data_offset = handle->data->buf_offset;
+        }
+
+        if (src_addr == nullptr) {
+            ERR_PRINT(__func__, "(): got null source buffer");
+            return;
+        }
+
+        if (data_size == 0) {
+            ERR_PRINT(__func__, "(): got data size: 0");
+            return;
+        }
+
+        if (data_buf == nullptr) {
+            ERR_PRINT(__func__, "(): got null data buffer");
+            return;
+        }
+
+        // create send buffer
+        SendBuf sbuf(src_addr, data_size);
+
         // attach header for send
-        uint16_t flags = 0;
-        set_flag(flags, LabelFlag::Data);
-        LabelHeader hdr {
-            MAGIC_NUM,
-            VERSION,
-            m_id,
-            flags,
-            handle->data->label,
-            static_cast<uint32_t>(send_size)
-        };
+        LabelHeader hdr = get_send_header(m_id, handle->data->label, data_size);
+        std::memcpy(sbuf.data.get(), &hdr, sizeof(hdr));
+
+        // copy data into buffer after header
+        std::memcpy(sbuf.data.get() + sizeof(hdr), data_buf + data_offset, data_size);
         
-        size_t data_size = send_size + sizeof(hdr);
-        auto data = std::make_unique<uint8_t[]>(data_size);
-        std::memcpy(data.get(), &hdr, sizeof(hdr));
-        std::memcpy(data.get() + sizeof(hdr), send_buf + send_offset, send_size);
-        
-        m_comms.send_label(handle->uid, handle->data->label, data_size, std::move(data));
+        // hand off to sender
+        m_comms.send_label(handle->uid, handle->data->label, std::move(sbuf));
     }
 
     void Manager::close_send(SendHandle* handle) {

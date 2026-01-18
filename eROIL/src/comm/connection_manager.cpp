@@ -1,7 +1,6 @@
 #include "connection_manager.h"
 #include <thread>
 #include <chrono>
-#include "types/types.h"
 #include <eROIL/print.h>
 #include "log/evtlog_api.h"
 
@@ -66,12 +65,11 @@ namespace eroil {
         }).detach();
     }
 
-    void ConnectionManager::send_label(handle_uid uid, Label label, size_t buf_size, std::unique_ptr<uint8_t[]> data) {
+    void ConnectionManager::send_label(handle_uid uid, Label label, SendBuf send_buf) {
         m_sender.enqueue(worker::SendQEntry{
             uid,
             label,
-            buf_size,
-            std::move(data)
+            std::move(send_buf)
         });
     }
 
