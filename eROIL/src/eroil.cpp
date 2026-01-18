@@ -62,6 +62,16 @@ void* open_send(int label, void* buf, int size) {
     return reinterpret_cast<void*>(ptr);
 }
 
+bool close_send(void* handle) {
+    if (manager == nullptr || !initialized) {
+        ERR_PRINT("manager not initialized");
+        return false;
+    }
+
+    manager->close_send(reinterpret_cast<eroil::SendHandle*>(handle));
+    return true;
+}
+
 void* open_recv(int label, void* buf, int size, void* sem) {
     if (manager == nullptr || !initialized) {
         ERR_PRINT("manager not initialized");
@@ -84,6 +94,16 @@ void* open_recv(int label, void* buf, int size, void* sem) {
     auto ptr = manager->open_recv(data);
 
     return reinterpret_cast<void*>(ptr);
+}
+
+bool close_recv(void* handle) {
+    if (manager == nullptr || !initialized) {
+        ERR_PRINT("manager not initialized");
+        return false;
+    }
+
+    manager->close_recv(reinterpret_cast<eroil::RecvHandle*>(handle));
+    return true;
 }
 
 void send_label(void* handle, void* buf, int buf_size, int buf_offset) {
