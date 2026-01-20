@@ -56,7 +56,6 @@ namespace eroil::sock {
             // destination out of order, we lock on sends. We do not need to lock
             // on recvs since only 1 thread listens to each sockets incoming messages
             std::mutex m_send_mtx; 
-            //void query_remote();
 
         public:
             TCPClient();

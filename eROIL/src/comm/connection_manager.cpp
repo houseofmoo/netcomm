@@ -32,36 +32,46 @@ namespace eroil {
             run_tcp_server();
         }).detach();
 
-        // remote peer search thread
-        auto search_complete = std::make_shared<evt::Semaphore>();
-        std::thread([this, search_complete]() { 
-            search_remote_peers(); 
-            search_complete->post();
-        }).detach();
 
-        // wait 10 seconds for peer search, otherwise continue normally
-        auto wait_err = search_complete->wait(10 * 1000);
-        switch (wait_err) {
-            case evt::SemOpErr::None: {
-                LOG("remote peer connections complete");
+        std::vector<addr::NodeAddress> remote_peers;
+        for (const auto& [id, info] : addr::get_address_book()) {
+            if (info.kind == addr::RouteKind::Shm) continue;
+            if (info.kind == addr::RouteKind::Self) continue;
+            if (id >= m_id) continue;
+            remote_peers.push_back(info);
+        }
+
+        const int max_attempts = 5;
+        int attempts = 0;
+        const int expected_peers = remote_peers.size();
+        int connected_peers = 0;
+        
+        // try to find remote peers to connect to N times before moving on
+        while (attempts < max_attempts) {
+            for (const auto& info : remote_peers) {
+                auto socket = m_router.get_socket(info.id);
+                if (socket != nullptr) continue;
+                
+                if (connect_to_remote_peer(info)) {
+                    connected_peers += 1;
+                }
+            }
+
+            // if we found all peers we expected to cnnect to, we're done
+            if (connected_peers >= expected_peers) {
+                LOG("connected to ", connected_peers, " out of ", expected_peers, " expected peers");
                 break;
             }
-            case evt::SemOpErr::WouldBlock: // fallthrough
-            case evt::SemOpErr::Timeout: {
-                ERR_PRINT("remote peer search took longer than 10 seconds to complete, continuing to search in background");
-                break;
-            }
-            case evt::SemOpErr::NotInitialized: // fallthrough
-            case evt::SemOpErr::SysError: // fallthrough
-            default: {
-                ERR_PRINT("error waiting for remote peer search complete signal");
-                break;
+
+            // only sleep if we're going to try again
+            if (attempts + 1 < max_attempts) {
+                std::this_thread::sleep_for(std::chrono::milliseconds(1 * 1000));
             }
         }
 
-        // socket monitor thread
+        // start monitor thread
         std::thread([this]() { 
-            monitor_sockets(); 
+            remote_connection_monitor(); 
         }).detach();
     }
 
@@ -190,111 +200,101 @@ namespace eroil {
         }
     }
 
-    void ConnectionManager::search_remote_peers() {
-        LOG("searching for remote peers...");
-
-        // TODO: if not all peers start at the same time, this thread will
-        // continue until we find every peer we expect to, searching every
-        // 3 seconds, is this what we want?
-        
-        int actual_peers = 0;
-        int expected_peers = 0;
+    void ConnectionManager::remote_connection_monitor() {
+        LOG("remote peers to monitor thread starts");
+        std::vector<addr::NodeAddress> remote_peers;
         for (const auto& [id, info] : addr::get_address_book()) {
             if (info.kind == addr::RouteKind::Shm) continue;
             if (info.kind == addr::RouteKind::Self) continue;
-            if (id >= m_id) continue;
-            expected_peers += 1;
+            remote_peers.push_back(info);
         }
 
-        while (actual_peers < expected_peers) {
-            for (const auto& [id, info] : addr::get_address_book()) {
-                if (info.kind == addr::RouteKind::Shm) continue;
-                if (info.kind == addr::RouteKind::Self) continue;
-                if (id >= m_id) continue;
-                if (m_router.has_socket(id)) continue;
+        if (remote_peers.empty()) {
+            LOG("no remote peers to monitor, remote peer monitor thread exits");
+            return;
+        }
 
-                LOG("attempt connection to id=", id, " ip=", info.ip, ":", info.port);
-                auto client = std::make_shared<sock::TCPClient>();
-                auto result = client->open_and_connect(info.ip.c_str(), info.port);
-                if (result.code != sock::SockErr::None) {
-                    ERR_PRINT("connection to ", id, " failed");
-                    //print_socket_result(result);
-                    std::this_thread::sleep_for(std::chrono::milliseconds(1));
-                    continue;
+        while (true) {
+            for (const auto& info : remote_peers) {
+                auto socket = m_router.get_socket(info.id);
+                if (socket == nullptr) {
+                    // if connection does not exist, connect
+                    connect_to_remote_peer(info);
+                } else {
+                    // otherwise check socket connected
+                    ping_remote_peer(info, socket);
                 }
-
-                // send them a notice of who we are
-                send_id(client.get());
-                client->set_destination_id(id);
-
-                // insert socket into transport registry
-                m_router.upsert_socket(
-                    id, 
-                    std::move(client)
-                );
-                start_remote_recv_worker(id);
-                LOG("established tcp connection to node: ", id);
-                std::this_thread::sleep_for(std::chrono::milliseconds(100));
-                actual_peers += 1;
             }
-
-            // search for remaining peers again in 3 seconds
-            std::this_thread::sleep_for(std::chrono::milliseconds(3 * 1000));
+            
+            // sleep for 5 seconds
+            std::this_thread::sleep_for(std::chrono::milliseconds(5 * 1000));
         }
     }
 
-    void ConnectionManager::monitor_sockets() {
-        // every couple of seconds we need to check that the sockets are still alive
-        // if theyre dead, stop recv worker and attempt re-connection
-        while (true) {
-            evtlog::info(elog_kind::SocketMonitor_Start, elog_cat::SocketMonitor);
-            auto sockets = m_router.get_all_sockets();
-            for (auto& sock : sockets) {
-                if (sock == nullptr) {
-                    ERR_PRINT("monitor got nullptr instead of socket ptr, socket list is corrupted");
-                    evtlog::crit(elog_kind::MissingSocket, elog_cat::SocketMonitor);
-                    continue;
-                }
+    bool ConnectionManager::connect_to_remote_peer(addr::NodeAddress peer_info) {
+        // do not attempt connection to ID's greater than ours, they'll connect to us
+        if (peer_info.id >= m_id) return false;
+        
+        evtlog::info(elog_kind::Connect_Start, elog_cat::SocketMonitor, peer_info.id);
 
-                if (sock->is_connected()) {
-                    bool connected = send_ping(sock.get());
-                    if (connected) continue;
-                }
+        // attempt connection
+        LOG("attempt connection to nodeid=", peer_info.id, " ip=", peer_info.ip, ":", peer_info.port);
+        auto client = std::make_shared<sock::TCPClient>();
+        auto result = client->open_and_connect(peer_info.ip.c_str(), peer_info.port);
+        if (result.code != sock::SockErr::None) {
+            LOG("connection to nodeid=", peer_info.id, " failed");
+            //print_socket_result(result);
+            evtlog::info(elog_kind::Connect_Failed, elog_cat::SocketMonitor, peer_info.id);
+            return false;
+        }
 
-                // do disconnect logic, this wont do anything if already disconnected
-                NodeId peer_id = sock->get_destination_id();
-                sock->disconnect();
-                LOG("found dead socket to nodeid=", peer_id);
-                evtlog::info(elog_kind::DeadSocket_Found, elog_cat::SocketMonitor, peer_id);
+        // send them a notice of who we are
+        if (!send_id(client.get())) {
+            ERR_PRINT(__func__, "(): send ID failed unexpectedly during connection attempt");
+            evtlog::warn(elog_kind::Connect_Send_Failed, elog_cat::SocketMonitor, peer_info.id);
+            return false;
+        }
 
-                // if worker is still listening to dead socket, stop and erase them
-                stop_remote_recv_worker(peer_id);
+        // set the peer id for this socket, and replace socket 
+        // in registry with this socket
+        // NOTE: when replacing a socket, we assume that someone before us has 
+        // handled closing the socket and killing the socket recv worker for that socket
+        client->set_destination_id(peer_info.id);
+        m_router.upsert_socket(
+            peer_info.id, 
+            std::move(client)
+        );
+        
+        // start up thread to listen to this socket
+        start_remote_recv_worker(peer_info.id);
 
-                // if they'll reconnect to us dont attempt reconnect
-                if (peer_id >= m_id) {
-                    continue;
-                };
-            
-                // try to reconnect socket
-                auto addr = addr::get_address(sock->get_destination_id());
-                LOG("attempt re-connect to id=", addr.id, " ip=", addr.ip, ":", addr.port);
-                
-                auto result = sock->open_and_connect(addr.ip.c_str(), addr.port);
-                if (result.code != sock::SockErr::None) {
-                    evtlog::info(elog_kind::Reconnect_Failed, elog_cat::SocketMonitor, peer_id);
-                    LOG("re-connect attempt to ", addr.id, " failed");
-                    continue;
-                }
+        LOG("established tcp connection to nodeid=", peer_info.id);
+        evtlog::info(elog_kind::Connect_Success, elog_cat::SocketMonitor, peer_info.id);
+        return true;
+    }
 
-                send_id(sock.get());
-                LOG("re-established tcp connection to node: ", addr.id);
-                evtlog::info(elog_kind::Reconnect_Success, elog_cat::SocketMonitor, peer_id);
-                start_remote_recv_worker(peer_id);
-            }
+    void ConnectionManager::ping_remote_peer(addr::NodeAddress peer_info, std::shared_ptr<sock::TCPClient> client) {
+        if (client->get_destination_id() != peer_info.id) {
+            ERR_PRINT(__func__, "(): got mismatching IDs for socket and info, socket list corrupted");
+            return;
+        }
 
-            evtlog::info(elog_kind::SocketMonitor_End, elog_cat::SocketMonitor);
-            std::this_thread::sleep_for(std::chrono::milliseconds(5 * 1000));
-        }   
+        // if connected, everything is fine
+        if (client->is_connected()) {
+            bool connected = send_ping(client.get());
+            if (connected) return;
+        }
+
+        // do socket disconnect logic, this wont do anything if already disconnected
+        client->disconnect();
+        LOG("found dead socket to nodeid=", peer_info.id);
+        evtlog::info(elog_kind::DeadSocket_Found, elog_cat::SocketMonitor, peer_info.id);
+
+        // if worker is still listening to dead socket, stop and erase them
+        stop_remote_recv_worker(peer_info.id);
+
+        // do connection logic
+        connect_to_remote_peer(peer_info);
     }
 
     bool ConnectionManager::send_id(sock::TCPClient* sock) {

@@ -81,7 +81,6 @@ namespace eroil {
                 std::nullopt,
             }
         );
-        
         (void)it;
 
         if (!inserted) {

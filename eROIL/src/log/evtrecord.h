@@ -53,8 +53,10 @@ namespace eroil::evtlog {
         SocketMonitor_Start,
         MissingSocket,
         DeadSocket_Found,
-        Reconnect_Failed,
-        Reconnect_Success,
+        Connect_Start,
+        Connect_Failed,
+        Connect_Send_Failed,
+        Connect_Success,
         SocketMonitor_End,
 
         // TCP Server

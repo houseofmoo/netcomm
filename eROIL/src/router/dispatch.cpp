@@ -36,10 +36,9 @@ namespace eroil {
         if (targets.has_remote) {
             DB_ASSERT(!targets.sockets.empty(), "dispatch_send_targets(): unexpected empty socket list");
             for (const auto& sock : targets.sockets) {
-                if (sock == nullptr) continue;
-
                 // dont bother sending to disconnected sockets
                 // we're trying to reconnect in in comms handler
+                if (sock == nullptr) continue;
                 if (!sock->is_connected()) continue;
                 
                 auto sock_err = sock->send(send_buf.data.get(), send_buf.total_size);

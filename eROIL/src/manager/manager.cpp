@@ -118,10 +118,17 @@ namespace eroil {
     }
 
     void Manager::close_send(SendHandle* handle) {
+              if (handle == nullptr) {
+            ERR_PRINT(__func__, "(): got handle that was nullptr");
+            return;
+        }
+        
         m_router.unregister_send_publisher(handle);
     }
 
     RecvHandle* Manager::open_recv(OpenReceiveData data) {
+        // TODO: validate open recv data
+
         auto handle = std::make_unique<RecvHandle>(unique_id(), data);
         RecvHandle* raw_handle = handle.get();
         m_router.register_recv_subscriber(std::move(handle));
@@ -129,6 +136,11 @@ namespace eroil {
     }
 
     void Manager::close_recv(RecvHandle* handle) {
+        if (handle == nullptr) {
+            ERR_PRINT(__func__, "(): got handle that was nullptr");
+            return;
+        }
+
         m_router.unregister_recv_subscriber(handle);
     }
 

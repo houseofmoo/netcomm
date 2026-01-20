@@ -79,6 +79,7 @@ namespace eroil::worker {
         }
 
         evtlog::info(elog_kind::SocketRecvWorker_Exit, elog_cat::Worker, 0, 0, m_peer_id);
+        PRINT("socket recv worker for nodeid=", m_peer_id, " exits");
     }
 
     bool SocketRecvWorker::recv_exact(void* dst, size_t size) {

@@ -33,8 +33,9 @@ namespace eroil {
 
         private:
             void run_tcp_server();
-            void search_remote_peers();
-            void monitor_sockets();
+            void remote_connection_monitor();
+            bool connect_to_remote_peer(addr::NodeAddress peer_info);
+            void ping_remote_peer(addr::NodeAddress peer_info, std::shared_ptr<sock::TCPClient> client);
             bool send_id(sock::TCPClient* sock);
             bool send_ping(sock::TCPClient* sock);
     };
