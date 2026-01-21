@@ -1,8 +1,8 @@
 #include "manager.h"
+#include <array>
 #include <cstring>
 #include <thread>
 #include <chrono>
-#include <memory>
 #include <algorithm>
 #include <eROIL/print.h>
 #include "types/types.h"
@@ -107,7 +107,17 @@ namespace eroil {
         SendBuf sbuf(src_addr, data_size);
 
         // attach header for send
-        LabelHeader hdr = get_send_header(m_id, handle->data->label, data_size);
+        uint16_t flags = 0;
+        set_flag(flags, LabelFlag::Data);
+
+        LabelHeader hdr;
+        hdr.magic = MAGIC_NUM;
+        hdr.version = VERSION;
+        hdr.source_id = m_id;
+        hdr.flags = flags;
+        hdr.label = handle->data->label;
+        hdr.data_size = data_size;
+
         std::memcpy(sbuf.data.get(), &hdr, sizeof(hdr));
 
         // copy data into buffer after header
@@ -159,15 +169,12 @@ namespace eroil {
         }
 
         std::thread([this]() {
-            while (true) {
-                send_broadcast();
-                std::this_thread::sleep_for(std::chrono::milliseconds(3000));
-            }
+            send_broadcast();
         }).detach();
 
         std::thread([this]() {
             //plat::affinitize_current_thread(2);
-            while (true) { recv_broadcast(); }
+            recv_broadcast();
         }).detach();
         
         LOG("udp multicast group joined, broadcast send/recv threads started");
@@ -175,82 +182,99 @@ namespace eroil {
     }
 
     void Manager::send_broadcast() {
-        evtlog::info(elog_kind::Send_Start, elog_cat::Broadcast);
-        BroadcastMessage msg;
+        BroadcastMessage msg{};
         msg.id = m_id;
-        msg.send_labels = m_router.get_send_labels();
-        msg.recv_labels = m_router.get_recv_labels();
 
-        auto err = m_broadcast.send_broadcast(&msg, sizeof(msg));
-        if (err.code != sock::SockErr::None) {
-            evtlog::warn(elog_kind::Send_Failed, elog_cat::Broadcast);
-            ERR_PRINT("broadcast send failed!");
-            print_socket_result(err);
+        while (true) {
+            evtlog::info(elog_kind::Send_Start, elog_cat::Broadcast);
+            
+            msg.send_labels = m_router.get_send_labels_snapshot();
+            msg.recv_labels = m_router.get_recv_labels_snapshot();
+
+            // send broadcast
+            auto err = m_broadcast.send_broadcast(&msg, sizeof(msg));
+            if (err.code != sock::SockErr::None) {
+                evtlog::warn(elog_kind::Send_Failed, elog_cat::Broadcast);
+                ERR_PRINT("broadcast send failed!");
+                print_socket_result(err);
+            }
+
+            evtlog::info(elog_kind::Send_End, elog_cat::Broadcast);
+            std::this_thread::sleep_for(std::chrono::milliseconds(3 * 1000));
         }
-
-        evtlog::info(elog_kind::Send_End, elog_cat::Broadcast);
     }
 
     void Manager::recv_broadcast() {
-        BroadcastMessage msg;
-        m_broadcast.recv_broadcast(&msg, sizeof(msg));
-        if (msg.id == m_id) return;
-        
-        evtlog::info(elog_kind::Recv_Start, elog_cat::Broadcast);
-        
-        // time how long this takes
-        //time::Timer t("recv_broadcast()");
+        BroadcastMessage msg{};
 
-        // filter out invalid labels
-        std::vector<LabelInfo> recv_labels;
-        recv_labels.reserve(msg.recv_labels.size());
-        for (const LabelInfo& l : msg.recv_labels) {
-            if (l.label > INVALID_LABEL) recv_labels.push_back(l);
+        while (true) {
+            m_broadcast.recv_broadcast(&msg, sizeof(msg));
+            if (msg.id == m_id) continue;
+            
+            evtlog::info(elog_kind::Recv_Start, elog_cat::Broadcast);
+            // time how long this takes
+            //time::Timer t("recv_broadcast()");
+
+            std::unordered_map<Label, uint32_t> recv{};
+            recv.reserve(MAX_LABELS);
+            for (const auto& recv_label : msg.recv_labels.labels) {
+                if (recv_label.label > INVALID_LABEL) {
+                    auto [it, inserted] = recv.emplace(recv_label.label, recv_label.size);
+                    if (!inserted) {
+                        (void)it; // dont care about iterator
+                        ERR_PRINT("we got a duplicate in recv'd broadcast message recv_label list");
+                        evtlog::warn(elog_kind::DuplicateLabel, elog_cat::Broadcast);
+                    }
+                }
+            }
+            add_subscriber(msg.id, recv);
+            remove_subscriber(msg.id, recv);
+
+            std::unordered_map<Label, uint32_t> send{};
+            send.reserve(MAX_LABELS);
+            for (const auto& send_label : msg.send_labels.labels) {
+                if (send_label.label > INVALID_LABEL) {
+                    auto [it, inserted] = send.emplace(send_label.label, send_label.size);
+                    if (!inserted) {
+                        (void)it; // dont care about iterator
+                        ERR_PRINT("we got a duplicate in recv'd broadcast message send_labels list");
+                        evtlog::warn(elog_kind::DuplicateLabel, elog_cat::Broadcast);
+                    }
+                }
+            }
+            add_publisher(msg.id, send);
+            remove_publisher(msg.id, send);
+
+            evtlog::info(elog_kind::Recv_End, elog_cat::Broadcast);
         }
-
-        // check if they want a label we send
-        add_new_subscribers(msg.id, recv_labels);
-
-        // check if they removed their subscription from our labels
-        remove_subscription(msg.id, recv_labels);
-
-        // filter out invalid labels
-        std::vector<LabelInfo> send_labels;
-        send_labels.reserve(msg.send_labels.size());
-        for (const LabelInfo& l : msg.send_labels) {
-            if (l.label > INVALID_LABEL) send_labels.push_back(l);
-        }
-
-        // check if we want a label they send
-        add_new_publisher(msg.id, send_labels);
-
-        // check if they are no longer the publisher of a label we want
-        remove_publisher(msg.id, send_labels);
-
-        evtlog::info(elog_kind::Recv_End, elog_cat::Broadcast);
     }
 
-    void Manager::add_new_subscribers(const NodeId source_id, const std::vector<LabelInfo>& recv_labels) {
+    void Manager::add_subscriber(const NodeId source_id, const std::unordered_map<Label, uint32_t>& recv_labels) {
         for (const auto& info : recv_labels) {
+            const auto& label = info.first;
+            const auto& size = info.second;
+            
+            if (label <= INVALID_LABEL) continue;
+
             // if we do not send this label, ignore it
-            if (!m_router.has_send_route(info.label)) continue;
+            if (!m_router.has_send_route(label)) continue;
 
             // check if they're already on subscriber list
-            if (m_router.is_send_subscriber(info.label, source_id)) continue;
+            if (m_router.is_send_subscriber(label, source_id)) continue;
 
-            // this is a label they want to recv, but are not on the subscription list
+            // add them as a subscriber of this label
             const auto addr = addr::get_address(source_id);
             switch (addr.kind) {
                 case addr::RouteKind::Shm: {
-                    PRINT("adding local send subscriber, nodeid=", source_id, " label=", info.label);
-                    m_router.add_local_send_subscriber(info.label, info.size, m_id, source_id);
-                    evtlog::info(elog_kind::AddLocalSendSubscriber, elog_cat::Router, source_id, info.label);
+                    PRINT("adding local send subscriber, nodeid=", source_id, " label=", label);
+                    m_router.add_local_send_subscriber(label, size, m_id, source_id);
+                    evtlog::info(elog_kind::AddLocalSendSubscriber, elog_cat::Router, source_id, label);
                     break;
                 }
                 case addr::RouteKind::Socket: {
-                    PRINT("adding remote send subscriber, nodeid=", source_id, " label=", info.label);
-                    m_router.add_remote_send_subscriber(info.label, info.size, source_id);
-                    evtlog::info(elog_kind::AddRemoteSendSubscriber, elog_cat::Router, source_id, info.label);
+                    PRINT("adding remote send subscriber, nodeid=", source_id, " label=", label);
+                    m_router.add_remote_send_subscriber(label, size, source_id);
+                    evtlog::info(elog_kind::AddRemoteSendSubscriber, elog_cat::Router, source_id, label);
                     break;
                 }
                 default: {
@@ -261,24 +285,19 @@ namespace eroil {
         }
     }
 
-    void Manager::remove_subscription(const NodeId source_id, const std::vector<LabelInfo>& recv_labels) {
+    void Manager::remove_subscriber(const NodeId source_id, const std::unordered_map<Label, uint32_t>& recv_labels) {
         // all the labels we send
         auto send_labels = m_router.get_send_labels();
         for (const auto& [label, _] : send_labels) {
-            // if theyre not a recver of this label, ignore it
+            if (label <= INVALID_LABEL) continue; // should never occur
+
+            // if theyre not a recver of this label, continue
             if (!m_router.is_send_subscriber(label, source_id)) continue;
 
-            // they're a subscriber, do they still subscriber to this label?
-            auto it = std::find_if(
-                recv_labels.begin(),
-                recv_labels.end(),
-                [&](const LabelInfo& info) {
-                    return info.label == label;
-                }
-            );
-            if (it != recv_labels.end()) continue;
+            // they still want this label, continue
+            if (recv_labels.find(label) != recv_labels.end()) continue;
 
-            // they no longer subscriber to this label, remove them
+            // they no longer subscribe to this label, remove them
             const auto addr = addr::get_address(source_id);
             switch (addr.kind) {
                 case addr::RouteKind::Shm: {
@@ -301,30 +320,35 @@ namespace eroil {
         }
     }
 
-    void Manager::add_new_publisher(const NodeId source_id, const std::vector<LabelInfo>& send_labels) {
+    void Manager::add_publisher(const NodeId source_id, const std::unordered_map<Label, uint32_t>& send_labels) {
         for (const auto& info : send_labels) {
-            // if we do not want this label, ignore it
-            if (!m_router.has_recv_route(info.label)) continue;
+            const auto& label = info.first;
+            const auto& size = info.second;
+            
+            if (label <= INVALID_LABEL) continue;
 
-            // check if we're already subscribed
-            if (m_router.is_recv_publisher(info.label, source_id)) continue;
+            // if we do not want this label, continue
+            if (!m_router.has_recv_route(label)) continue;
+
+            // if already subscribed, continue
+            if (m_router.is_recv_publisher(label, source_id)) continue;
 
             // this is a label we want to recv and have not registered a publisher
             const auto addr = addr::get_address(source_id);
             switch (addr.kind) {
                 case addr::RouteKind::Shm: {
                     // add local recv pub and start recv worker to watch shared memory block
-                    PRINT("adding local recv publisher, nodeid=", source_id, " label=", info.label);
-                    m_router.add_local_recv_publisher(info.label, info.size, m_id, source_id);
-                    evtlog::info(elog_kind::AddLocalRecvPublisher, elog_cat::Router, source_id, info.label);
-                    m_comms.start_local_recv_worker(info.label, info.size);
+                    PRINT("adding local recv publisher, nodeid=", source_id, " label=", label);
+                    m_router.add_local_recv_publisher(label, size, m_id, source_id);
+                    evtlog::info(elog_kind::AddLocalRecvPublisher, elog_cat::Router, source_id, label);
+                    m_comms.start_local_recv_worker(label, size);
                     break;
                 }
                 case addr::RouteKind::Socket: {
                     // add remote recv pub, recv worker should already be listening to this socket
-                    PRINT("adding remote recv publisher, nodeid=", source_id, " label=", info.label);
-                    m_router.add_remote_recv_publisher(info.label, info.size, source_id);
-                    evtlog::info(elog_kind::AddRemoteRecvPublisher, elog_cat::Router, source_id, info.label);
+                    PRINT("adding remote recv publisher, nodeid=", source_id, " label=", label);
+                    m_router.add_remote_recv_publisher(label, size, source_id);
+                    evtlog::info(elog_kind::AddRemoteRecvPublisher, elog_cat::Router, source_id, label);
                     break;
                 }
                 default: {
@@ -335,22 +359,17 @@ namespace eroil {
         }
     }
 
-    void Manager::remove_publisher(const NodeId source_id, const std::vector<LabelInfo>& send_labels) {
+    void Manager::remove_publisher(const NodeId source_id, const std::unordered_map<Label, uint32_t>& send_labels) {
         // all the labels we recv
         auto recv_labels = m_router.get_recv_labels();
         for (const auto& [label, _] : recv_labels) {
+            if (label <= INVALID_LABEL) continue; // should never occur
+
             // are they a publisher of this label, if not continue
             if (!m_router.is_recv_publisher(label, source_id)) continue;
 
-            // they are a publisher, do they still publish this label?
-            auto it = std::find_if(
-                send_labels.begin(),
-                send_labels.end(),
-                [&](const LabelInfo& info) {
-                    return info.label == label;
-                }
-            );
-            if (it != send_labels.end()) continue;
+            // do they still publish this label, if so continue
+            if (send_labels.find(label) != send_labels.end()) continue;
 
             // they no longer publish this label, remove them as a publisher
             const auto addr = addr::get_address(source_id);
@@ -374,5 +393,5 @@ namespace eroil {
                 }
             }
         }
-    }
+    }    
 }

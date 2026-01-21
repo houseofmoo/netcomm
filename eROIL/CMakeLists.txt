@@ -42,6 +42,7 @@ target_sources(eROIL
         ${CMAKE_CURRENT_SOURCE_DIR}/src/comm/connection_manager.cpp
         ${CMAKE_CURRENT_SOURCE_DIR}/src/log/evtlog.cpp
         ${CMAKE_CURRENT_SOURCE_DIR}/src/manager/manager.cpp
+        ${CMAKE_CURRENT_SOURCE_DIR}/src/manager/peer_state.cpp
         ${CMAKE_CURRENT_SOURCE_DIR}/src/router/dispatch.cpp
         ${CMAKE_CURRENT_SOURCE_DIR}/src/router/route_table.cpp
         ${CMAKE_CURRENT_SOURCE_DIR}/src/router/router.cpp

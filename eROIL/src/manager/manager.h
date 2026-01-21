@@ -1,6 +1,6 @@
 #pragma once
 #include <vector>
-#include <array>
+#include <unordered_map>
 
 #include "types/types.h"
 #include "config/config.h"
@@ -9,6 +9,7 @@
 #include "socket/udp_multicast.h"
 #include "socket/socket_context.h"
 #include "comm/connection_manager.h"
+#include "peer_state.h"
 
 namespace eroil {
     class Manager {
@@ -36,9 +37,10 @@ namespace eroil {
             bool start_broadcast();
             void send_broadcast();
             void recv_broadcast();
-            void add_new_subscribers(const NodeId source_id, const std::vector<LabelInfo>& recv_labels);
-            void remove_subscription(const NodeId source_id, const std::vector<LabelInfo>& recv_labels);
-            void add_new_publisher(const NodeId source_id, const std::vector<LabelInfo>& send_labels);
-            void remove_publisher(const NodeId source_id, const std::vector<LabelInfo>& send_labels);
+            
+            void add_subscriber(const NodeId source_id, const std::unordered_map<Label, uint32_t>& recv_labels);
+            void remove_subscriber(const NodeId source_id, const std::unordered_map<Label, uint32_t>& recv_labels);
+            void add_publisher(const NodeId source_id, const std::unordered_map<Label, uint32_t>& send_labels);
+            void remove_publisher(const NodeId source_id, const std::unordered_map<Label, uint32_t>& send_labels);
     };
 }

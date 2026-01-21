@@ -8,6 +8,7 @@ namespace eroil::evtlog {
 
         // send pipeline
         Send_Start,
+        Send,
         Send_Failed,
         Send_RouteLookup,
         Send_Shm_Write,
@@ -16,6 +17,7 @@ namespace eroil::evtlog {
 
         // recv pipeline
         Recv_Start,
+        Recv,
         Recv_Shm_Read,
         Recv_Socket_Read,
         Recv_End,
@@ -48,6 +50,7 @@ namespace eroil::evtlog {
         AddRemoteRecvPublisher,
         RemoveLocalRecvPublisher,
         RemoveRemoteRecvPublisher,
+        DuplicateLabel,
 
         // monitor
         SocketMonitor_Start,

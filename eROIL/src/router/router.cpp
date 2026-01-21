@@ -191,6 +191,16 @@ namespace eroil {
         m_routes.remove_remote_recv_publisher(label, from_id);
     }
 
+    LabelsSnapshot Router::get_send_labels_snapshot() const {
+        std::shared_lock lock(m_router_mtx);
+        return m_routes.get_send_labels_snapshot();
+    }
+
+    LabelsSnapshot Router::get_recv_labels_snapshot() const {
+        std::shared_lock lock(m_router_mtx);
+        return m_routes.get_recv_labels_snapshot();
+    }
+
     std::array<LabelInfo, MAX_LABELS> Router::get_send_labels() const {
         std::shared_lock lock(m_router_mtx);
         return m_routes.get_send_labels();
@@ -199,6 +209,16 @@ namespace eroil {
     std::array<LabelInfo, MAX_LABELS> Router::get_recv_labels() const {
         std::shared_lock lock(m_router_mtx);
         return m_routes.get_recv_labels();
+    }
+
+    std::array<LabelInfo, MAX_LABELS> Router::get_send_labels_sorted() const {
+        std::shared_lock lock(m_router_mtx);
+        return m_routes.get_send_labels_sorted();
+    }
+
+    std::array<LabelInfo, MAX_LABELS> Router::get_recv_labels_sorted() const {
+        std::shared_lock lock(m_router_mtx);
+        return m_routes.get_recv_labels_sorted();
     }
 
     bool Router::has_send_route(Label label) const noexcept {

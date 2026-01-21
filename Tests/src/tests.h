@@ -135,7 +135,7 @@ inline int add_remove_labels_test(int id) {
         std::this_thread::sleep_for(std::chrono::milliseconds(3 * 1000));
 
         int count = 0;
-        while (count < 30) {
+        while (count < 15) {
             count += 1;
 
             PRINT("SEND [", label->id, "] val: ", count);

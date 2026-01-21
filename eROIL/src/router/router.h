@@ -42,8 +42,13 @@ namespace eroil {
             void remove_local_recv_publisher(Label label, NodeId my_id);
             void remove_remote_recv_publisher(Label label, NodeId from_id);
 
+            LabelsSnapshot get_send_labels_snapshot() const;
+            LabelsSnapshot get_recv_labels_snapshot() const;
             std::array<LabelInfo, MAX_LABELS> get_send_labels() const;
             std::array<LabelInfo, MAX_LABELS> get_recv_labels() const;
+            std::array<LabelInfo, MAX_LABELS> get_send_labels_sorted() const;
+            std::array<LabelInfo, MAX_LABELS> get_recv_labels_sorted() const;
+
             bool has_send_route(Label label) const noexcept;
             bool has_recv_route(Label label) const noexcept;
             bool is_send_subscriber(Label label, NodeId to_id) const noexcept;

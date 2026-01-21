@@ -47,23 +47,33 @@ namespace eroil {
     #endif
 
     struct LabelInfo {
-        Label label;
-        std::uint32_t size;
+        Label label = INVALID_LABEL;
+        std::uint32_t size = 0;
+
+        LabelInfo() noexcept = default;
+        bool operator<(const LabelInfo& other) const noexcept {
+            return label < other.label;
+        }
+    };
+
+    struct LabelsSnapshot {
+        std::uint64_t gen = 0;
+        std::array<LabelInfo, MAX_LABELS> labels{};
     };
 
     struct BroadcastMessage {
-        std::int32_t id;
-        std::array<LabelInfo, MAX_LABELS> send_labels;
-        std::array<LabelInfo, MAX_LABELS> recv_labels;
+        std::int32_t id = INVALID_NODE;
+        LabelsSnapshot send_labels{};
+        LabelsSnapshot recv_labels{};
     };
 
     struct LabelHeader {
-        std::uint32_t magic;
-        std::uint16_t version;
-        std::int32_t source_id;
-        std::uint16_t flags;
-        std::int32_t label;
-        std::uint32_t data_size;
+        std::uint32_t magic = 9;
+        std::uint16_t version = 0;
+        std::int32_t source_id = INVALID_LABEL;
+        std::uint16_t flags = 0;
+        std::int32_t label = INVALID_LABEL;
+        std::uint32_t data_size = 0;
     };
 
     enum class LabelFlag : std::uint16_t {
@@ -97,22 +107,7 @@ namespace eroil {
         SendBuf& operator=(const SendBuf&) = delete;
     };
 
-
     // helper funcs
     inline void set_flag(std::uint16_t& flags, const LabelFlag flag) { flags |= static_cast<std::uint16_t>(flag); }
     inline bool has_flag(const std::uint16_t flags, const LabelFlag flag) { return flags & static_cast<std::uint16_t>(flag); }
-
-    inline LabelHeader get_send_header(NodeId id, Label label, size_t data_size) {
-        uint16_t flags = 0;
-        set_flag(flags, LabelFlag::Data);
-
-        LabelHeader hdr;
-        hdr.magic = MAGIC_NUM;
-        hdr.version = VERSION;
-        hdr.source_id = id;
-        hdr.flags = flags;
-        hdr.label = label;
-        hdr.data_size = data_size;
-        return hdr;
-    }
 }

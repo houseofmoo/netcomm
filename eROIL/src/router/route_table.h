@@ -4,6 +4,7 @@
 #include <optional>
 #include <cstddef>
 #include <variant>
+#include <atomic>
 
 #include "events/named_event.h"
 #include "types/types.h"
@@ -51,6 +52,9 @@ namespace eroil {
             std::unordered_map<Label, SendRoute> m_send_routes;
             std::unordered_map<Label, RecvRoute> m_recv_routes;
 
+            std::atomic<uint64_t> m_send_gen{1};
+            std::atomic<uint64_t> m_recv_gen{1};
+
             void create_send_route(Label label, SendHandle* handle);
             void create_recv_route(Label label, RecvHandle* handle);
 
@@ -59,8 +63,12 @@ namespace eroil {
             bool require_route_size(size_t expected, size_t actual, const char* fn);
             
         public:
+            LabelsSnapshot get_send_labels_snapshot() const;
+            LabelsSnapshot get_recv_labels_snapshot() const;
             std::array<LabelInfo, MAX_LABELS> get_send_labels() const;
             std::array<LabelInfo, MAX_LABELS> get_recv_labels() const;
+            std::array<LabelInfo, MAX_LABELS> get_send_labels_sorted() const;
+            std::array<LabelInfo, MAX_LABELS> get_recv_labels_sorted() const;
 
             // send route ops
             bool add_send_publisher(Label label, SendHandle* handle);

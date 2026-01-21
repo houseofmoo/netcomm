@@ -39,9 +39,22 @@ namespace eroil {
         return true;
     }
 
+    LabelsSnapshot RouteTable::get_send_labels_snapshot() const {
+        LabelsSnapshot snapshot{};
+        snapshot.gen = m_send_gen.load(std::memory_order_relaxed);
+        snapshot.labels = get_send_labels_sorted();
+        return snapshot;
+    }
+
+    LabelsSnapshot RouteTable::get_recv_labels_snapshot() const {
+        LabelsSnapshot snapshot{};
+        snapshot.gen = m_recv_gen.load(std::memory_order_relaxed);
+        snapshot.labels = get_recv_labels_sorted();
+        return snapshot;
+    }
+
     std::array<LabelInfo, MAX_LABELS> RouteTable::get_send_labels() const {
-        std::array<LabelInfo, MAX_LABELS> labels;
-        labels.fill(LabelInfo{ INVALID_LABEL, 0 });
+        std::array<LabelInfo, MAX_LABELS> labels{};
 
         size_t index = 0;
         for (const auto& [label, route] : m_send_routes) {
@@ -49,23 +62,55 @@ namespace eroil {
                 ERR_PRINT(__func__, "(): too many send labels for broadcast message to send");
                 break;
             }
-            labels[index++] = LabelInfo{ label, static_cast<uint32_t>(route.label_size) };
+            labels[index].label = label;
+            labels[index].size = static_cast<uint32_t>(route.label_size);
+            index += 1;
         }
+
         return labels;
     }
 
     std::array<LabelInfo, MAX_LABELS> RouteTable::get_recv_labels() const {
-        std::array<LabelInfo, MAX_LABELS> labels;
-        labels.fill(LabelInfo{ INVALID_LABEL, 0 });
-        
+        std::array<LabelInfo, MAX_LABELS> labels{};
+
         size_t index = 0;
         for (const auto& [label, route] : m_recv_routes) {
             if (index >= MAX_LABELS) {
                 ERR_PRINT(__func__, "(): too many recv labels for broadcast message to send");
                 break;
             }
-            labels[index++] = LabelInfo{ label, static_cast<uint32_t>(route.label_size) };
+            labels[index].label = label;
+            labels[index].size = static_cast<uint32_t>(route.label_size);
+            index += 1;
         }
+
+        return labels;
+    }
+
+    std::array<LabelInfo, MAX_LABELS> RouteTable::get_send_labels_sorted() const {
+        std::array<LabelInfo, MAX_LABELS> labels = get_send_labels();
+
+        std::sort(
+            labels.begin(), 
+            labels.end(),
+            [](const LabelInfo& a, const LabelInfo& b) {
+                return a.label < b.label;
+            }
+        );
+
+        return labels;
+    }
+
+    std::array<LabelInfo, MAX_LABELS> RouteTable::get_recv_labels_sorted() const {
+        std::array<LabelInfo, MAX_LABELS> labels = get_recv_labels();
+        std::sort(
+            labels.begin(), 
+            labels.end(),
+            [](const LabelInfo& a, const LabelInfo& b) {
+                return a.label < b.label;
+            }
+        );
+
         return labels;
     }
 
@@ -85,6 +130,7 @@ namespace eroil {
 
         if (!inserted) {
             ERR_PRINT(__func__, "(): failed to insert new send route");
+            return;
         }
     }
 
@@ -96,6 +142,7 @@ namespace eroil {
         
         if (!has_send_route(label)) {
             create_send_route(label, handle);
+            ++m_send_gen;
         }
 
         auto route = require_send_route(label, __func__);
@@ -135,6 +182,7 @@ namespace eroil {
 
         if (route->publishers.empty()) {
             m_send_routes.erase(label);
+            ++m_send_gen;
         }
 
         return true;
@@ -316,6 +364,7 @@ namespace eroil {
 
         if (!inserted) {
             ERR_PRINT(__func__, "(): failed to insert new recv route");
+            return;
         }
     }
 
@@ -327,6 +376,7 @@ namespace eroil {
 
         if (!has_recv_route(label)) {
             create_recv_route(label, handle);
+            ++m_recv_gen;
         }
 
         auto route = require_recv_route(label, __func__);
@@ -367,6 +417,7 @@ namespace eroil {
 
         if (route->subscribers.empty()) {
             m_recv_routes.erase(label);
+            ++m_recv_gen;
         }
 
         return true;
