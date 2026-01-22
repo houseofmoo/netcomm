@@ -7,29 +7,29 @@
 // implementation for eroil_cpp.h
 // calls into eroil.cpp
 
-bool init_manager(int32_t id) {
-    return eroil::init_manager(id);
+bool init_manager(std::int32_t id) {
+    return eroil::init_manager(static_cast<eroil::NodeId>(id));
 }
 
 bool is_ready() {
     return eroil::is_ready();
 }
 
-int32_t get_manager_id() {
+std::int32_t get_manager_id() {
     return eroil::get_manager_id();
 }
 
-uint32_t get_roil_id() {
+std::uint32_t get_roil_id() {
     return eroil::get_roil_id();
 }
 
-void* open_send_label(int32_t label, 
-                      uint8_t* buf, 
-                      int32_t size_in_words,
-                      int32_t offset_mode,
+void* open_send_label(std::int32_t label, 
+                      std::uint8_t* buf, 
+                      std::int32_t size_in_words,
+                      std::int32_t offset_mode,
                       void* sem,
                       void* iosb,
-                      int32_t num_iosb) {
+                      std::int32_t num_iosb) {
 
     eroil::iosb::IoType io_type = eroil::iosb::IoType::SLOT;
     if (offset_mode == static_cast<int32_t>(eroil::iosb::IoType::OFFSET)) {
@@ -43,17 +43,17 @@ void* open_send_label(int32_t label,
         io_type,
         static_cast<eroil::sem_handle>(sem),
         static_cast<eroil::iosb::SendIosb*>(iosb),
-        static_cast<int32_t>(num_iosb)
+        static_cast<std::int32_t>(num_iosb)
     );
 
     return static_cast<void*>(handle);
 }
 
 void send_label(void* handle, 
-                uint8_t* buf, 
-                int32_t buf_size, 
-                int32_t send_offset,
-                int32_t recv_offset) {
+                std::uint8_t* buf, 
+                std::int32_t buf_size, 
+                std::int32_t send_offset,
+                std::int32_t recv_offset) {
 
     eroil::send_label(
         static_cast<eroil::hndl::SendHandle*>(handle),
@@ -68,15 +68,15 @@ void close_send(void* handle) {
     eroil::close_send(static_cast<eroil::hndl::SendHandle*>(handle));
 }
 
-void* open_recv_label(int32_t label, 
-                      uint8_t* buf, 
-                      int32_t size,
-                      int32_t num_slots,
-                      uint8_t* aux_buf,
+void* open_recv_label(std::int32_t label, 
+                      std::uint8_t* buf, 
+                      std::int32_t size,
+                      std::int32_t num_slots,
+                      std::uint8_t* aux_buf,
                       void* sem,
                       void* iosb,
-                      int32_t num_iosb,
-                      int32_t signal_mode) {
+                      std::int32_t num_iosb,
+                      std::int32_t signal_mode) {
    
     eroil::iosb::SignalMode smode = eroil::iosb::SignalMode::OVERWRITE;
     if (signal_mode == 1) {
@@ -103,7 +103,7 @@ void close_recv_label(void* handle) {
     eroil::close_recv_label(static_cast<eroil::hndl::RecvHandle*>(handle));
 }
 
-uint32_t recv_count(void* handle) {
+std::uint32_t recv_count(void* handle) {
     return eroil::recv_count(static_cast<eroil::hndl::RecvHandle*>(handle));
 }
 
@@ -131,15 +131,15 @@ void recv_redirect(void* handle) {
     eroil::recv_redirect(static_cast<eroil::hndl::RecvHandle*>(handle));
 }
 
-int32_t get_msg_label(void* iosb) {
+std::int32_t get_msg_label(void* iosb) {
     return eroil::get_msg_label(static_cast<eroil::iosb::Iosb*>(iosb));
 }
 
-int32_t get_msg_status(void* iosb) {
+std::int32_t get_msg_status(void* iosb) {
     return eroil::get_msg_status(static_cast<eroil::iosb::Iosb*>(iosb));
 }
 
-int32_t get_msg_size(void* iosb) {
+std::int32_t get_msg_size(void* iosb) {
     return eroil::get_msg_size(static_cast<eroil::iosb::Iosb*>(iosb));
 }
 
@@ -147,7 +147,7 @@ void* get_msg_address(void* iosb) {
     return eroil::get_msg_address(static_cast<eroil::iosb::Iosb*>(iosb));
 }
 
-int32_t get_msg_offset(void* iosb) {
+std::int32_t get_msg_offset(void* iosb) {
     return eroil::get_msg_offset(static_cast<eroil::iosb::Iosb*>(iosb));
 }
 
@@ -155,7 +155,7 @@ void* get_msg_buffer(void* iosb) {
     return eroil::get_msg_buffer(static_cast<eroil::iosb::Iosb*>(iosb));
 }
 
-int32_t get_msg_slot(void* iosb) {
+std::int32_t get_msg_slot(void* iosb) {
     return eroil::get_msg_slot(static_cast<eroil::iosb::Iosb*>(iosb));
 }
 
