@@ -8,7 +8,7 @@ namespace eroil {
     Router::~Router() = default;
 
     // open/close send/recv
-    void Router::register_send_publisher(std::unique_ptr<SendHandle> handle) {
+    void Router::register_send_publisher(std::unique_ptr<hndl::SendHandle> handle) {
         if (!handle) return;
 
         std::unique_lock lock(m_router_mtx);
@@ -31,7 +31,7 @@ namespace eroil {
         }
     }
 
-    void Router::unregister_send_publisher(const SendHandle* handle) {
+    void Router::unregister_send_publisher(const hndl::SendHandle* handle) {
         if (!handle) return;
 
         std::unique_lock lock(m_router_mtx);
@@ -62,7 +62,7 @@ namespace eroil {
         }
     }
 
-    void Router::register_recv_subscriber(std::unique_ptr<RecvHandle> handle) {
+    void Router::register_recv_subscriber(std::unique_ptr<hndl::RecvHandle> handle) {
         if (handle == nullptr) {
             ERR_PRINT("invalid handle");
             return;
@@ -87,7 +87,7 @@ namespace eroil {
         }
     }
 
-    void Router::unregister_recv_subscriber(const RecvHandle* handle) {
+    void Router::unregister_recv_subscriber(const hndl::RecvHandle* handle) {
         if (!handle) return;
 
         std::unique_lock lock(m_router_mtx);
@@ -191,32 +191,32 @@ namespace eroil {
         m_routes.remove_remote_recv_publisher(label, from_id);
     }
 
-    LabelsSnapshot Router::get_send_labels_snapshot() const {
+    io::LabelsSnapshot Router::get_send_labels_snapshot() const {
         std::shared_lock lock(m_router_mtx);
         return m_routes.get_send_labels_snapshot();
     }
 
-    LabelsSnapshot Router::get_recv_labels_snapshot() const {
+    io::LabelsSnapshot Router::get_recv_labels_snapshot() const {
         std::shared_lock lock(m_router_mtx);
         return m_routes.get_recv_labels_snapshot();
     }
 
-    std::array<LabelInfo, MAX_LABELS> Router::get_send_labels() const {
+    std::array<io::LabelInfo, MAX_LABELS> Router::get_send_labels() const {
         std::shared_lock lock(m_router_mtx);
         return m_routes.get_send_labels();
     }
 
-    std::array<LabelInfo, MAX_LABELS> Router::get_recv_labels() const {
+    std::array<io::LabelInfo, MAX_LABELS> Router::get_recv_labels() const {
         std::shared_lock lock(m_router_mtx);
         return m_routes.get_recv_labels();
     }
 
-    std::array<LabelInfo, MAX_LABELS> Router::get_send_labels_sorted() const {
+    std::array<io::LabelInfo, MAX_LABELS> Router::get_send_labels_sorted() const {
         std::shared_lock lock(m_router_mtx);
         return m_routes.get_send_labels_sorted();
     }
 
-    std::array<LabelInfo, MAX_LABELS> Router::get_recv_labels_sorted() const {
+    std::array<io::LabelInfo, MAX_LABELS> Router::get_recv_labels_sorted() const {
         std::shared_lock lock(m_router_mtx);
         return m_routes.get_recv_labels_sorted();
     }
@@ -275,7 +275,7 @@ namespace eroil {
         return m_routes.get_recv_route(label);
     }
 
-    SendResult Router::send_to_subscribers(Label label, handle_uid uid, SendBuf send_buf) const {
+    SendResult Router::send_to_subscribers(Label label, handle_uid uid, io::SendBuf send_buf) const {
         SendTargets targets{ label, nullptr, false, nullptr, {}, false, {} };
         {
             std::shared_lock lock(m_router_mtx);
@@ -292,7 +292,7 @@ namespace eroil {
                 return { SendOpErr::RouteNotFound, {}, {} };
             }
 
-            size_t expected_size = route->label_size + sizeof(LabelHeader);
+            size_t expected_size = route->label_size + sizeof(io::LabelHeader);
             if (expected_size != send_buf.total_size ) {
                 ERR_PRINT(__func__, "(): size mismatch label=", label, " expected=", expected_size, " got=", send_buf.total_size);
                 return { SendOpErr::SizeMismatch, {}, {} };

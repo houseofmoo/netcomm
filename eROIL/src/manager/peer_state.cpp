@@ -4,8 +4,8 @@
 
 namespace eroil {
     static LabelDeltas diff_sorted(
-        const std::array<LabelInfo, MAX_LABELS>& prev, 
-        const std::array<LabelInfo, MAX_LABELS>& curr) {
+        const std::array<io::LabelInfo, MAX_LABELS>& prev, 
+        const std::array<io::LabelInfo, MAX_LABELS>& curr) {
 
         DB_ASSERT(std::is_sorted(prev.begin(), prev.end()), "prev labels not sorted");
         DB_ASSERT(std::is_sorted(curr.begin(), curr.end()), "curr labels not sorted");
@@ -62,7 +62,7 @@ namespace eroil {
         return delta;
     }
 
-    LabelDeltas PeerState::update_send(const BroadcastMessage& msg) {
+    LabelDeltas PeerState::update_send(const io::BroadcastMessage& msg) {
         auto it = m_peer_send_labels.find(msg.id);
         if (it == m_peer_send_labels.end()) {
             m_peer_send_labels.emplace(msg.id, PeerLabels{
@@ -98,7 +98,7 @@ namespace eroil {
         return delta;
     }
     
-    LabelDeltas PeerState::update_recv(const BroadcastMessage& msg) {
+    LabelDeltas PeerState::update_recv(const io::BroadcastMessage& msg) {
         auto it = m_peer_recv_labels.find(msg.id);
         if (it == m_peer_recv_labels.end()) {
             m_peer_recv_labels.emplace(msg.id, PeerLabels{

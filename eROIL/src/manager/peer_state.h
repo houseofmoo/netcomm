@@ -6,13 +6,13 @@
 
 namespace eroil {
     struct LabelDeltas {
-        std::vector<LabelInfo> added;
-        std::vector<LabelInfo> removed;
+        std::vector<io::LabelInfo> added;
+        std::vector<io::LabelInfo> removed;
     };
 
     struct PeerLabels {
         std::uint64_t gen = 0;
-        std::array<LabelInfo, MAX_LABELS> labels{};
+        std::array<io::LabelInfo, MAX_LABELS> labels{};
     };
 
     class PeerState {
@@ -22,7 +22,7 @@ namespace eroil {
             std::unordered_map<NodeId, PeerLabels> m_peer_recv_labels;
 
         public:
-            LabelDeltas update_send(const BroadcastMessage& msg);
-            LabelDeltas update_recv(const BroadcastMessage& msg);
+            LabelDeltas update_send(const io::BroadcastMessage& msg);
+            LabelDeltas update_recv(const io::BroadcastMessage& msg);
     };
 }

@@ -27,11 +27,11 @@ namespace eroil {
             ~Manager() = default;
 
             bool init();
-            SendHandle* open_send(OpenSendData data);
-            void send_label(SendHandle* handle, void* buf, size_t buf_size, size_t buf_offset);
-            void close_send(SendHandle* handle);
-            RecvHandle* open_recv(OpenReceiveData data);
-            void close_recv(RecvHandle* handle);
+            hndl::SendHandle* open_send(hndl::OpenSendData data);
+            void send_label(hndl::SendHandle* handle, uint8_t* buf, size_t buf_size, size_t send_offset, size_t recv_offset);
+            void close_send(hndl::SendHandle* handle);
+            hndl::RecvHandle* open_recv(hndl::OpenReceiveData data);
+            void close_recv(hndl::RecvHandle* handle);
         
         private:
             bool start_broadcast();

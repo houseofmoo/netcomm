@@ -12,7 +12,7 @@ namespace eroil::worker {
     void ShmRecvWorker::run() {
         try {
             // size our recv block
-            const size_t hdr_size = sizeof(LabelHeader);
+            const size_t hdr_size = sizeof(io::LabelHeader);
 
             std::vector<std::byte> tmp;
             tmp.resize(m_label_size + hdr_size);

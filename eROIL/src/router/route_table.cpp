@@ -39,22 +39,22 @@ namespace eroil {
         return true;
     }
 
-    LabelsSnapshot RouteTable::get_send_labels_snapshot() const {
-        LabelsSnapshot snapshot{};
+    io::LabelsSnapshot RouteTable::get_send_labels_snapshot() const {
+        io::LabelsSnapshot snapshot{};
         snapshot.gen = m_send_gen.load(std::memory_order_relaxed);
         snapshot.labels = get_send_labels_sorted();
         return snapshot;
     }
 
-    LabelsSnapshot RouteTable::get_recv_labels_snapshot() const {
-        LabelsSnapshot snapshot{};
+    io::LabelsSnapshot RouteTable::get_recv_labels_snapshot() const {
+        io::LabelsSnapshot snapshot{};
         snapshot.gen = m_recv_gen.load(std::memory_order_relaxed);
         snapshot.labels = get_recv_labels_sorted();
         return snapshot;
     }
 
-    std::array<LabelInfo, MAX_LABELS> RouteTable::get_send_labels() const {
-        std::array<LabelInfo, MAX_LABELS> labels{};
+    std::array<io::LabelInfo, MAX_LABELS> RouteTable::get_send_labels() const {
+        std::array<io::LabelInfo, MAX_LABELS> labels{};
 
         size_t index = 0;
         for (const auto& [label, route] : m_send_routes) {
@@ -70,8 +70,8 @@ namespace eroil {
         return labels;
     }
 
-    std::array<LabelInfo, MAX_LABELS> RouteTable::get_recv_labels() const {
-        std::array<LabelInfo, MAX_LABELS> labels{};
+    std::array<io::LabelInfo, MAX_LABELS> RouteTable::get_recv_labels() const {
+        std::array<io::LabelInfo, MAX_LABELS> labels{};
 
         size_t index = 0;
         for (const auto& [label, route] : m_recv_routes) {
@@ -87,13 +87,13 @@ namespace eroil {
         return labels;
     }
 
-    std::array<LabelInfo, MAX_LABELS> RouteTable::get_send_labels_sorted() const {
-        std::array<LabelInfo, MAX_LABELS> labels = get_send_labels();
+    std::array<io::LabelInfo, MAX_LABELS> RouteTable::get_send_labels_sorted() const {
+        std::array<io::LabelInfo, MAX_LABELS> labels = get_send_labels();
 
         std::sort(
             labels.begin(), 
             labels.end(),
-            [](const LabelInfo& a, const LabelInfo& b) {
+            [](const io::LabelInfo& a, const io::LabelInfo& b) {
                 return a.label < b.label;
             }
         );
@@ -101,12 +101,12 @@ namespace eroil {
         return labels;
     }
 
-    std::array<LabelInfo, MAX_LABELS> RouteTable::get_recv_labels_sorted() const {
-        std::array<LabelInfo, MAX_LABELS> labels = get_recv_labels();
+    std::array<io::LabelInfo, MAX_LABELS> RouteTable::get_recv_labels_sorted() const {
+        std::array<io::LabelInfo, MAX_LABELS> labels = get_recv_labels();
         std::sort(
             labels.begin(), 
             labels.end(),
-            [](const LabelInfo& a, const LabelInfo& b) {
+            [](const io::LabelInfo& a, const io::LabelInfo& b) {
                 return a.label < b.label;
             }
         );
@@ -115,7 +115,7 @@ namespace eroil {
     }
 
     // send route
-    void RouteTable::create_send_route(Label label, SendHandle* handle) {
+    void RouteTable::create_send_route(Label label, hndl::SendHandle* handle) {
         auto [it, inserted] = m_send_routes.emplace(
             label,
             SendRoute{
@@ -134,7 +134,7 @@ namespace eroil {
         }
     }
 
-    bool RouteTable::add_send_publisher(Label label, SendHandle* handle) {
+    bool RouteTable::add_send_publisher(Label label, hndl::SendHandle* handle) {
         if (handle == nullptr) {
             ERR_PRINT(__func__, "(): given a null handle");
             return false;
@@ -350,7 +350,7 @@ namespace eroil {
     }
 
     // recv route
-    void RouteTable::create_recv_route(Label label, RecvHandle* handle) {
+    void RouteTable::create_recv_route(Label label, hndl::RecvHandle* handle) {
         auto [it, inserted] = m_recv_routes.emplace(
             label,
             RecvRoute{
@@ -368,7 +368,7 @@ namespace eroil {
         }
     }
 
-    bool RouteTable::add_recv_subscriber(Label label, RecvHandle* handle) {
+    bool RouteTable::add_recv_subscriber(Label label, hndl::RecvHandle* handle) {
         if (handle == nullptr) {
             ERR_PRINT(__func__, "(): given a null handle");
             return false;

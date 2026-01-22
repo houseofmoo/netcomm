@@ -14,7 +14,7 @@ namespace eroil::worker {
         try {
             std::vector<std::byte> payload;
             while (!stop_requested()) {
-                LabelHeader hdr{};
+                io::LabelHeader hdr{};
 
                 if (!m_sock->is_connected()) break;
                 
@@ -42,7 +42,7 @@ namespace eroil::worker {
                     break;
                 }
                 
-                if (hdr.data_size <= 0 && has_flag(hdr.flags, LabelFlag::Data)) {
+                if (hdr.data_size <= 0 && io::has_flag(hdr.flags, io::LabelFlag::Data)) {
                     ERR_PRINT(
                         "socket recv got a header that indicated data size is 0, label=", hdr.label,
                         ", sourceid=", hdr.source_id
@@ -52,8 +52,8 @@ namespace eroil::worker {
                     continue;
                 }
 
-                if (!has_flag(hdr.flags, LabelFlag::Data)) {
-                    if (!has_flag(hdr.flags, LabelFlag::Ping)) {
+                if (!io::has_flag(hdr.flags, io::LabelFlag::Data)) {
+                    if (!io::has_flag(hdr.flags, io::LabelFlag::Ping)) {
                         ERR_PRINT("got a hdr that indicated it was not a ping or data, hdr.flag=", hdr.flags);
                     }
                     evtlog::warn(elog_kind::SocketRecvWorker_Warning, elog_cat::Worker, hdr.label, hdr.data_size, m_peer_id);

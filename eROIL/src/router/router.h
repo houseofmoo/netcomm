@@ -18,18 +18,18 @@ namespace eroil {
             TransportRegistry m_transports;
             Dispatcher m_dispatch;
 
-            std::unordered_map<handle_uid, std::unique_ptr<SendHandle>> m_send_handles;
-            std::unordered_map<handle_uid, std::unique_ptr<RecvHandle>> m_recv_handles;
+            std::unordered_map<handle_uid, std::unique_ptr<hndl::SendHandle>> m_send_handles;
+            std::unordered_map<handle_uid, std::unique_ptr<hndl::RecvHandle>> m_recv_handles;
 
         public:
             Router();
             ~Router();
 
             // open/close send/recv
-            void register_send_publisher(std::unique_ptr<SendHandle> handle);
-            void unregister_send_publisher(const SendHandle* handle);
-            void register_recv_subscriber(std::unique_ptr<RecvHandle> handle);
-            void unregister_recv_subscriber(const RecvHandle* handle);
+            void register_send_publisher(std::unique_ptr<hndl::SendHandle> handle);
+            void unregister_send_publisher(const hndl::SendHandle* handle);
+            void register_recv_subscriber(std::unique_ptr<hndl::RecvHandle> handle);
+            void unregister_recv_subscriber(const hndl::RecvHandle* handle);
 
             // route interface
             void add_local_send_subscriber(Label label, size_t label_size, NodeId my_id, NodeId to_id);
@@ -42,12 +42,12 @@ namespace eroil {
             void remove_local_recv_publisher(Label label, NodeId my_id);
             void remove_remote_recv_publisher(Label label, NodeId from_id);
 
-            LabelsSnapshot get_send_labels_snapshot() const;
-            LabelsSnapshot get_recv_labels_snapshot() const;
-            std::array<LabelInfo, MAX_LABELS> get_send_labels() const;
-            std::array<LabelInfo, MAX_LABELS> get_recv_labels() const;
-            std::array<LabelInfo, MAX_LABELS> get_send_labels_sorted() const;
-            std::array<LabelInfo, MAX_LABELS> get_recv_labels_sorted() const;
+            io::LabelsSnapshot get_send_labels_snapshot() const;
+            io::LabelsSnapshot get_recv_labels_snapshot() const;
+            std::array<io::LabelInfo, MAX_LABELS> get_send_labels() const;
+            std::array<io::LabelInfo, MAX_LABELS> get_recv_labels() const;
+            std::array<io::LabelInfo, MAX_LABELS> get_send_labels_sorted() const;
+            std::array<io::LabelInfo, MAX_LABELS> get_recv_labels_sorted() const;
 
             bool has_send_route(Label label) const noexcept;
             bool has_recv_route(Label label) const noexcept;
@@ -62,7 +62,7 @@ namespace eroil {
             std::shared_ptr<shm::Shm> get_recv_shm(Label label) const noexcept;
             const RecvRoute* get_recv_route(Label label) const noexcept;
 
-            SendResult send_to_subscribers(Label label, handle_uid uid, SendBuf send_buf) const;
+            SendResult send_to_subscribers(Label label, handle_uid uid, io::SendBuf send_buf) const;
             void recv_from_publisher(Label label, const void* buf, size_t size) const;
 
     };

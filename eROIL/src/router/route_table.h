@@ -55,23 +55,23 @@ namespace eroil {
             std::atomic<uint64_t> m_send_gen{1};
             std::atomic<uint64_t> m_recv_gen{1};
 
-            void create_send_route(Label label, SendHandle* handle);
-            void create_recv_route(Label label, RecvHandle* handle);
+            void create_send_route(Label label, hndl::SendHandle* handle);
+            void create_recv_route(Label label, hndl::RecvHandle* handle);
 
             SendRoute* require_send_route(Label label, const char* fn);
             RecvRoute* require_recv_route(Label label, const char* fn);
             bool require_route_size(size_t expected, size_t actual, const char* fn);
             
         public:
-            LabelsSnapshot get_send_labels_snapshot() const;
-            LabelsSnapshot get_recv_labels_snapshot() const;
-            std::array<LabelInfo, MAX_LABELS> get_send_labels() const;
-            std::array<LabelInfo, MAX_LABELS> get_recv_labels() const;
-            std::array<LabelInfo, MAX_LABELS> get_send_labels_sorted() const;
-            std::array<LabelInfo, MAX_LABELS> get_recv_labels_sorted() const;
+            io::LabelsSnapshot get_send_labels_snapshot() const;
+            io::LabelsSnapshot get_recv_labels_snapshot() const;
+            std::array<io::LabelInfo, MAX_LABELS> get_send_labels() const;
+            std::array<io::LabelInfo, MAX_LABELS> get_recv_labels() const;
+            std::array<io::LabelInfo, MAX_LABELS> get_send_labels_sorted() const;
+            std::array<io::LabelInfo, MAX_LABELS> get_recv_labels_sorted() const;
 
             // send route ops
-            bool add_send_publisher(Label label, SendHandle* handle);
+            bool add_send_publisher(Label label, hndl::SendHandle* handle);
             bool remove_send_publisher(Label label, handle_uid uid);
 
             bool add_local_send_subscriber(Label label, size_t size, NodeId my_id, NodeId to_id);
@@ -90,7 +90,7 @@ namespace eroil {
             bool is_remote_send_subscriber(Label label, NodeId to_id) const noexcept;
 
             // recv route ops
-            bool add_recv_subscriber(Label label, RecvHandle* handle);
+            bool add_recv_subscriber(Label label, hndl::RecvHandle* handle);
             bool remove_recv_subscriber(Label label, handle_uid uid);
 
             bool add_local_recv_publisher(Label label, size_t size, NodeId my_id, NodeId from_id);

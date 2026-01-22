@@ -75,7 +75,7 @@ namespace eroil {
         }).detach();
     }
 
-    void ConnectionManager::send_label(handle_uid uid, Label label, SendBuf send_buf) {
+    void ConnectionManager::send_label(handle_uid uid, Label label, io::SendBuf send_buf) {
         m_sender.enqueue(worker::SendQEntry{
             uid,
             label,
@@ -165,7 +165,7 @@ namespace eroil {
             }
 
             // they connected to us, they'll send a follow up message
-            LabelHeader hdr{};
+            io::LabelHeader hdr{};
             auto recv_result = client->recv_all(&hdr, sizeof(hdr));
             if (recv_result.code != sock::SockErr::None) {
                 ERR_PRINT("tcp server had an error recving client information");
@@ -182,7 +182,7 @@ namespace eroil {
                 continue;
             }
 
-            if (!has_flag(hdr.flags, LabelFlag::Connect)) {
+            if (!io::has_flag(hdr.flags, io::LabelFlag::Connect)) {
                 ERR_PRINT("tcp server recvd invalid request type");
                 evtlog::warn(elog_kind::InvalidHeader, elog_cat::TCPServer, hdr.source_id);
                 client->disconnect();
@@ -300,8 +300,8 @@ namespace eroil {
     bool ConnectionManager::send_id(sock::TCPClient* sock) {
         // send them a notice of who we are
         uint16_t flags = 0;
-        set_flag(flags, LabelFlag::Connect);
-        LabelHeader hdr{};
+        io::set_flag(flags, io::LabelFlag::Connect);
+        io::LabelHeader hdr{};
         hdr.magic = MAGIC_NUM;
         hdr.version = VERSION,
         hdr.source_id = m_id,
@@ -316,8 +316,8 @@ namespace eroil {
     bool ConnectionManager::send_ping(sock::TCPClient* sock) {
         // send ping header
         uint16_t flags = 0;
-        set_flag(flags, LabelFlag::Ping);
-        LabelHeader hdr{};
+        io::set_flag(flags, io::LabelFlag::Ping);
+        io::LabelHeader hdr{};
         hdr.magic = MAGIC_NUM;
         hdr.version = VERSION,
         hdr.source_id = m_id,

@@ -34,7 +34,7 @@ namespace eroil {
 
     struct SendTargets {
         Label label;
-        std::shared_ptr<OpenSendData> publisher;
+        std::shared_ptr<hndl::OpenSendData> publisher;
         bool has_local;
         std::shared_ptr<shm::Shm> shm;
         std::vector<std::shared_ptr<evt::NamedEvent>> shm_signals;
@@ -44,12 +44,12 @@ namespace eroil {
 
     struct RecvTargets {
         Label label;
-        std::vector<std::shared_ptr<OpenReceiveData>> subscribers;
+        std::vector<std::shared_ptr<hndl::OpenReceiveData>> subscribers;
     };
 
     class Dispatcher {
         public:
-            SendResult dispatch_send_targets(const SendTargets& targets, SendBuf send_buf) const;
+            SendResult dispatch_send_targets(const SendTargets& targets, io::SendBuf send_buf) const;
 
            void  dispatch_recv_targets(const RecvTargets& targets,
                                        const void* buf,

@@ -16,7 +16,7 @@ namespace eroil::worker {
     struct SendQEntry {
         handle_uid uid;
         Label label;
-        SendBuf send_buf;
+        io::SendBuf send_buf;
     };
 
     class SendWorker {

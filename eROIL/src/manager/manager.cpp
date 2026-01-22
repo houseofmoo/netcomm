@@ -57,44 +57,37 @@ namespace eroil {
         return true;
     }
 
-    SendHandle* Manager::open_send(OpenSendData data) {
-        auto handle = std::make_unique<SendHandle>(unique_id(), data);
-        SendHandle* raw_handle = handle.get();
+    hndl::SendHandle* Manager::open_send(hndl::OpenSendData data) {
+        auto handle = std::make_unique<hndl::SendHandle>(unique_id(), data);
+        hndl::SendHandle* raw_handle = handle.get();
         m_router.register_send_publisher(std::move(handle));
         return raw_handle;
     }
 
-    void Manager::send_label(SendHandle* handle, void* buf, size_t buf_size, size_t buf_offset) {
+    void Manager::send_label(hndl::SendHandle* handle, uint8_t* buf, size_t buf_size, size_t send_offset, size_t recv_offset) {
         if (handle == nullptr) {
             ERR_PRINT(__func__, "(): got null send handle");
             return;
         }
 
-        void* src_addr = nullptr;
-        uint8_t* data_buf = nullptr;
+        // if this is not an offset send, 0 the offset sizes
+        if (!handle->data->is_offset) {
+            send_offset = 0;
+            recv_offset = 0;
+        }
+
         size_t data_size = 0;
-        size_t data_offset = 0;
-        
-        // figure out which buffer to use
-        if (buf != nullptr) {
-            src_addr = buf;
-            data_buf = reinterpret_cast<uint8_t*>(buf);
-            data_size = buf_size;
-            data_offset = buf_offset;
-        } else {
-            src_addr = handle->data->buf;
+        uint8_t* data_buf = nullptr;
+        if (buf == nullptr) {
             data_buf = handle->data->buf;
             data_size = handle->data->buf_size;
-            data_offset = handle->data->buf_offset;
+        } else {
+            data_buf = static_cast<uint8_t*>(buf);
+            data_size = buf_size;
         }
 
-        if (src_addr == nullptr) {
-            ERR_PRINT(__func__, "(): got null source buffer");
-            return;
-        }
-
-        if (data_size == 0) {
-            ERR_PRINT(__func__, "(): got data size: 0");
+        if (data_size <= 0 || data_size != handle->data->buf_size) {
+            ERR_PRINT(__func__, "(): got data size=", data_size, " that does not match expected size=", handle->data->buf_size);
             return;
         }
 
@@ -104,31 +97,33 @@ namespace eroil {
         }
 
         // create send buffer
-        SendBuf sbuf(src_addr, data_size);
+        io::SendBuf sbuf(data_buf, data_size);
 
         // attach header for send
         uint16_t flags = 0;
-        set_flag(flags, LabelFlag::Data);
+        io::set_flag(flags, io::LabelFlag::Data);
 
-        LabelHeader hdr;
+        io::LabelHeader hdr;
         hdr.magic = MAGIC_NUM;
         hdr.version = VERSION;
         hdr.source_id = m_id;
         hdr.flags = flags;
         hdr.label = handle->data->label;
-        hdr.data_size = data_size;
+        hdr.data_size = static_cast<uint32_t>(data_size);
+        hdr.recv_offset = recv_offset;
 
+        // copy header
         std::memcpy(sbuf.data.get(), &hdr, sizeof(hdr));
 
         // copy data into buffer after header
-        std::memcpy(sbuf.data.get() + sizeof(hdr), data_buf + data_offset, data_size);
+        std::memcpy(sbuf.data.get() + sizeof(hdr), data_buf + send_offset, data_size);
         
         // hand off to sender
         m_comms.send_label(handle->uid, handle->data->label, std::move(sbuf));
     }
 
-    void Manager::close_send(SendHandle* handle) {
-              if (handle == nullptr) {
+    void Manager::close_send(hndl::SendHandle* handle) {
+        if (handle == nullptr) {
             ERR_PRINT(__func__, "(): got handle that was nullptr");
             return;
         }
@@ -136,16 +131,16 @@ namespace eroil {
         m_router.unregister_send_publisher(handle);
     }
 
-    RecvHandle* Manager::open_recv(OpenReceiveData data) {
+    hndl::RecvHandle* Manager::open_recv(hndl::OpenReceiveData data) {
         // TODO: validate open recv data
 
-        auto handle = std::make_unique<RecvHandle>(unique_id(), data);
-        RecvHandle* raw_handle = handle.get();
+        auto handle = std::make_unique<hndl::RecvHandle>(unique_id(), data);
+        hndl::RecvHandle* raw_handle = handle.get();
         m_router.register_recv_subscriber(std::move(handle));
         return raw_handle;
     }
 
-    void Manager::close_recv(RecvHandle* handle) {
+    void Manager::close_recv(hndl::RecvHandle* handle) {
         if (handle == nullptr) {
             ERR_PRINT(__func__, "(): got handle that was nullptr");
             return;
@@ -182,7 +177,7 @@ namespace eroil {
     }
 
     void Manager::send_broadcast() {
-        BroadcastMessage msg{};
+        io::BroadcastMessage msg{};
         msg.id = m_id;
 
         while (true) {
@@ -205,7 +200,7 @@ namespace eroil {
     }
 
     void Manager::recv_broadcast() {
-        BroadcastMessage msg{};
+        io::BroadcastMessage msg{};
 
         while (true) {
             m_broadcast.recv_broadcast(&msg, sizeof(msg));
@@ -250,10 +245,7 @@ namespace eroil {
     }
 
     void Manager::add_subscriber(const NodeId source_id, const std::unordered_map<Label, uint32_t>& recv_labels) {
-        for (const auto& info : recv_labels) {
-            const auto& label = info.first;
-            const auto& size = info.second;
-            
+        for (const auto& [label, size] : recv_labels) {
             if (label <= INVALID_LABEL) continue;
 
             // if we do not send this label, ignore it
@@ -321,10 +313,7 @@ namespace eroil {
     }
 
     void Manager::add_publisher(const NodeId source_id, const std::unordered_map<Label, uint32_t>& send_labels) {
-        for (const auto& info : send_labels) {
-            const auto& label = info.first;
-            const auto& size = info.second;
-            
+        for (const auto& [label, size] : send_labels) {
             if (label <= INVALID_LABEL) continue;
 
             // if we do not want this label, continue

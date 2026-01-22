@@ -5,10 +5,10 @@
 #include "types/types.h"
 #include "platform/platform.h"
 #include "assertion.h"
-#include <cassert>
+#include "rtos.h"
 
 namespace eroil {
-    SendResult Dispatcher::dispatch_send_targets(const SendTargets& targets, SendBuf send_buf) const {
+    SendResult Dispatcher::dispatch_send_targets(const SendTargets& targets, io::SendBuf send_buf) const {
         bool failed = false;
         SendResult result{ SendOpErr::None, shm::ShmOpErr::None, {} };
 
@@ -60,28 +60,28 @@ namespace eroil {
         if (targets.publisher != nullptr) { 
             // ... there may not be a iosb
             if (targets.publisher->iosb != nullptr && targets.publisher->num_iosb > 0) {
-                eroil::SendIosb* iosb = targets.publisher->iosb + targets.publisher->iosb_index;
+                iosb::SendIosb* iosb = targets.publisher->iosb + targets.publisher->iosb_index;
 
-                // TODO: we need a way to tell what buffer was used the buf in the IOSB
-                // or a buffer that was provided, that way we can set iosb->pMsgAddr correctly
-                // this should also be true for MsgSize (but this one should alway be the same)
-
-                iosb->Status = send_buf.total_size;  // number of bytes sent is status (-1 is error, 0 is disconnected)
+                iosb->Status = failed ? -1 : 0;  // -1 is error, 0 is ok
                 iosb->Reserve1 = 0;
                 iosb->Header_Valid = 1;
-                iosb->Reserve2 = 0;  // 0 for send, 1 for receive (cause thats how they defined it)
+                iosb->Reserve2 = static_cast<int>(iosb::RoilAction::SEND);
                 iosb->Reserve3 = 0;
-                iosb->pMsgAddr = reinterpret_cast<char*>(send_buf.data_src_addr);
+                iosb->pMsgAddr = static_cast<char*>(send_buf.data_src_addr);
                 iosb->MsgSize = send_buf.data_size;
                 iosb->Reserve4 = 0;
                 iosb->Reserve5 = 0;
                 iosb->Reserve6 = 0;
                 iosb->Reserve7 = 0;
                 iosb->Reserve8 = 0;
-                iosb->FC_Header = { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 };
                 iosb->Reserve9 = 0;
                 iosb->Reserve10 = 0;
-                iosb->TimeStamp = 0x12345678;  // TODO: write real timestamp here
+                iosb->TimeStamp = RTOS_Current_Time_Raw();
+
+                iosb->FC_Header = { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 };
+                iosb->FC_Header.Destination_ID = targets.label;
+                // TODO: need a way to access our id
+                //iosb->FC_Header.Source_ID = m_id;
 
                 targets.publisher->iosb_index = (targets.publisher->iosb_index + 1) % targets.publisher->num_iosb;
             }
@@ -125,32 +125,38 @@ namespace eroil {
 
             // write recvrs IOSB 
             if (subs->iosb != nullptr && subs->num_iosb > 0) {
-                eroil::ReceiveIosb* iosb = subs->iosb + subs->iosb_index;
+                iosb::ReceiveIosb* iosb = subs->iosb + subs->iosb_index;
 
-                iosb->Status = size; // number of bytes sent is status (-1 is error, 0 is disconnected)
+                iosb->Status = 0; // -1 is error, 0 is ok
                 iosb->Reserve1 = 0;
                 iosb->Header_Valid = 1;
-                iosb->Reserve2 = 1;  // 0 for send, 1 for receive (cause thats how they defined it)
+                iosb->Reserve2 = static_cast<int>(iosb::RoilAction::RECEIVE);
                 iosb->Reserve3 = 0;
-                iosb->MsgSize = 0;
+                iosb->MsgSize = size / 4; // they want it in words for some reason
                 iosb->Reserve4 = 0;
                 iosb->Messaage_Slot = subs->buf_index;
-                iosb->Reserve5 = 0;
+                iosb->Reserve5 = targets.label;
                 iosb->pMsgAddr = reinterpret_cast<char*>(dst);
                 iosb->Reserve6 = 0;
                 iosb->Reserve7 = 0;
-                iosb->FC_Header = { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 };
                 iosb->Reserve8 = 0;
                 iosb->E_SOF = 0;
                 iosb->E_EOF = 0;
-                iosb->TimeStamp = 0; // TODO: write real timestamp here
+                iosb->TimeStamp = RTOS_Current_Time_Raw();
 
+                iosb->FC_Header = { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 };
+                //iosb->FC_Header.Source_ID = m_id;
+                //iosb->FC_Header.Destination_ID = (iForwardLabel == -1) ? targets.label : iForwardLabel;
+                //iosb->FC_Header.Parameter = iOffsetInBytes; specifically the recvoffset (recv'd from a send header recvoffset)
+                
                 subs->iosb_index = (subs->iosb_index + 1) % subs->num_iosb;
             }
             
             subs->buf_index = (subs->buf_index + 1) % subs->buf_slots;
 
-            plat::try_signal_sem(subs->sem, subs->signal_mode);
+            // TODO: signal based on the signal mode?
+            //if subs->signal_mode == ALWAYS ??
+            plat::try_signal_sem(subs->sem);
         }
     }
 }

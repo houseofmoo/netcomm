@@ -53,6 +53,8 @@ target_sources(eROIL
         ${CMAKE_CURRENT_SOURCE_DIR}/src/workers/send_worker.cpp
         ${CMAKE_CURRENT_SOURCE_DIR}/src/workers/shm_recv_worker.cpp
         ${CMAKE_CURRENT_SOURCE_DIR}/src/workers/socket_recv_worker.cpp
+        ${CMAKE_CURRENT_SOURCE_DIR}/src/wrappers/eroil_c.cpp
+        ${CMAKE_CURRENT_SOURCE_DIR}/src/wrappers/eroil_cpp.cpp
 )
 
 # platform dependent sources

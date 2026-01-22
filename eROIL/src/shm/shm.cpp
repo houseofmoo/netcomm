@@ -16,7 +16,7 @@ namespace eroil::shm {
     }
 
     size_t Shm::size_with_header() const noexcept { 
-        return m_label_size + sizeof(LabelHeader); 
+        return m_label_size + sizeof(io::LabelHeader); 
     }
 
     ShmErr Shm::create_or_open(const uint32_t attempts, const uint32_t wait_ms) {

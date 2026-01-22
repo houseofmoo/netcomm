@@ -3,15 +3,15 @@
 #include "iosb.h"
 #include "types.h"
 
-namespace eroil {
+namespace eroil::hndl {
   
     struct OpenSendData {
         int32_t label;
         uint8_t* buf;
         size_t buf_size;
-        uint32_t buf_offset;
-        sem_handle sem; // void*
-        SendIosb* iosb;
+        bool is_offset;
+        sem_handle sem;
+        iosb::SendIosb* iosb;
         uint32_t num_iosb;
         size_t iosb_index;
     };
@@ -26,17 +26,18 @@ namespace eroil {
 
     struct OpenReceiveData{
         int32_t label;
-        int32_t forward_label;  // the fuck this for?
+        int32_t forward_label;  // this exists for IMC stuff in NAE, probably delete it
         uint8_t* buf;
         size_t buf_size;
-        size_t buf_slots;
-        size_t buf_index;
+        uint32_t buf_slots;
+        size_t buf_index; // TODO: maybe make atomic?
         uint8_t* aux_buf;
-        sem_handle sem; // void*
-        ReceiveIosb* iosb;
+        sem_handle sem;
+        iosb::ReceiveIosb* iosb;
         uint32_t num_iosb;
         size_t iosb_index;
-        int signal_mode;
+        iosb::SignalMode signal_mode;
+        uint32_t recv_count; // TODO: maybe make atomic?
     };
 
     struct RecvHandle {

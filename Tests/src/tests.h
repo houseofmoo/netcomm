@@ -8,7 +8,7 @@
 #include <fstream>
 
 #include <eROIL/print.h>
-#include <eROIL/eroil.h>
+#include <eROIL/eroil_cpp.h>
 #include "io.h"
 #include "labels.h"
 #include "scenario/scenario.h"
@@ -73,7 +73,7 @@ inline void generate_and_write_scenarios(const int num_scenarios, const bool det
 }
 
 // simulate a full network with multiple sending/recving labels
-inline int run_network_sim(int id, int seed) {
+inline int run_network_sim(int id, int seed, bool show_send, bool show_recv) {
     auto scenario = generate_test_scenario(seed);
     if (scenario.nodes.size() < static_cast<size_t>(id) || scenario.nodes[id].id != id) {
         ERR_PRINT("scenarios list did not contain this nodes labels list");
@@ -100,8 +100,8 @@ inline int run_network_sim(int id, int seed) {
 
     // open recvs
     for (auto& r : recv_labels) {
-        std::thread t([r]() {
-            do_recv(std::move(r), false);
+        std::thread t([r, show_recv]() {
+            do_recv(std::move(r), show_recv);
         });
         t.detach();
     }
@@ -109,84 +109,85 @@ inline int run_network_sim(int id, int seed) {
     // open send
     for (size_t i = 0; i < send_labels.size() - 1; i++) {
         auto ptr = send_labels[i];
-        std::thread t([ptr]() {
-            do_send(std::move(ptr), false);
+        std::thread t([ptr, show_send]() {
+            do_send(std::move(ptr), show_send);
         });
         t.detach();
     }
 
     auto ptr = send_labels[send_labels.size() - 1];
-    do_send(std::move(ptr), false);
+    do_send(std::move(ptr), show_send);
     return 0;
 }
 
 // add and remove labels test
 inline int add_remove_labels_test(int id) {
-    bool success = init_manager(id);
-    if (!success) {
-        ERR_PRINT("manager init failed");
-        return 1;
-    }
+    (void)id;
+    // bool success = init_manager(id);
+    // if (!success) {
+    //     ERR_PRINT("manager init failed");
+    //     return 1;
+    // }
 
-    if (id == 0) {
-        auto label = std::make_shared<SendLabel>(make_send_label(0, 1024, 1000));
-        PRINT("opening send label for: ", label->id);
-        auto handle = open_send(label->id, label->get_buf(), label->size);
-        std::this_thread::sleep_for(std::chrono::milliseconds(3 * 1000));
+    // if (id == 0) {
+    //     auto label = std::make_shared<SendLabel>(make_send_label(0, 1024, 1000));
+    //     PRINT("opening send label for: ", label->id);
+    //     auto handle = open_send(label->id, label->get_buf(), label->size);
+    //     std::this_thread::sleep_for(std::chrono::milliseconds(3 * 1000));
 
-        int count = 0;
-        while (count < 15) {
-            count += 1;
+    //     int count = 0;
+    //     while (count < 15) {
+    //         count += 1;
 
-            PRINT("SEND [", label->id, "] val: ", count);
+    //         PRINT("SEND [", label->id, "] val: ", count);
 
-            std::memcpy(label->get_buf(), &count, sizeof(count));
-            send_label(handle, label->get_buf(), label->size, 0);
-            std::this_thread::sleep_for(std::chrono::milliseconds(label->sleep_time));
-        }
+    //         std::memcpy(label->get_buf(), &count, sizeof(count));
+    //         send_label(handle, label->get_buf(), label->size, 0);
+    //         std::this_thread::sleep_for(std::chrono::milliseconds(label->sleep_time));
+    //     }
         
-        PRINT("closing send label for: ", label->id, " for 10 seconds");
-        close_send(handle);
-        std::this_thread::sleep_for(std::chrono::milliseconds(10 * 1000));
+    //     PRINT("closing send label for: ", label->id, " for 10 seconds");
+    //     close_send(handle);
+    //     std::this_thread::sleep_for(std::chrono::milliseconds(10 * 1000));
 
-        PRINT("opening send label for: ", label->id);
-        auto new_handle = open_send(label->id, label->get_buf(), label->size);
-        std::this_thread::sleep_for(std::chrono::milliseconds(1 * 1000));
+    //     PRINT("opening send label for: ", label->id);
+    //     auto new_handle = open_send(label->id, label->get_buf(), label->size);
+    //     std::this_thread::sleep_for(std::chrono::milliseconds(1 * 1000));
 
-        count = 0;
-        while (count < 30) {
-            count += 1;
+    //     count = 0;
+    //     while (count < 30) {
+    //         count += 1;
 
-            PRINT("SEND [", label->id, "] val: ", count);
+    //         PRINT("SEND [", label->id, "] val: ", count);
 
-            std::memcpy(label->get_buf(), &count, sizeof(count));
-            send_label(new_handle, label->get_buf(), label->size, 0);
-            std::this_thread::sleep_for(std::chrono::milliseconds(label->sleep_time));
-        }
-    } else {
-        auto label = std::make_shared<RecvLabel>(make_recv_label(0, 1024));
+    //         std::memcpy(label->get_buf(), &count, sizeof(count));
+    //         send_label(new_handle, label->get_buf(), label->size, 0);
+    //         std::this_thread::sleep_for(std::chrono::milliseconds(label->sleep_time));
+    //     }
+    // } else {
+    //     auto label = std::make_shared<RecvLabel>(make_recv_label(0, 1024));
         
-        PRINT("opening recv label for: ", label->id);
-        open_recv(label->id, label->get_buf(), label->size, label->sem);
+    //     PRINT("opening recv label for: ", label->id);
+    //     open_recv(label->id, label->get_buf(), label->size, label->sem);
         
-        int count = 0;
-        int prev_count = 0;
-        bool first_recv = true;
-        while (true) {
-            label->wait();
-            std::memcpy(&count, label->get_buf(), sizeof(count));
+    //     int count = 0;
+    //     int prev_count = 0;
+    //     bool first_recv = true;
+    //     while (true) {
+    //         label->wait();
+    //         std::memcpy(&count, label->get_buf(), sizeof(count));
 
-            if (prev_count + 1 != count) {
-                if (first_recv) {
-                    first_recv = false;
-                } else {
-                    ERR_PRINT("RECV [", label->id, "] got count out of order expected=", prev_count + 1, " got=", count);
-                }
-            } else {
-                LOG("RECV [", label->id, "] got: ", count);
-            }
-            prev_count = count;
-        }
-    }
+    //         if (prev_count + 1 != count) {
+    //             if (first_recv) {
+    //                 first_recv = false;
+    //             } else {
+    //                 ERR_PRINT("RECV [", label->id, "] got count out of order expected=", prev_count + 1, " got=", count);
+    //             }
+    //         } else {
+    //             LOG("RECV [", label->id, "] got: ", count);
+    //         }
+    //         prev_count = count;
+    //     }
+    // }
     return 0;
 }

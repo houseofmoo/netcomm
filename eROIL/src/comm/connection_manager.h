@@ -25,7 +25,7 @@ namespace eroil {
             ~ConnectionManager() = default;
 
             void start();
-            void send_label(handle_uid uid, Label label, SendBuf send_buf);
+            void send_label(handle_uid uid, Label label, io::SendBuf send_buf);
             void start_local_recv_worker(Label label, size_t label_size);
             void stop_local_recv_worker(Label label);
             void start_remote_recv_worker(NodeId from_id);
