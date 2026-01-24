@@ -19,34 +19,34 @@ namespace eroil::shm {
     //     return static_cast<shm_handle>(fd);
     // }
 
-    Shm::Shm(const Label label, const size_t label_size)
-        : m_label(label), m_label_size(label_size), m_handle(-1), m_view(nullptr) {}
+    Shm::Shm(const int32_t id, const size_t total_size) : 
+        m_id(id), m_total_size(total_size), m_handle(-1), m_view(nullptr) {}
 
     Shm::Shm(Shm&& other) noexcept
-        : m_label(other.m_label),
-          m_label_size(other.m_label_size),
+        : m_id(other.m_id),
+          m_total_size(other.m_total_size),
           m_handle(other.m_handle),
           m_view(other.m_view) {
 
         other.m_handle = -1;
         other.m_view   = nullptr;
-        other.m_label  = 0;
-        other.m_label_size = 0;
+        other.m_id  = -1;
+        other.m_total_size = 0;
     }
 
     Shm& Shm::operator=(Shm&& other) noexcept {
         if (this != &other) {
             close();
 
-            m_label = other.m_label;
-            m_label_size = other.m_label_size;
+            m_id = other.m_id;
+            m_total_size = other.m_total_size;
             m_handle = other.m_handle;
             m_view = other.m_view;
 
             other.m_handle = -1;
             other.m_view = nullptr;
-            other.m_label = 0;
-            other.m_label_size = 0;
+            other.m_id = -1;
+            other.m_total_size = 0;
         }
         return *this;
     }
@@ -56,7 +56,7 @@ namespace eroil::shm {
     }
 
     std::string Shm::name() const noexcept {
-        return "/eroil.label." + std::to_string(m_label);
+        return "/eroil.node." + std::to_string(m_label);
     }
 
     ShmErr Shm::create() {

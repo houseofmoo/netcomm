@@ -26,17 +26,18 @@ namespace eroil::shm {
         SetRecvEventError,
         RecvFailed,
         WouldBlock,
+        InvalidOffset,
     };
 
     class Shm {
         protected:
-            Label m_label;
-            size_t m_label_size;
+            int32_t m_id;
+            size_t m_total_size;
             shm_handle m_handle;
             shm_view m_view;
 
         public:
-            Shm(const Label label, const size_t label_size);
+            Shm(const int32_t id, const size_t total_size);
             virtual ~Shm() { close(); }
 
             // do not copy
@@ -56,16 +57,25 @@ namespace eroil::shm {
 
             // shared implementation
             template <typename T>
-            T* map_to_data() const;
+            T* map_to_type(size_t offset) const;
+            void memset(size_t offset, int32_t val, size_t bytes);
             size_t total_size() const noexcept;
-            size_t size_with_header() const noexcept;
-            ShmErr create_or_open(const uint32_t attempts = 10, const uint32_t wait_ms = 100);
-            ShmOpErr read(void* buf, const size_t size) const noexcept;
-            ShmOpErr write(const void* buf, const size_t size) noexcept;
 
+            ShmOpErr read(void* buf, const size_t size, const size_t offset) const noexcept;
+            ShmOpErr write(const void* buf, const size_t size, const size_t offset) noexcept;
+            
+            // on open/create validation
+            // void write_header_init();
+            // void write_header_ready();
+            // ShmErr validate_shm_header();
+            // bool is_block_ready();
+            
         private:
-            std::byte* data_ptr() const noexcept;
-            void write_shm_header();
-            ShmErr validate_shm_header();
+            ShmErr create_or_open(const uint32_t attempts = 10, const uint32_t wait_ms = 100);
+            // std::byte* data_ptr() const noexcept;
+            // void write_shm_header();
+            // void write_header_init();
+            // void writer_header_ready();
+            // ShmErr validate_shm_header();
     };
 }

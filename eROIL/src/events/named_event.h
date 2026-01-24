@@ -17,21 +17,15 @@ namespace eroil::evt {
         SysError,           // wait() failed (WAIT_FAILED, etc.)
     };
 
-    struct NamedEventInfo {
-        Label label_id;
-        NodeId src_id;
-        NodeId dst_id;
-    };
-
     class NamedEvent {
         private:
-            Label m_label_id;
-            NodeId m_src_id;
-            NodeId m_dst_id;
+            // which node "waits" on this event, others signal 
+            // this event that they wrote to this node
+            NodeId m_dst_id; 
             sem_handle m_sem;
 
         public:
-            NamedEvent(Label label, NodeId src_id, NodeId dst_id);
+            NamedEvent(NodeId id);
             ~NamedEvent();
 
             // do not copy
@@ -43,7 +37,7 @@ namespace eroil::evt {
             NamedEvent& operator=(NamedEvent&& other) noexcept;
             
             std::string name() const;
-            NamedEventInfo get_info() const { return { m_label_id, m_src_id, m_dst_id }; }
+            NodeId get_dst_id() const { return m_dst_id; }
             NamedEventErr post() const;
             NamedEventErr try_wait() const;
             NamedEventErr wait(uint32_t milliseconds = 0) const;

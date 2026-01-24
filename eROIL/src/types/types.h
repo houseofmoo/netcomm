@@ -16,7 +16,17 @@ namespace eroil {
     static constexpr std::uint32_t MAX_LABELS = 200;
     static constexpr std::uint32_t MAGIC_NUM = 0x4C4F5245u; // 'EROL' as ascii bytes
     static constexpr std::uint16_t VERSION = 1;
-    static constexpr std::size_t SOCKET_DATA_MAX_SIZE = 1u << 20; // 1 MB
+
+    static constexpr std::size_t KILOBYTE = 1024u;
+    static constexpr std::size_t MEGABYTE = 1024u * KILOBYTE;
+
+    static constexpr std::size_t SOCKET_DATA_MAX_SIZE = 1 * MEGABYTE;
+    static_assert(SOCKET_DATA_MAX_SIZE % 64 == 0);
+
+    static constexpr std::size_t SHM_DESCRIPTOR_RING_SIZE = 8 * MEGABYTE;
+    static constexpr std::size_t SHM_BLOCK_SIZE = 128 * MEGABYTE;
+    static_assert(SHM_DESCRIPTOR_RING_SIZE % 64 == 0);
+    static_assert(SHM_BLOCK_SIZE % 64 == 0);
 
     using std::uint8_t;
     using std::uint16_t;
@@ -84,9 +94,9 @@ namespace eroil {
         };
 
         struct LabelHeader {
-            std::uint32_t magic = 9;
+            std::uint32_t magic = 0;
             std::uint16_t version = 0;
-            std::int32_t source_id = INVALID_LABEL;
+            std::int32_t source_id = INVALID_NODE;
             std::uint16_t flags = 0;
             std::int32_t label = INVALID_LABEL;
             std::uint32_t data_size = 0;

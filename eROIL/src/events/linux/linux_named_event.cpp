@@ -46,10 +46,9 @@ namespace eroil::evt {
         return true;
     }
 
-    NamedEvent::NamedEvent(Label label, NodeId src_id, NodeId dst_id)
-        : m_label_id(label), m_src_id(src_id), m_dst_id(dst_id), m_sem(nullptr) {
+    NamedEvent::NamedEvent(NodeId id) : m_dst_id(id), m_sem(nullptr) {
         if (open() != NamedEventErr::None) {
-            ERR_PRINT("failed to open named event srcid=", src_id, ", dstid=", dst_id);
+            ERR_PRINT("failed to open named event m_dst_id=", id);
         }
     }
 
@@ -58,12 +57,8 @@ namespace eroil::evt {
     }
 
     NamedEvent::NamedEvent(NamedEvent&& other) noexcept
-        : m_label_id(other.m_label_id),
-          m_src_id(other.m_src_id),
-          m_dst_id(other.m_dst_id),
+        : m_dst_id(other.m_dst_id),
           m_sem(other.m_sem) {
-        other.m_label_id = INVALID_LABEL;
-        other.m_src_id = INVALID_NODE;
         other.m_dst_id = INVALID_NODE;
         other.m_sem = nullptr;
     }
@@ -71,13 +66,9 @@ namespace eroil::evt {
     NamedEvent& NamedEvent::operator=(NamedEvent&& other) noexcept {
         if (this != &other) {
             close();
-            m_label_id = other.m_label_id;
-            m_src_id = other.m_src_id;
             m_dst_id = other.m_dst_id;
             m_sem = other.m_sem;
 
-            other.m_label_id = INVALID_LABEL;
-            other.m_src_id = INVALID_NODE;
             other.m_dst_id = INVALID_NODE;
             other.m_sem = nullptr;
         }
@@ -85,7 +76,7 @@ namespace eroil::evt {
     }
 
     std::string NamedEvent::name() const {
-        return "/eroil.evt." + std::to_string(m_dst_id) + "_" + std::to_string(m_label_id);
+        return "/eroil.evt." + std::to_string(m_dst_id);
     }
 
     NamedEventErr NamedEvent::open() {
