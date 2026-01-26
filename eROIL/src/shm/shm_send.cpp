@@ -55,7 +55,11 @@ namespace eroil::shm {
         
         for (int tries = 0; tries < 100; ++tries) {
             const size_t tail = meta->tail_bytes.load(std::memory_order_acquire);
-            if (head < tail) return ShmSendErr::AllocatorCorrupted;
+            if (head < tail) {
+                // reload head and try agian
+                head = meta->head_bytes.load(std::memory_order_acquire);
+                continue;
+            }
             const size_t used = head - tail;
             
             // consumer has not freed enough space for this message
