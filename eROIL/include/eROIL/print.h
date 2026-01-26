@@ -6,11 +6,11 @@
 
 namespace print {
     namespace detail {
-        inline int __id;
+        inline int32_t __id;
         inline std::mutex __mtx;
     }
 
-    inline void set_id(int id) { detail::__id = id; }
+    inline void set_id(int32_t id) { detail::__id = id; }
 
     template <typename... Args>
     inline void write(Args&&... args) noexcept {

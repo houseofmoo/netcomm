@@ -21,6 +21,7 @@ namespace eroil::worker {
 
     class SendWorker {
         private:
+            NodeId m_id;
             Router& m_router;
             std::queue<SendQEntry> m_send_data_q;
             evt::Semaphore m_sem;
@@ -29,7 +30,7 @@ namespace eroil::worker {
             std::thread work_thread;
 
         public:
-            explicit SendWorker(Router& router);
+            explicit SendWorker(NodeId id, Router& router);
             ~SendWorker() = default;
 
             // do not copy

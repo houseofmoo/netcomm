@@ -1,5 +1,6 @@
 #include "eroil.h"
 #include "config/config.h"
+#include "address/address.h"
 #include "manager/manager.h"
 #include "rtos.h"
 
@@ -10,7 +11,31 @@ namespace eroil {
 
     bool init_manager(int32_t id) {
         print::set_id(id);
+
+        // read etc/manager.cfg
         config = cfg::get_manager_cfg(id);
+
+        // read etc/peer_ips.cfg
+        if (!addr::init_address_book(id))return false;
+
+        // set up address book for our mode
+        switch (config.mode) {
+            case cfg::ManagerMode::Normal: break;
+            case cfg::ManagerMode::TestMode_Local_ShmOnly: {
+                addr::all_shm_address_book();
+                break;
+            }
+            case cfg::ManagerMode::TestMode_Local_SocketOnly: {
+                addr::all_socket_address_book();
+                break;
+            }
+            case cfg::ManagerMode::TestMode_Sim_Network: {
+                addr::all_socket_address_book();
+                break;
+            }
+        }
+
+        // initialize manager
         manager = std::make_unique<Manager>(config);
         initialized = manager->init();
         return initialized;
@@ -61,7 +86,7 @@ namespace eroil {
     }
 
     hndl::SendHandle* open_send_label(Label label, 
-                                      uint8_t* buf, 
+                                      std::byte* buf, 
                                       int32_t size,
                                       iosb::IoType io_type,
                                       sem_handle sem,
@@ -88,7 +113,7 @@ namespace eroil {
     }
 
     void send_label(hndl::SendHandle* handle, 
-                    uint8_t* buf, 
+                    std::byte* buf, 
                     int32_t buf_size, 
                     int32_t send_offset,
                     int32_t recv_offset) {
@@ -116,10 +141,10 @@ namespace eroil {
     }
 
     hndl::RecvHandle* open_recv_label(Label label, 
-                                      uint8_t* buf, 
+                                      std::byte* buf, 
                                       int32_t size,
                                       int32_t num_slots,
-                                      uint8_t* aux_buf,
+                                      std::byte* aux_buf,
                                       sem_handle sem,
                                       iosb::ReceiveIosb* iosb,
                                       int32_t num_iosb,

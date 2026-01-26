@@ -56,26 +56,20 @@ namespace eroil::shm {
             void close() noexcept;
 
             // shared implementation
-            template <typename T>
-            T* map_to_type(size_t offset) const;
             void memset(size_t offset, int32_t val, size_t bytes);
             size_t total_size() const noexcept;
-
             ShmOpErr read(void* buf, const size_t size, const size_t offset) const noexcept;
             ShmOpErr write(const void* buf, const size_t size, const size_t offset) noexcept;
-            
-            // on open/create validation
-            // void write_header_init();
-            // void write_header_ready();
-            // ShmErr validate_shm_header();
-            // bool is_block_ready();
+            template <typename T>
+            T* map_to_type(size_t offset) const { 
+                if (offset > m_total_size) return nullptr;
+
+                return reinterpret_cast<T*>(
+                    static_cast<std::byte*>(m_view) + offset
+                ); 
+            }
             
         private:
             ShmErr create_or_open(const uint32_t attempts = 10, const uint32_t wait_ms = 100);
-            // std::byte* data_ptr() const noexcept;
-            // void write_shm_header();
-            // void write_header_init();
-            // void writer_header_ready();
-            // ShmErr validate_shm_header();
     };
 }

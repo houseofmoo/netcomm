@@ -42,14 +42,14 @@ target_sources(eROIL
         ${CMAKE_CURRENT_SOURCE_DIR}/src/comm/connection_manager.cpp
         ${CMAKE_CURRENT_SOURCE_DIR}/src/log/evtlog.cpp
         ${CMAKE_CURRENT_SOURCE_DIR}/src/manager/manager.cpp
-        ${CMAKE_CURRENT_SOURCE_DIR}/src/manager/peer_state.cpp
         ${CMAKE_CURRENT_SOURCE_DIR}/src/router/dispatch.cpp
         ${CMAKE_CURRENT_SOURCE_DIR}/src/router/route_table.cpp
         ${CMAKE_CURRENT_SOURCE_DIR}/src/router/router.cpp
         ${CMAKE_CURRENT_SOURCE_DIR}/src/router/transport_registry.cpp
+        ${CMAKE_CURRENT_SOURCE_DIR}/src/shm/shm_recv.cpp
+        ${CMAKE_CURRENT_SOURCE_DIR}/src/shm/shm_send.cpp
         ${CMAKE_CURRENT_SOURCE_DIR}/src/shm/shm.cpp
         ${CMAKE_CURRENT_SOURCE_DIR}/src/timer/time_log.cpp
-        ${CMAKE_CURRENT_SOURCE_DIR}/src/timer/timer.cpp
         ${CMAKE_CURRENT_SOURCE_DIR}/src/workers/send_worker.cpp
         ${CMAKE_CURRENT_SOURCE_DIR}/src/workers/shm_recv_worker.cpp
         ${CMAKE_CURRENT_SOURCE_DIR}/src/workers/socket_recv_worker.cpp

@@ -18,7 +18,7 @@ namespace eroil::cfg {
             return out;
         }
 
-        print::write("reading ", path);
+        LOG("reading ", path);
         std::string line;
         while (std::getline(file, line)) {
             if (line.empty() || line.rfind("#", 0) == 0) continue;
@@ -31,136 +31,23 @@ namespace eroil::cfg {
         return out;
     }
 
-    std::vector<std::vector<std::string>> parse_csv_file(const std::string& path) {
-        std::vector<std::vector<std::string>> rows;
-
-        std::ifstream file(path);
-        if (!file.is_open()) {
-            ERR_PRINT("could not open file ", path);
-            return rows;
-        }
-
-        print::write("reading ", path);
-        std::string line;
-        while (std::getline(file, line)) {
-            std::vector<std::string> columns;
-            std::stringstream ss(line);
-            std::string cell;
-
-            if (line.empty() || line.rfind("#", 0) == 0) continue;
-
-            while (std::getline(ss, cell, ',')) {
-                columns.push_back(cell);
-            }
-            rows.push_back(columns);
-        }
-
-        return rows;
-    }
-
-    std::vector<NodeInfo> make_indexable_by_id(std::vector<NodeInfo>& nodes) {
-        if (nodes.empty())  {
-            return {};
-        }
-
-        // validate IDs are > 0
-        NodeId largest_id  = std::numeric_limits<NodeId>::min();
-        NodeId smallest_id = std::numeric_limits<NodeId>::max();
-        for (const auto& node : nodes) {
-            largest_id  = (node.id > largest_id)  ? node.id : largest_id;
-            smallest_id = (node.id < smallest_id) ? node.id : smallest_id;
-        }
-
-        // enforce IDs must be >= 0
-        if (smallest_id < 0) {
-            ERR_PRINT("node IDs in node info were invalid (id < 0)");
-            return {};
-        }
-        
-        const NodeInfo invalid{ -1, {}, 0 };
-        std::vector<NodeInfo> indexable(static_cast<size_t>(largest_id) + 1, invalid);
-
-        // build indexable list
-        for  (auto& node : nodes) {
-            const auto index = static_cast<size_t>(node.id);
-            if (indexable[index].id >= 0) {
-                // duplicate found, this is a major config file problem
-                ERR_PRINT("FOUND A DUPLICATE NODE ID IN NODEINFO LIST, exiting");
-                return {};
-            }
-
-            indexable[index] = std::move(node);
-        }
-
-        return indexable;
-    }
-
-    std::vector<NodeInfo> build_node_info(const std::string_view& filename) {
-        auto rows = parse_csv_file(std::string(filename));
-        if (rows.size() <= 0) {
-            ERR_PRINT("no node information, file did not exist or was empty/unparsable");
-            return {};
-        }
-        
-        print::write("building NodeInfo from ", filename);
-        std::vector<NodeInfo> nodes;
-        for (auto row : rows) {
-            nodes.push_back(NodeInfo{
-                static_cast<int>(std::stoi(row[0])),
-                row[1],
-                static_cast<uint16_t>(std::stoi(row[2]))
-            });
-        }
-
-        if (nodes.empty()) {
-            ERR_PRINT("no node information, could not build node info list from parsed data");
-            return {};
-        }
-
-        return make_indexable_by_id(nodes);
-    }
-
-    std::vector<NodeInfo> build_fake_node_info() {
-        std::vector<NodeInfo> nodes;
-        PRINT("building FAKE NodeInfo for testing");
-        for (uint32_t i = 0; i < 20; i++) {
-            nodes.push_back(NodeInfo{
-                static_cast<NodeId>(i),
-                std::string(detail::LOCAL_HOST),
-                static_cast<uint16_t>(detail::PORT_START + i)
-            });
-        }
-        
-        return make_indexable_by_id(nodes);
-    }
-
     ManagerConfig get_manager_cfg(int id) {
         ManagerConfig cfg;
         cfg.id = id;
         cfg.mode = ManagerMode::Normal;
 
-        auto kv = parse_kv_file(std::string(detail::MANAGE_CONFIG_FILE_PATH));
+        auto kv = parse_kv_file(std::string(MANAGE_CONFIG_FILE_PATH));
 
         // get mode
         if (kv.count("mode")) {
             std::string mode_str = kv["mode"];
             if (mode_str == "TestMode_Local_ShmOnly") {
                 cfg.mode = ManagerMode::TestMode_Local_ShmOnly;
-            } else if (mode_str == "TestMode_Lopcal_SocketOnly") {
-                cfg.mode = ManagerMode::TestMode_Lopcal_SocketOnly;
+            } else if (mode_str == "TestMode_Local_SocketOnly") {
+                cfg.mode = ManagerMode::TestMode_Local_SocketOnly;
             } else if (mode_str == "TestMode_Sim_Network") {
                 cfg.mode = ManagerMode::TestMode_Sim_Network;
             } 
-        }
-
-        // get peer info
-        switch (cfg.mode) {
-            case ManagerMode::TestMode_Local_ShmOnly: // fallthrough
-            case ManagerMode::TestMode_Lopcal_SocketOnly: // fallthrough
-            case ManagerMode::TestMode_Sim_Network: cfg.nodes = build_fake_node_info(); break;
-            
-            case ManagerMode::Normal: // fallthrough
-            default: cfg.nodes = build_node_info(detail::PEER_IP_FILE_PATH); break;
         }
 
         // get udp config
@@ -186,4 +73,4 @@ namespace eroil::cfg {
 
         return cfg;
     }
-}  // namespace eROIL
+}

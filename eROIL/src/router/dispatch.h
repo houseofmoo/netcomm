@@ -33,11 +33,11 @@ namespace eroil {
     };
 
     struct SendTargets {
+        NodeId source_id;
         Label label;
         std::shared_ptr<hndl::OpenSendData> publisher;
         bool has_local;
-        std::shared_ptr<shm::Shm> shm;
-        std::vector<std::shared_ptr<evt::NamedEvent>> shm_signals;
+        std::vector<std::shared_ptr<shm::ShmSend>> shm;
         bool has_remote;
         std::vector<std::shared_ptr<sock::TCPClient>> sockets;
     };
@@ -52,7 +52,8 @@ namespace eroil {
             SendResult dispatch_send_targets(const SendTargets& targets, io::SendBuf send_buf) const;
 
            void  dispatch_recv_targets(const RecvTargets& targets,
-                                       const void* buf,
-                                       size_t size) const;
+                                       const std::byte* buf,
+                                       const size_t size,
+                                       const size_t recv_offset) const;
     };
 }

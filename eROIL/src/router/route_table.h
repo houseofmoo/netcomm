@@ -11,39 +11,19 @@
 #include "types/handles.h"
 
 namespace eroil {
-    struct LocalSubscriber {
-        Label shm_id;
-        std::vector<std::shared_ptr<evt::NamedEvent>> subscribe_events;
-    };
-
-    struct RemoteSubscriber {
-        NodeId socket_id;
-    };
-
     struct SendRoute {
         Label label;
         size_t label_size;
         std::vector<handle_uid> publishers;
-        std::vector<RemoteSubscriber> remote_subscribers;
-        std::optional<LocalSubscriber> local_subscribers;
-    };
-
-    struct LocalPublisher {
-        Label shm_id;
-        std::shared_ptr<evt::NamedEvent> publish_event;
-    };
-
-    struct RemotePublisher {
-        NodeId socket_id;
+        std::vector<NodeId> remote_subscribers;
+        std::vector<NodeId> local_subscribers;
     };
 
     struct RecvRoute {
         Label label;
         size_t label_size;
         std::vector<handle_uid> subscribers;
-        std::variant<std::monostate, RemotePublisher, LocalPublisher> publisher;
     };
-
 
     class RouteTable {
         private:
@@ -74,11 +54,11 @@ namespace eroil {
             bool add_send_publisher(Label label, hndl::SendHandle* handle);
             bool remove_send_publisher(Label label, handle_uid uid);
 
-            bool add_local_send_subscriber(Label label, size_t size, NodeId my_id, NodeId to_id);
-            bool remove_local_send_subscriber(Label label, NodeId to_id);
-
-            bool add_remote_send_subscriber(Label label, size_t size, NodeId to_id);
-            bool remove_remote_send_subscriber(Label label, NodeId to_id);
+            bool add_local_send_subscriber(Label label, size_t size, NodeId dst_id);
+            bool add_remote_send_subscriber(Label label, size_t size, NodeId dst_id);
+            
+            bool remove_local_send_subscriber(Label label, NodeId dst_id);
+            bool remove_remote_send_subscriber(Label label, NodeId dst_id);
 
             const SendRoute* get_send_route(Label label) const noexcept;
             SendRoute* get_send_route(Label label) noexcept;
@@ -86,18 +66,12 @@ namespace eroil {
             // send route query
             bool has_send_route(Label label) const noexcept;
             bool is_send_publisher(Label label, handle_uid uid) const noexcept;
-            bool is_local_send_subscriber(Label label, NodeId to_id) const noexcept;
-            bool is_remote_send_subscriber(Label label, NodeId to_id) const noexcept;
+            bool is_local_send_subscriber(Label label, NodeId dst_id) const noexcept;
+            bool is_remote_send_subscriber(Label label, NodeId dst_id) const noexcept;
 
             // recv route ops
             bool add_recv_subscriber(Label label, hndl::RecvHandle* handle);
             bool remove_recv_subscriber(Label label, handle_uid uid);
-
-            bool add_local_recv_publisher(Label label, size_t size, NodeId my_id, NodeId from_id);
-            bool remove_local_recv_publisher(Label label, NodeId from_id);
-
-            bool add_remote_recv_publisher(Label label, size_t size, NodeId from_id);
-            bool remove_remote_recv_publisher(Label label, NodeId from_id);
 
             const RecvRoute* get_recv_route(Label label) const noexcept;
             RecvRoute* get_recv_route(Label label) noexcept;
@@ -105,8 +79,6 @@ namespace eroil {
             // recv route query
             bool has_recv_route(Label label) const noexcept;
             bool is_recv_subscriber(Label label, handle_uid id) const noexcept;
-            bool is_local_recv_publisher(Label label, NodeId from_id) const noexcept;
-            bool is_remote_recv_publisher(Label label, NodeId from_id) const noexcept;
 
             std::vector<handle_uid>
             snapshot_send_publishers(Label label) const;

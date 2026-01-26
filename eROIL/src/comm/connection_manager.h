@@ -17,17 +17,15 @@ namespace eroil {
             sock::TCPServer m_tcp_server;
 
             worker::SendWorker m_sender;
+            worker::ShmRecvWorker m_shm_recvr;
             std::unordered_map<NodeId, std::unique_ptr<worker::SocketRecvWorker>> m_sock_recvrs;
-            std::unordered_map<Label, std::unique_ptr<worker::ShmRecvWorker>> m_shm_recvrs;
 
         public:
             ConnectionManager(NodeId id, Router& router);
             ~ConnectionManager() = default;
 
-            void start();
+            bool start();
             void send_label(handle_uid uid, Label label, io::SendBuf send_buf);
-            void start_local_recv_worker(Label label, size_t label_size);
-            void stop_local_recv_worker(Label label);
             void start_remote_recv_worker(NodeId from_id);
             void stop_remote_recv_worker(NodeId from_id);
 

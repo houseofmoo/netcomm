@@ -39,7 +39,7 @@ void* NAE_Open_Send_Label(int iLabel,
 
     auto handle = eroil::open_send_label(
         static_cast<eroil::Label>(iLabel),
-        static_cast<uint8_t*>(pSendBuffer),
+        static_cast<std::byte*>(pSendBuffer),
         static_cast<int32_t>(iSizeInWords * 4),
         io_type,
         static_cast<eroil::sem_handle>(iSem),
@@ -57,7 +57,7 @@ void NAE_Send_Label(void* iHandle,
                     int iReceiveOffsetInBytes) {
     eroil::send_label(
         static_cast<eroil::hndl::SendHandle*>(iHandle),
-        reinterpret_cast<uint8_t*>(pBuffer),
+        reinterpret_cast<std::byte*>(pBuffer),
         static_cast<int32_t>(iMsgSizeInWords * 4),
         static_cast<int32_t>(iSendOffsetInBytes),
         static_cast<int32_t>(iReceiveOffsetInBytes)
@@ -93,10 +93,10 @@ void* NAE_Open_Receive_Label(int iLabel,
 
     auto handle = eroil::open_recv_label(
         static_cast<int32_t>(iLabel),
-        reinterpret_cast<uint8_t*>(pBuffer),
+        reinterpret_cast<std::byte*>(pBuffer),
         static_cast<int32_t>(iSizeInWords * 4),
         static_cast<int32_t>(iNumSlots),
-        reinterpret_cast<uint8_t*>(pAuxBuffer),
+        reinterpret_cast<std::byte*>(pAuxBuffer),
         static_cast<eroil::sem_handle>(iSem),
         static_cast<eroil::iosb::ReceiveIosb*>(pIosb),
         static_cast<int32_t>(iNumIosbs),

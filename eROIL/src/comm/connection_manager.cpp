@@ -20,25 +20,43 @@ namespace eroil {
         m_id(id),
         m_router(router), 
         m_tcp_server{},
-        m_sender{router},
-        m_sock_recvrs{}, 
-        m_shm_recvrs{} {}
+        m_sender{id, router},
+        m_shm_recvr{router},
+        m_sock_recvrs{} {}
 
-    void ConnectionManager::start() {
+    bool ConnectionManager::start() {
         m_sender.start();
+
+        // open shm recv block
+        if (!m_router.open_recv_shm(m_id)) {
+            ERR_PRINT(" CRITICAL! unable to open recv shm block, manager ini failure");
+            return false;
+        }
+        LOG("shm recv block created, starting shm recv worker");
+        m_shm_recvr.start();
 
         // tcp server listener thread
         std::thread([this]() {
             run_tcp_server();
         }).detach();
 
-
+        // split peers into local and remote
         std::vector<addr::NodeAddress> remote_peers;
+        std::vector<addr::NodeAddress> local_peers;
         for (const auto& [id, info] : addr::get_address_book()) {
-            if (info.kind == addr::RouteKind::Shm) continue;
-            if (info.kind == addr::RouteKind::Self) continue;
-            if (id >= m_id) continue;
-            remote_peers.push_back(info);
+            switch (info.kind) {
+                case addr::RouteKind::Self: { continue; }
+                case addr::RouteKind::Shm: { local_peers.push_back(info); break; }
+                case addr::RouteKind::Socket: {
+                    if (id >= m_id) continue;
+                    remote_peers.push_back(info);
+                    break;
+                }
+                default: {
+                    ERR_PRINT("found unknown routekind in address book");
+                    break;
+                }
+            }
         }
 
         const int max_attempts = 5;
@@ -57,9 +75,9 @@ namespace eroil {
                 }
             }
 
-            // if we found all peers we expected to cnnect to, we're done
+            // if we found all peers we expected to connect to, we're done
             if (connected_peers >= expected_peers) {
-                LOG("connected to ", connected_peers, " out of ", expected_peers, " expected peers");
+                LOG("connected to ", connected_peers, " out of ", expected_peers, " expected remote peers");
                 break;
             }
 
@@ -73,6 +91,34 @@ namespace eroil {
         std::thread([this]() { 
             remote_connection_monitor(); 
         }).detach();
+
+        // open local peers shared memory blocks, try endlessly incase someone joins late
+        std::thread([this, local_peers]() {
+            int expected_local = local_peers.size();
+            int found_local = 0;
+
+            while (true) {
+                for (const auto& info : local_peers) {
+                    const auto shm = m_router.get_send_shm(info.id);
+                    if (shm != nullptr) continue;
+
+                    if (m_router.open_send_shm(info.id)) {
+                        LOG("established shm send block to nodeid=", info.id);
+                        found_local += 1;
+                    } else {
+                        LOG("shm send block to nodeid=", info.id, " does not yet exist, cannot open");
+                    }
+                }
+
+                if (found_local >= expected_local) {
+                    LOG("opened shm send blocks for ", found_local, " out of ", expected_local , " expected local peers");
+                    break;
+                }
+                std::this_thread::sleep_for(std::chrono::milliseconds(5 * 1000));
+            }
+        }).detach();
+        
+        return true;
     }
 
     void ConnectionManager::send_label(handle_uid uid, Label label, io::SendBuf send_buf) {
@@ -81,33 +127,6 @@ namespace eroil {
             label,
             std::move(send_buf)
         });
-    }
-
-    void ConnectionManager::start_local_recv_worker(Label label, size_t label_size) {
-        auto it = m_shm_recvrs.find(label);
-        if (it != m_shm_recvrs.end()) {
-            it->second->stop();
-            m_shm_recvrs.erase(it);
-        }
-
-        auto [w_it, _] = m_shm_recvrs.emplace(
-            label,
-            std::make_unique<worker::ShmRecvWorker>(
-                m_router, 
-                label, 
-                label_size
-            )
-        );
-        w_it->second->start();
-    }
-
-    void ConnectionManager::stop_local_recv_worker(Label label) {
-        auto it = m_shm_recvrs.find(label);
-        if (it != m_shm_recvrs.end()) {
-            // this call has a thread.join(), if we see a "blocks forever" this may be the cause
-            it->second->stop();
-            m_shm_recvrs.erase(it);
-        }
     }
 
     void ConnectionManager::start_remote_recv_worker(NodeId peer_id) {

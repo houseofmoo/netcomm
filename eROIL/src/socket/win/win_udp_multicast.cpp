@@ -22,21 +22,23 @@ namespace eroil::sock {
     UDPMulticastSocket::UDPMulticastSocket() 
         : m_handle(INVALID_SOCKET), m_open(false), m_joined(false), m_cfg{} {}
 
-    UDPMulticastSocket::~UDPMulticastSocket() { close(); }
+    UDPMulticastSocket::~UDPMulticastSocket() {
+        close(); 
+    }
 
-    UDPMulticastSocket::UDPMulticastSocket(UDPMulticastSocket&& o) noexcept
-        : m_handle(std::exchange(o.m_handle, INVALID_SOCKET)),
-        m_open(std::exchange(o.m_open, false)),
-        m_joined(std::exchange(o.m_joined, false)),
-        m_cfg(o.m_cfg) {}
+    UDPMulticastSocket::UDPMulticastSocket(UDPMulticastSocket&& other) noexcept : 
+        m_handle(std::exchange(other.m_handle, INVALID_SOCKET)),
+        m_open(std::exchange(other.m_open, false)),
+        m_joined(std::exchange(other.m_joined, false)),
+        m_cfg(other.m_cfg) {}
 
-    UDPMulticastSocket& UDPMulticastSocket::operator=(UDPMulticastSocket&& o) noexcept {
-        if (this != &o) {
+    UDPMulticastSocket& UDPMulticastSocket::operator=(UDPMulticastSocket&& other) noexcept {
+        if (this != &other) {
             close();
-            m_handle  = std::exchange(o.m_handle, INVALID_SOCKET);
-            m_open    = std::exchange(o.m_open, false);
-            m_joined  = std::exchange(o.m_joined, false);
-            m_cfg     = o.m_cfg;
+            m_handle = std::exchange(other.m_handle, INVALID_SOCKET);
+            m_open = std::exchange(other.m_open, false);
+            m_joined = std::exchange(other.m_joined, false);
+            m_cfg = other.m_cfg;
         }
         return *this;
     }

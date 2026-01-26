@@ -7,6 +7,7 @@
 #include "types/types.h"
 
 namespace eroil::time {
+
     struct TimeInfo {
         uint64_t duration_us;
     };
@@ -25,4 +26,23 @@ namespace eroil::time {
     };
 
     extern Timelog time_log;
+
+    class TimeLogTimer {
+        private:
+            std::string m_name;
+            std::chrono::steady_clock::time_point m_start;
+
+        public:
+            TimeLogTimer(std::string name) : m_name(std::move(name)), m_start{} {
+                m_start = std::chrono::steady_clock::now();
+            }
+
+            ~TimeLogTimer() {
+                auto duration_us = std::chrono::duration_cast<std::chrono::microseconds>(
+                    std::chrono::steady_clock::now() - m_start
+                ).count();
+
+                time_log.insert(std::move(m_name), duration_us );
+            }
+    };
 }

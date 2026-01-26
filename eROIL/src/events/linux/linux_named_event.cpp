@@ -128,7 +128,7 @@ namespace eroil::evt {
     NamedEventErr NamedEvent::wait(uint32_t milliseconds) const {
         if (m_sem == nullptr) return NamedEventErr::NotInitialized;
 
-        if (milliseconds <= 0) {
+        if (milliseconds == 0) {
             for (;;) {
                 if (sem_wait(as_native(m_sem)) == 0) {
                     return NamedEventErr::None;

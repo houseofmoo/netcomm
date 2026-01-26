@@ -6,7 +6,7 @@
 
 namespace eroil::worker {
     
-    SendWorker::SendWorker(Router& router) : m_router(router) {}
+    SendWorker::SendWorker(NodeId id, Router& router) : m_id(id), m_router(router) {}
 
     void SendWorker::start() {
         bool expected = false;
@@ -88,11 +88,10 @@ namespace eroil::worker {
                 if (!entry) break;
 
                 try {
-                    const size_t data_size = entry->send_buf.total_size; // store size for logs
+                    const size_t data_size = entry->send_buf.total_size;
                     evtlog::info(elog_kind::SendWorker_Start, elog_cat::Worker, entry->label, data_size);
 
-                    auto result = m_router.send_to_subscribers(entry->label, entry->uid, std::move(entry->send_buf));
-
+                    auto result = m_router.send_to_subscribers(m_id, entry->label, entry->uid, std::move(entry->send_buf));
                     switch (result.send_err) {
                         // TODO: how do we want to handle errors?
                         case SendOpErr::RouteNotFound: // fallthrough

@@ -15,9 +15,7 @@ struct SendLabel {
     int id;
     size_t size;
     int sleep_time;
-    std::unique_ptr<std::uint8_t[]> buf;
-
-    std::uint8_t* get_buf() { return buf.get(); }
+    std::unique_ptr<std::byte[]> buf;
 };
 
 inline SendLabel make_send_label(int id, size_t size, int sleep_time) {
@@ -25,7 +23,7 @@ inline SendLabel make_send_label(int id, size_t size, int sleep_time) {
         id,
         size,
         sleep_time,
-        std::make_unique<std::uint8_t[]>(size)
+        std::make_unique<std::byte[]>(size)
     };
 }
 
@@ -43,10 +41,9 @@ inline std::vector<std::shared_ptr<SendLabel>> make_send_list(const std::vector<
 struct RecvLabel {
     int id;
     int size;
-    std::unique_ptr<std::uint8_t[]> buf;
+    std::unique_ptr<std::byte[]> buf;
     HANDLE sem;
 
-    std::uint8_t* get_buf() { return buf.get(); }
     void wait() {
         if (sem != nullptr) {
             ::WaitForSingleObject(sem, INFINITE);
@@ -58,7 +55,7 @@ inline RecvLabel make_recv_label(int id, int size) {
     return RecvLabel {
         id,
         size,
-        std::make_unique<std::uint8_t[]>(size),
+        std::make_unique<std::byte[]>(size),
         ::CreateSemaphoreW(nullptr, 0, 1000, nullptr)
     };
 }

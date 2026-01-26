@@ -24,7 +24,7 @@ std::uint32_t get_roil_id() {
 }
 
 void* open_send_label(std::int32_t label, 
-                      std::uint8_t* buf, 
+                      std::byte* buf, 
                       std::int32_t size_in_words,
                       std::int32_t offset_mode,
                       void* sem,
@@ -50,7 +50,7 @@ void* open_send_label(std::int32_t label,
 }
 
 void send_label(void* handle, 
-                std::uint8_t* buf, 
+                std::byte* buf, 
                 std::int32_t buf_size, 
                 std::int32_t send_offset,
                 std::int32_t recv_offset) {
@@ -69,10 +69,10 @@ void close_send(void* handle) {
 }
 
 void* open_recv_label(std::int32_t label, 
-                      std::uint8_t* buf, 
+                      std::byte* buf, 
                       std::int32_t size,
                       std::int32_t num_slots,
-                      std::uint8_t* aux_buf,
+                      std::byte* aux_buf,
                       void* sem,
                       void* iosb,
                       std::int32_t num_iosb,

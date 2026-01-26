@@ -3,18 +3,6 @@
 #include <eROIL/print.h>
 
 namespace eroil {
-    static bool is_empty(const std::variant<std::monostate, RemotePublisher, LocalPublisher>& publisher) {
-        return std::holds_alternative<std::monostate>(publisher);
-    }
-
-    // static bool is_remote(const std::variant<std::monostate, RemotePublisher, LocalPublisher>& publisher) {
-    //     return std::holds_alternative<RemotePublisher>(publisher);
-    // }
-
-    static bool is_local(const std::variant<std::monostate, RemotePublisher, LocalPublisher>& publisher) {
-        return std::holds_alternative<LocalPublisher>(publisher);
-    }
-
     SendRoute* RouteTable::require_send_route(Label label, const char* fn) {
         auto* route = get_send_route(label);
         if (!route) {
@@ -118,13 +106,7 @@ namespace eroil {
     void RouteTable::create_send_route(Label label, hndl::SendHandle* handle) {
         auto [it, inserted] = m_send_routes.emplace(
             label,
-            SendRoute{
-                label,
-                handle->data->buf_size,
-                {},
-                {},
-                std::nullopt,
-            }
+            SendRoute{ label, handle->data->buf_size, {}, {}, {} }
         );
         (void)it;
 
@@ -180,6 +162,7 @@ namespace eroil {
         }
         route->publishers.erase(it);
 
+        // if no one publishes this route, erase it
         if (route->publishers.empty()) {
             m_send_routes.erase(label);
             ++m_send_gen;
@@ -188,106 +171,71 @@ namespace eroil {
         return true;
     }
 
-    bool RouteTable::add_local_send_subscriber(Label label, size_t size, NodeId my_id, NodeId to_id) {
+    bool RouteTable::add_local_send_subscriber(Label label, size_t size, NodeId dst_id) {
         auto route = require_send_route(label, __func__);
         if (route == nullptr) return false;
-
-        if (is_local_send_subscriber(label, to_id)) {
-            ERR_PRINT(__func__, "(): already a send subscriber, label=", label, ", to_id=", to_id);
-            return false;
-        }
-
+        
         if (!require_route_size(route->label_size, size, __func__)) return false;
 
-        if (!route->local_subscribers.has_value()) {
-            route->local_subscribers = { label, {} };
+        if (is_local_send_subscriber(label, dst_id)) {
+            ERR_PRINT(__func__, "(): already a send subscriber, label=", label, ", to_id=", dst_id);
+            return false;
         }
 
-        auto it = route->local_subscribers->subscribe_events.emplace_back(
-            std::make_shared<evt::NamedEvent>(label, my_id, to_id)
-        );
-
-        if (route->local_subscribers->shm_id != label) {
-            ERR_PRINT(__func__, "(): had a different shm block index, label=", label,
-                      ", shm_index=", route->local_subscribers->shm_id);
-        }
-
+        route->local_subscribers.push_back(dst_id);
         return true;
     }
 
-    bool RouteTable::remove_local_send_subscriber(Label label, NodeId to_id) {
+    bool RouteTable::remove_local_send_subscriber(Label label, NodeId dst_id) {
         auto route = require_send_route(label, __func__);
         if (route == nullptr) return false;
 
-        if (!route->local_subscribers.has_value()) {
-            ERR_PRINT(__func__, "(): local send subscriber is unexpectedly empty");
-            return false;
-        }
-
-        auto it = std::find_if(
-            route->local_subscribers->subscribe_events.begin(),
-            route->local_subscribers->subscribe_events.end(),
-            [&](const std::shared_ptr<evt::NamedEvent> e) {
-                auto info = e->get_info();
-                return info.dst_id == to_id;
-            }
+        auto it = std::find(
+            route->local_subscribers.begin(),
+            route->local_subscribers.end(),
+            dst_id
         );
 
-        if (it == route->local_subscribers->subscribe_events.end()) {
-            ERR_PRINT(__func__, "(): event not found, label=", label, ", to_id=", to_id);
+        if (it == route->local_subscribers.end()) {
+            ERR_PRINT(__func__, "(): event not found, label=", label, ", to_id=", dst_id);
             return false;
         }
 
-        //(*it)->close(); // ensure event is closed and RAII does not keep it alive
-        route->local_subscribers->subscribe_events.erase(it);
+        route->local_subscribers.erase(it);
         return true;
     }
 
-    bool RouteTable::add_remote_send_subscriber(Label label, size_t size, NodeId to_id) {
+    bool RouteTable::add_remote_send_subscriber(Label label, size_t size, NodeId dst_id) {
         auto route = require_send_route(label, __func__);
         if (route == nullptr) return false;
    
         if (!require_route_size(route->label_size, size, __func__)) return false;
 
-
-        auto it = std::find_if(
-            route->remote_subscribers.begin(),
-            route->remote_subscribers.end(),
-            [&](const RemoteSubscriber& r) {
-                return r.socket_id == to_id;
-            }
-        );
-
-        if (it == route->remote_subscribers.end()) {
-            route->remote_subscribers.emplace_back(
-                RemoteSubscriber{ to_id }
-            );
-            return true;
+        if (is_remote_send_subscriber(label, dst_id)) {
+            ERR_PRINT(__func__, "(): already a send subscriber, label=", label, ", to_id=", dst_id);
+            return false;
         }
 
-        ERR_PRINT(__func__, "(): subscriber already exists in send subscriber list, label=", label, ", to_id=", to_id);
-        return false;
+        route->remote_subscribers.push_back(dst_id);
+        return true;
     }
 
-    bool RouteTable::remove_remote_send_subscriber(Label label, NodeId to_id) {
+    bool RouteTable::remove_remote_send_subscriber(Label label, NodeId dst_id) {
         auto route = require_send_route(label, __func__);
         if (route == nullptr) return false;
 
-        auto it = std::find_if(
+        auto it = std::find(
             route->remote_subscribers.begin(),
             route->remote_subscribers.end(),
-            [&](const RemoteSubscriber& r) {
-                return r.socket_id == to_id;
-            }
+            dst_id
         );
 
-        if (it != route->remote_subscribers.end()) {
-            route->remote_subscribers.erase(it);
-            return true;
+        if (it == route->remote_subscribers.end()) {
+            ERR_PRINT(__func__, "(): not a remote send subscriber, label=", label, ", to_id=", dst_id);
+            return false;
         }
-
-        ERR_PRINT(__func__, "(): not a remote send subscriber, label=", label, ", to_id=", to_id);
-        return false;
+        route->remote_subscribers.erase(it);
+        return true;
     }
 
     const SendRoute* RouteTable::get_send_route(Label label) const noexcept {
@@ -319,32 +267,28 @@ namespace eroil {
         return it != route->publishers.end();
     }
 
-    bool RouteTable::is_local_send_subscriber(Label label, NodeId to_id) const noexcept {
+    bool RouteTable::is_local_send_subscriber(Label label, NodeId dst_id) const noexcept {
         auto route = get_send_route(label);
         if (route == nullptr) return false;
-        if (!route->local_subscribers.has_value()) return false;
+        if (route->local_subscribers.empty()) return false;
 
-        auto it = std::find_if(
-            route->local_subscribers->subscribe_events.begin(),
-            route->local_subscribers->subscribe_events.end(),
-            [&](const std::shared_ptr<evt::NamedEvent> e) {
-                auto info = e->get_info();
-                return info.dst_id == to_id;
-            }
+        auto it = std::find(
+            route->local_subscribers.begin(),
+            route->local_subscribers.end(),
+            dst_id
         );
-        return it != route->local_subscribers->subscribe_events.end();
+        return it != route->local_subscribers.end();
     }
 
-    bool RouteTable::is_remote_send_subscriber(Label label, NodeId to_id) const noexcept {
+    bool RouteTable::is_remote_send_subscriber(Label label, NodeId dst_id) const noexcept {
         auto route = get_send_route(label);
         if (route == nullptr) return false;
+        if (route->remote_subscribers.empty()) return false;
 
-        auto it = std::find_if(
+        auto it = std::find(
             route->remote_subscribers.begin(),
             route->remote_subscribers.end(),
-            [&](const RemoteSubscriber& r) {
-                return r.socket_id == to_id;
-            }
+            dst_id
         );
         return it != route->remote_subscribers.end();
     }
@@ -353,12 +297,7 @@ namespace eroil {
     void RouteTable::create_recv_route(Label label, hndl::RecvHandle* handle) {
         auto [it, inserted] = m_recv_routes.emplace(
             label,
-            RecvRoute{
-                label,
-                handle->data->buf_size,
-                {},
-                std::monostate{}
-            }
+            RecvRoute{ label, handle->data->buf_size, {} }
         );
         (void)it;
 
@@ -390,7 +329,7 @@ namespace eroil {
         );
 
         if (it != route->subscribers.end()) {
-            ERR_PRINT(__func__, "(): handle already in subscribers list, uid=", handle->uid);
+            ERR_PRINT(__func__, "(): subscriber already exists in subscribers list, uid=", handle->uid);
             return false;
         }
 
@@ -409,7 +348,7 @@ namespace eroil {
         );
 
         if (it == route->subscribers.end()) {
-            ERR_PRINT(__func__, "(): uid not in subscribers list, label=", label, ", uid=", uid);
+            ERR_PRINT(__func__, "(): not a recv subscriber, label=", label, ", uid=", uid);
             return false;
         }
 
@@ -420,84 +359,6 @@ namespace eroil {
             ++m_recv_gen;
         }
 
-        return true;
-    }
-
-    bool RouteTable::add_local_recv_publisher(Label label, size_t size, NodeId my_id, NodeId from_id) {
-        auto route = require_recv_route(label, __func__);
-        if (route == nullptr) return false;
-        
-        if (is_local_recv_publisher(label, from_id)) {
-            ERR_PRINT(__func__, "(): already a local recv publisher, label=", label, ", from_id=", from_id);
-            return false;
-        }
-
-        if (!require_route_size(route->label_size, size, __func__)) return false;
-
-        route->publisher = LocalPublisher{
-            label,
-            std::make_shared<evt::NamedEvent>(label, from_id, my_id)
-        };
-        return true;
-    }
-
-    bool RouteTable::remove_local_recv_publisher(Label label, NodeId from_id) {
-        auto route = require_recv_route(label, __func__);
-        if (route == nullptr) return false;
-
-        auto* pub = std::get_if<LocalPublisher>(&route->publisher);
-        if (pub == nullptr || pub->publish_event == nullptr) {
-            ERR_PRINT(__func__, "(): not a local publisher, label=", label);
-            return false;
-        }
-
-        if (pub->publish_event->get_info().src_id != from_id) {
-            ERR_PRINT(__func__, "(): from id does not match expected, label=", label);
-            return false;
-        }
-
-        pub->publish_event->close();
-        route->publisher = std::monostate{};
-        return true;
-    }
-
-    bool RouteTable::add_remote_recv_publisher(Label label, size_t size, NodeId from_id) {
-        auto route = require_recv_route(label, __func__);
-        if (route == nullptr) return false;
-
-        if (!require_route_size(route->label_size, size, __func__)) return false;
-
-        if (is_empty(route->publisher)) {
-            route->publisher = RemotePublisher{ from_id };
-            return true;
-        }
-
-        if (is_local(route->publisher)) {
-            ERR_PRINT(__func__, "(): tried to overwrite a local recv publisher with remote");
-            return false;
-        }
-
-        // must be remote, log the fact we tried to change it cause that shouldnt happen
-        ERR_PRINT(__func__, "(): tried to overwrite remote recv publisher with a new remote recv pubisher");
-        return false;
-    }
-    
-    bool RouteTable::remove_remote_recv_publisher(Label label, NodeId from_id) {
-        auto route = require_recv_route(label, __func__);
-        if (route == nullptr) return false;
-
-        auto* ptr = std::get_if<RemotePublisher>(&route->publisher);
-        if (ptr == nullptr) {
-            ERR_PRINT(__func__, "(): not remote recv publisher, label=", label, ", from_id=", from_id);
-            return false;
-        }
-
-        if (ptr->socket_id != from_id) {
-            ERR_PRINT(__func__, "(): id's do not match");
-            return false;
-        }
-
-        route->publisher = std::monostate{};
         return true;
     }
 
@@ -528,26 +389,6 @@ namespace eroil {
             uid
         );
         return it != route->subscribers.end();
-    }
-
-    bool RouteTable::is_local_recv_publisher(Label label, NodeId from_id) const noexcept {
-        auto route = get_recv_route(label);
-        if (route == nullptr) return false;
-
-        if (auto* local = std::get_if<LocalPublisher>(&route->publisher)) {
-            return local->publish_event->get_info().src_id == from_id;
-        }
-        return false;
-    }
-
-    bool RouteTable::is_remote_recv_publisher(Label label, NodeId from_id) const noexcept {
-        auto route = get_recv_route(label);
-        if (route == nullptr) return false;
-
-        if (auto* remote = std::get_if<RemotePublisher>(&route->publisher)) {
-            return remote->socket_id == from_id;
-        }
-        return false;
     }
 
     std::vector<handle_uid>

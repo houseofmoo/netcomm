@@ -14,20 +14,20 @@ namespace eroil {
 
         // local
         if (targets.has_local) {
-            DB_ASSERT(targets.shm != nullptr, "dispatch_send_targets(): unexpected nullptr to shm memory block");
-            auto shm_err = targets.shm->write(send_buf.data.get(), send_buf.total_size);
-            if (shm_err != shm::ShmOpErr::None) {
-                result.shm_err = shm_err;
-                failed = true;
-                ERR_PRINT("shared memory write for label=", targets.label, "err=", (int)shm_err);
-            }
+            DB_ASSERT(!targets.shm.empty(), "dispatch_send_targets(): unexpected empty shm list");
+            for (const auto& shm : targets.shm) {
+                auto shm_err = shm->write_data(shm::ShmSendPayload{
+                    targets.source_id,
+                    targets.label,
+                    0,
+                    send_buf.total_size,
+                    std::move(send_buf.data)
+                });
 
-            for (auto evt : targets.shm_signals) {
-                if (evt == nullptr) {
-                    ERR_PRINT("shared memory write named event was null for label=", targets.label);
-                    continue;
+                // TODO: handle error properly
+                if (shm_err != shm::ShmSendErr::None) {
+                     ERR_PRINT("shm send for label=", targets.label, ", errorcode=", (int)shm_err);
                 }
-                evt->post();
             }
         }
 
@@ -80,8 +80,7 @@ namespace eroil {
 
                 iosb->FC_Header = { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 };
                 iosb->FC_Header.Destination_ID = targets.label;
-                // TODO: need a way to access our id
-                //iosb->FC_Header.Source_ID = m_id;
+                iosb->FC_Header.Source_ID = targets.source_id;
 
                 targets.publisher->iosb_index = (targets.publisher->iosb_index + 1) % targets.publisher->num_iosb;
             }
@@ -94,11 +93,13 @@ namespace eroil {
     }
 
     void Dispatcher::dispatch_recv_targets(const RecvTargets& targets,
-                                           const void* buf,
-                                           size_t size) const {
+                                           const std::byte* buf,
+                                           const size_t size,
+                                           const size_t recv_offset) const {
 
         
         for (const auto& subs : targets.subscribers) {
+            // TODO: we need to write filed into recv IOSB when something goes wrong
             if (subs == nullptr) {
                 ERR_PRINT(__func__, "(): got null subscriber for label=", targets.label);
                 continue;
@@ -119,9 +120,14 @@ namespace eroil {
                 continue;
             }
 
+            if (recv_offset > subs->buf_size) {
+                ERR_PRINT(__func__, "(): recv offset > buf size for label=", targets.label);
+                continue;
+            }
+
             const size_t slot = subs->buf_index % subs->buf_slots;
-            uint8_t* dst = subs->buf + (slot * subs->buf_size);
-            std::memcpy(dst, buf, size);
+            std::byte* dst = subs->buf + (slot * subs->buf_size);
+            std::memcpy(dst + recv_offset, buf, size);
 
             // write recvrs IOSB 
             if (subs->iosb != nullptr && subs->num_iosb > 0) {
@@ -156,6 +162,9 @@ namespace eroil {
 
             // TODO: signal based on the signal mode?
             //if subs->signal_mode == ALWAYS ??
+            int count = 0;
+            std::memcpy(&count, buf, sizeof(count));
+            LOG("signaling for val: ", count);
             plat::try_signal_sem(subs->sem);
         }
     }

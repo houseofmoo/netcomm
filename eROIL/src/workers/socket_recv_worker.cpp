@@ -69,7 +69,13 @@ namespace eroil::worker {
                 }
                 if (stop_requested()) break;
 
-                m_router.recv_from_publisher(static_cast<Label>(hdr.label), payload.data(), payload.size());
+                m_router.recv_from_publisher(
+                    static_cast<Label>(hdr.label), 
+                    payload.data(),
+                    payload.size(), 
+                    static_cast<size_t>(hdr.recv_offset)
+                );
+                
                 evtlog::info(elog_kind::SocketRecvWorker_End, elog_cat::Worker, hdr.label, hdr.data_size, m_peer_id);
             }
         } catch (const std::exception& e) {

@@ -1,8 +1,99 @@
 #include "address.h"
+#include <fstream>
+#include <iostream>
+#include <sstream>
+
 #include <eROIL/print.h>
 
 namespace eroil::addr {
     static std::unordered_map<NodeId, NodeAddress> address_book;
+
+    std::vector<std::vector<std::string>> parse_csv_file(const std::string& path) {
+        std::vector<std::vector<std::string>> rows;
+
+        std::ifstream file(path);
+        if (!file.is_open()) {
+            ERR_PRINT("could not open file ", path);
+            return rows;
+        }
+
+        LOG("reading ", path);
+        std::string line;
+        while (std::getline(file, line)) {
+            std::vector<std::string> columns;
+            std::stringstream ss(line);
+            std::string cell;
+
+            if (line.empty() || line.rfind("#", 0) == 0) continue;
+
+            while (std::getline(ss, cell, ',')) {
+                columns.push_back(cell);
+            }
+            rows.push_back(columns);
+        }
+
+        return rows;
+    }
+
+    bool init_address_book(NodeId my_id) {
+        LOG("initializing address book");
+
+        auto csv_rows = parse_csv_file(std::string(PEER_IP_FILE_PATH));
+        if (csv_rows.size() <= 0) {
+            ERR_PRINT("no node information, file did not exist or was empty/unparsable");
+            return false;
+        }
+
+        // build addr book
+        for (auto row : csv_rows) {
+            const NodeId id = static_cast<NodeId>(std::stoi(row[0]));
+            if (id <= INVALID_NODE) {
+                ERR_PRINT("foudn invalid node, skipping");
+                continue;
+            }
+
+            const std::string ip = std::move(row[1]);
+
+            const int16_t port = static_cast<int16_t>(std::stoi(row[2]));
+            if (port < 0) {
+                ERR_PRINT("found invalid port=", port, " for id=", id, ", skipping");
+                continue;
+            }
+
+            auto addr = NodeAddress{
+                RouteKind::None,
+                id,
+                std::move(ip),
+                static_cast<uint16_t>(port)
+            };
+
+            if (address_book.find(id) != address_book.end()) {
+                ERR_PRINT("found duplicate nodeid=", id, ", skipping");
+                continue;
+            }
+            address_book.emplace(id, addr);
+        }
+
+        // set up route kinds
+        auto it = address_book.find(my_id);
+        if (it == address_book.end()) {
+            ERR_PRINT("my information does not exist in address book, cannot figure out route to peers");
+            return false;
+        }
+        
+        auto& self = it->second;
+        for (auto& [id, addr] : address_book) {
+            if (addr.id == self.id) {
+                addr.kind = RouteKind::Self;
+            } else if (addr.ip == self.ip) {
+                addr.kind = RouteKind::Shm;
+            } else {
+                addr.kind = RouteKind::Socket;
+            }
+        }
+
+        return true;
+    }
 
     const std::unordered_map<NodeId, NodeAddress>& get_address_book() {
         return address_book;
@@ -16,135 +107,75 @@ namespace eroil::addr {
         return it->second;
     }
 
-    void insert_normal(const cfg::NodeInfo self, const std::vector<cfg::NodeInfo> nodes) {
-        for (const auto& node : nodes) {
-            if (node.id < 0) continue; // expected when node IDs are not sequential
-            
-            RouteKind kind = RouteKind::None;
-            if (node.id == self.id) {
-                kind = RouteKind::Self;
-            } else if (node.ip == self.ip) {
-                kind = RouteKind::Shm;
+    void all_shm_address_book() {
+        PRINT("TEST MODE: making shm only address book");
+        
+        NodeAddress* self = nullptr;
+        for (auto& [id, addr] : address_book) {
+            if (addr.kind == RouteKind::Self) {
+                self = &addr;
+                break;
+            }
+        }
+        if (self == nullptr) { // shouldnt happen as long as addr book is initialized
+            ERR_PRINT("counldnt find self in address book to make test network");
+            return;
+        }
+
+        // set up half the nodes to be socket, other half to be shm
+        for (auto& [id, addr] : address_book) {
+            if (id == self->id) continue;
+            addr.kind = RouteKind::Shm;
+        }
+    }
+
+    void all_socket_address_book() {
+        PRINT("TEST MODE: making socket only address book");
+        
+        NodeAddress* self = nullptr;
+        for (auto& [id, addr] : address_book) {
+            if (addr.kind == RouteKind::Self) {
+                self = &addr;
+                break;
+            }
+        }
+        if (self == nullptr) { // shouldnt happen as long as addr book is initialized
+            ERR_PRINT("counldnt find self in address book to make test network");
+            return;
+        }
+
+        // set up half the nodes to be socket, other half to be shm
+        for (auto& [id, addr] : address_book) {
+            if (id == self->id) continue;
+            addr.kind = RouteKind::Socket;
+        }
+    }
+
+    void test_network_address_book() {
+        PRINT("TEST MODE: making test network address book");
+
+        NodeAddress* self = nullptr;
+        for (auto& [id, addr] : address_book) {
+            if (addr.kind == RouteKind::Self) {
+                self = &addr;
+                break;
+            }
+        }
+        if (self == nullptr) { // shouldnt happen as long as addr book is initialized
+            ERR_PRINT("counldnt find self in address book to make test network");
+            return;
+        }
+
+        // set up half the nodes to be socket, other half to be shm
+        for (auto& [id, addr] : address_book) {
+            if (id == self->id) continue;
+            if (self->id % 2 == 0) {
+                if (addr.id % 2 == 0) addr.kind = RouteKind::Shm;
+                else addr.kind = RouteKind::Socket;
             } else {
-                kind = RouteKind::Socket;
-            }
-
-            auto [it, inserted] = address_book.try_emplace(
-                node.id,
-                NodeAddress { kind, node.id, node.ip, node.port }
-            );
-
-            if (!inserted) {
-                ERR_PRINT("address book attempted to add duplicate NodeAddress");
+                if (addr.id % 2 == 0) addr.kind = RouteKind::Socket;
+                else addr.kind = RouteKind::Shm;
             }
         }
-    }
-
-    void insert_as_shm(const cfg::NodeInfo self, const std::vector<cfg::NodeInfo> nodes) {
-        PRINT("making shm only address book");
-        for (const auto& node : nodes) {
-            if (node.id < 0) continue; // expected when node IDs are not sequential
-
-            RouteKind kind = RouteKind::None;
-            if (node.id == self.id) {
-                kind = RouteKind::Self;
-            } else {
-                kind = RouteKind::Shm;
-            }
-
-            auto [it, inserted] = address_book.try_emplace(
-                node.id,
-                NodeAddress { kind, node.id, node.ip, node.port }
-            );
-
-            if (!inserted) {
-                ERR_PRINT("address book attempted to add duplicate NodeAddress");
-            }
-        }
-    }
-
-    void insert_as_socket(const cfg::NodeInfo self, const std::vector<cfg::NodeInfo> nodes) {
-        PRINT("making socket only address book");
-        for (const auto& node : nodes) {
-            if (node.id < 0) continue; // expected when node IDs are not sequential
-
-            RouteKind kind = RouteKind::None;
-            if (node.id == self.id) {
-                kind = RouteKind::Self;
-            } else {
-                kind = RouteKind::Socket;
-            }
-
-            auto [it, inserted] = address_book.try_emplace(
-                node.id,
-                NodeAddress { kind, node.id, node.ip, node.port }
-            );
-
-            if (!inserted) {
-                ERR_PRINT("address book attempted to add duplicate NodeAddress");
-            }
-        }
-    }
-
-    void make_test_network(const cfg::NodeInfo self, const std::vector<cfg::NodeInfo> nodes) {
-        PRINT("making test network address book");
-
-        for (const auto& node : nodes) {
-            if (node.id < 0) continue; // expected when node IDs are not sequential
-
-            auto info = NodeAddress { RouteKind::None, node.id, node.ip, node.port };
-
-            if (node.id == self.id) {
-                info.kind = RouteKind::Self;
-            } else {
-                if (self.id % 2 == 0) {
-                    if (info.id % 2 == 0) info.kind = RouteKind::Shm;
-                    else info.kind = RouteKind::Socket;
-                } else {
-                    if (info.id % 2 == 0) info.kind = RouteKind::Socket;
-                    else info.kind = RouteKind::Shm;
-                }
-            }
-
-            auto [it, inserted] = address_book.try_emplace(node.id, info);
-            if (!inserted) {
-                ERR_PRINT("address book attempted to add duplicate NodeAddress");
-            }
-        }
-    }
-
-    bool insert_addresses(const cfg::NodeInfo self, const std::vector<cfg::NodeInfo> nodes, const cfg::ManagerMode mode) {
-        if (self.id < 0) {
-            ERR_PRINT("address book recvd a self.id < 0, which makes no sense");
-            return false;
-        }
-
-        if (nodes.empty()) {
-            ERR_PRINT("address book recvd empty NodeInfo list");
-            return false;
-        }
-
-        switch (mode) {
-            case cfg::ManagerMode::TestMode_Local_ShmOnly: insert_as_shm(self, nodes); break;
-            case cfg::ManagerMode::TestMode_Lopcal_SocketOnly: insert_as_socket(self, nodes); break;
-            case cfg::ManagerMode::TestMode_Sim_Network: make_test_network(self, nodes); break;
-            
-            case cfg::ManagerMode::Normal: // fall through
-            default: insert_normal(self, nodes); break;
-        }
-
-        if (address_book.empty()) {
-            ERR_PRINT("address book is empty after calling insert_addresses()");
-            return false;
-        }
-
-        return true;
-    }
-    
-    NodeAddress find_node_id(std::string ip, uint16_t port) {
-        for (auto [id, addr] : address_book) {
-            if (addr.ip == ip && addr.port == port) return addr;
-        }
-        return NodeAddress{ RouteKind::None, INVALID_NODE, ip, port };
     }
 }

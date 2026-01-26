@@ -7,7 +7,7 @@ namespace eroil::hndl {
   
     struct OpenSendData {
         int32_t label;
-        uint8_t* buf;
+        std::byte* buf;
         size_t buf_size;
         bool is_offset;
         sem_handle sem;
@@ -27,11 +27,11 @@ namespace eroil::hndl {
     struct OpenReceiveData{
         int32_t label;
         int32_t forward_label;  // this exists for IMC stuff in NAE, probably delete it
-        uint8_t* buf;
+        std::byte* buf;
         size_t buf_size;
         uint32_t buf_slots;
         size_t buf_index; // TODO: maybe make atomic?
-        uint8_t* aux_buf;
+        std::byte* aux_buf;
         sem_handle sem;
         iosb::ReceiveIosb* iosb;
         uint32_t num_iosb;

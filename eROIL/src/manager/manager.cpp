@@ -26,18 +26,19 @@ namespace eroil {
         m_valid(false) {
                 
         // confirm we know who the fuck we are
-        if (static_cast<size_t>(m_id) > m_cfg.nodes.size()) {
+        auto addr = addr::get_address(m_id);
+        if (addr.kind == addr::RouteKind::None) {
             ERR_PRINT("manager has no entry in nodes info list, manager cannot initialize");
             m_valid = false;
             return;
         }
 
-        m_valid = addr::insert_addresses(m_cfg.nodes[m_id], m_cfg.nodes, m_cfg.mode);
+        m_valid = true;
+        return;
     }
 
     bool Manager::init() {
         if (!m_valid) {
-            ERR_PRINT("manager cannot initialize! figure out wtf is wrong");
             return false;
         }
 
@@ -45,11 +46,16 @@ namespace eroil {
         std::thread([]{
             plat::affinitize_current_thread_to_current_cpu();
             uint64_t tsc_hz = evtlog::estimate_tsc_hz();
-            LOG("tsc frequency estimated: ", tsc_hz, " Hz");
+            PRINT("tsc frequency estimated: ", tsc_hz, " Hz");
         }).join();
 
-        m_comms.start();
-        start_broadcast();
+        if (!m_comms.start()) {
+            return false;
+        }
+
+        if (!start_broadcast()) {
+            return false;
+        }
 
         // wait about 1 minute then dump time info
         //time::time_log.timed_run(m_id, 60 * 1000);
@@ -64,7 +70,7 @@ namespace eroil {
         return raw_handle;
     }
 
-    void Manager::send_label(hndl::SendHandle* handle, uint8_t* buf, size_t buf_size, size_t send_offset, size_t recv_offset) {
+    void Manager::send_label(hndl::SendHandle* handle, std::byte* buf, size_t buf_size, size_t send_offset, size_t recv_offset) {
         if (handle == nullptr) {
             ERR_PRINT(__func__, "(): got null send handle");
             return;
@@ -77,12 +83,12 @@ namespace eroil {
         }
 
         size_t data_size = 0;
-        uint8_t* data_buf = nullptr;
+        std::byte* data_buf = nullptr;
         if (buf == nullptr) {
             data_buf = handle->data->buf;
             data_size = handle->data->buf_size;
         } else {
-            data_buf = static_cast<uint8_t*>(buf);
+            data_buf = buf;
             data_size = buf_size;
         }
 
@@ -224,22 +230,7 @@ namespace eroil {
             }
             add_subscriber(msg.id, recv);
             remove_subscriber(msg.id, recv);
-
-            std::unordered_map<Label, uint32_t> send{};
-            send.reserve(MAX_LABELS);
-            for (const auto& send_label : msg.send_labels.labels) {
-                if (send_label.label > INVALID_LABEL) {
-                    auto [it, inserted] = send.emplace(send_label.label, send_label.size);
-                    if (!inserted) {
-                        (void)it; // dont care about iterator
-                        ERR_PRINT("we got a duplicate in recv'd broadcast message send_labels list");
-                        evtlog::warn(elog_kind::DuplicateLabel, elog_cat::Broadcast);
-                    }
-                }
-            }
-            add_publisher(msg.id, send);
-            remove_publisher(msg.id, send);
-
+            
             evtlog::info(elog_kind::Recv_End, elog_cat::Broadcast);
         }
     }
@@ -259,7 +250,7 @@ namespace eroil {
             switch (addr.kind) {
                 case addr::RouteKind::Shm: {
                     PRINT("adding local send subscriber, nodeid=", source_id, " label=", label);
-                    m_router.add_local_send_subscriber(label, size, m_id, source_id);
+                    m_router.add_local_send_subscriber(label, size, source_id);
                     evtlog::info(elog_kind::AddLocalSendSubscriber, elog_cat::Router, source_id, label);
                     break;
                 }
@@ -278,7 +269,6 @@ namespace eroil {
     }
 
     void Manager::remove_subscriber(const NodeId source_id, const std::unordered_map<Label, uint32_t>& recv_labels) {
-        // all the labels we send
         auto send_labels = m_router.get_send_labels();
         for (const auto& [label, _] : send_labels) {
             if (label <= INVALID_LABEL) continue; // should never occur
@@ -311,76 +301,4 @@ namespace eroil {
             }
         }
     }
-
-    void Manager::add_publisher(const NodeId source_id, const std::unordered_map<Label, uint32_t>& send_labels) {
-        for (const auto& [label, size] : send_labels) {
-            if (label <= INVALID_LABEL) continue;
-
-            // if we do not want this label, continue
-            if (!m_router.has_recv_route(label)) continue;
-
-            // if already subscribed, continue
-            if (m_router.is_recv_publisher(label, source_id)) continue;
-
-            // this is a label we want to recv and have not registered a publisher
-            const auto addr = addr::get_address(source_id);
-            switch (addr.kind) {
-                case addr::RouteKind::Shm: {
-                    // add local recv pub and start recv worker to watch shared memory block
-                    PRINT("adding local recv publisher, nodeid=", source_id, " label=", label);
-                    m_router.add_local_recv_publisher(label, size, m_id, source_id);
-                    evtlog::info(elog_kind::AddLocalRecvPublisher, elog_cat::Router, source_id, label);
-                    m_comms.start_local_recv_worker(label, size);
-                    break;
-                }
-                case addr::RouteKind::Socket: {
-                    // add remote recv pub, recv worker should already be listening to this socket
-                    PRINT("adding remote recv publisher, nodeid=", source_id, " label=", label);
-                    m_router.add_remote_recv_publisher(label, size, source_id);
-                    evtlog::info(elog_kind::AddRemoteRecvPublisher, elog_cat::Router, source_id, label);
-                    break;
-                }
-                default: {
-                    ERR_PRINT("tried to add recv publisher but did not know routekind, ", (int)addr.kind);
-                    break;
-                }
-            }
-        }
-    }
-
-    void Manager::remove_publisher(const NodeId source_id, const std::unordered_map<Label, uint32_t>& send_labels) {
-        // all the labels we recv
-        auto recv_labels = m_router.get_recv_labels();
-        for (const auto& [label, _] : recv_labels) {
-            if (label <= INVALID_LABEL) continue; // should never occur
-
-            // are they a publisher of this label, if not continue
-            if (!m_router.is_recv_publisher(label, source_id)) continue;
-
-            // do they still publish this label, if so continue
-            if (send_labels.find(label) != send_labels.end()) continue;
-
-            // they no longer publish this label, remove them as a publisher
-            const auto addr = addr::get_address(source_id);
-            switch (addr.kind) {
-                case addr::RouteKind::Shm: {
-                    PRINT("removing local recv publisher, nodeid=", source_id, " label=", label);
-                    m_router.remove_local_recv_publisher(label, source_id);
-                    evtlog::info(elog_kind::RemoveLocalRecvPublisher, elog_cat::Router, source_id, label);
-                    m_comms.stop_local_recv_worker(label);
-                    break;
-                }
-                case addr::RouteKind::Socket: {
-                    PRINT("removing remote recv publisher, nodeid=", source_id, " label=", label);
-                    m_router.remove_remote_recv_publisher(label,source_id);
-                    evtlog::info(elog_kind::RemoveRemoteRecvPublisher, elog_cat::Router, source_id, label);
-                    break;
-                }
-                default: {
-                    ERR_PRINT("tried to remove recv publisher but did not know routekind, ", (int)addr.kind);
-                    break;
-                }
-            }
-        }
-    }    
 }

@@ -1,5 +1,6 @@
 #pragma once
 #include <cstdint>
+#include <cstddef>
 
 // C++ include file
 // either import this into a C++ project or eroil_c.h for a C project
@@ -17,7 +18,7 @@ std::uint32_t get_roil_id();
 //
 void* open_send_label(
     std::int32_t label, 
-    std::uint8_t* buf, 
+    std::byte* buf, 
     std::int32_t size_in_words,
     std::int32_t offset_mode,
     void* sem,
@@ -27,7 +28,7 @@ void* open_send_label(
 
 void send_label(
     void* handle, 
-    std::uint8_t* buf, 
+    std::byte* buf, 
     std::int32_t buf_size, 
     std::int32_t send_offset,
     std::int32_t recv_offset
@@ -40,14 +41,14 @@ void close_send(void* handle);
 //
 void* open_recv_label(
     std::int32_t label, 
-    std::uint8_t* buf, 
+    std::byte* buf, 
     std::int32_t size,
     std::int32_t num_slots,
-    std::uint8_t* aux_buf,
+    std::byte* aux_buf,
     void* sem,
-    void** iosb,
+    void* iosb,
     std::int32_t num_iosb,
-    int signal_mode
+    std::int32_t signal_mode
 );
 void close_recv_label(void* handle);
 std::uint32_t recv_count(void* handle);

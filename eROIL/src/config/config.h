@@ -1,28 +1,15 @@
 #pragma once
 #include <string_view>
 #include <string>
-#include <vector>
+#include <unordered_map>
 #include "types/types.h"
 
 namespace eroil::cfg {
-    namespace detail {
-        constexpr std::string_view MANAGE_CONFIG_FILE_PATH = "etc/manager.cfg";
-        constexpr std::string_view PEER_IP_FILE_PATH = "etc/peer_ips.cfg";
-        constexpr std::string_view LOCAL_HOST = "127.0.0.1";
-        constexpr uint16_t PORT_START = 8080;
-    }
-
-    struct NodeInfo {
-        NodeId id;
-        std::string ip;
-        uint16_t port;
-    };
-
     enum class ManagerMode {
         Normal,
-        TestMode_Local_ShmOnly,     // uses fake config file and sets all node routes to shm (all nodes much be local)
-        TestMode_Lopcal_SocketOnly, // uses fake config file and sets all node routes to socket (all nodes much be local)
-        TestMode_Sim_Network        // uses fake config file and generate a simulated network of nodes on sockets and shm (all nodes much be local)
+        TestMode_Local_ShmOnly,    // uses fake config file and sets all node routes to shm (all nodes much be local)
+        TestMode_Local_SocketOnly, // uses fake config file and sets all node routes to socket (all nodes much be local)
+        TestMode_Sim_Network       // uses fake config file and generate a simulated network of nodes on sockets and shm (all nodes much be local)
     };
 
     // udp mcast configuration
@@ -42,7 +29,6 @@ namespace eroil::cfg {
     struct ManagerConfig {
         NodeId id = 0;
         ManagerMode mode = ManagerMode::Normal;
-        std::vector<NodeInfo> nodes = {};
         UdpMcastConfig mcast_cfg{};
     };
 

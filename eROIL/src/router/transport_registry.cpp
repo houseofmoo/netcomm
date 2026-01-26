@@ -46,72 +46,46 @@ namespace eroil {
     }
 
     // send shm
-    bool TransportRegistry::open_send_shm(Label label, size_t label_size) {
-        if (has_send_shm(label)) return true;
+    bool TransportRegistry::open_send_shm(NodeId dst_id) {
+        if (has_send_shm(dst_id)) return true;
 
-        auto shm_block = std::make_shared<shm::Shm>(label, label_size);
-        auto open_err = shm_block->create_or_open();
-        if (open_err != shm::ShmErr::None) {
-            ERR_PRINT("open_send_shm(): create_or_open failed label=", label);
+        auto shm = std::make_shared<shm::ShmSend>(dst_id);
+        if (!shm->open()) {
+            shm->close();
             return false;
         }
 
-        m_send_shm.emplace(label, std::move(shm_block));
+        m_send_shm.emplace(dst_id, std::move(shm));
         return true;
     }
 
-    bool TransportRegistry::delete_send_shm(Label label) {
-        auto it = m_send_shm.find(label);
-        if (it == m_send_shm.end()) return false;
-
-        it->second->close();
-        m_send_shm.erase(it);
-        return true;
-    }
-
-    std::shared_ptr<shm::Shm> TransportRegistry::get_send_shm(Label label) const noexcept {
-        auto it = m_send_shm.find(label);
+    std::shared_ptr<shm::ShmSend> TransportRegistry::get_send_shm(NodeId dst_id) const noexcept {
+        auto it = m_send_shm.find(dst_id);
         if (it == m_send_shm.end()) return nullptr;
         return it->second;
     }
 
-    bool TransportRegistry::has_send_shm(Label label) const noexcept {
-        auto it = m_send_shm.find(label);
+    bool TransportRegistry::has_send_shm(NodeId dst_id) const noexcept {
+        auto it = m_send_shm.find(dst_id);
         return (it != m_send_shm.end()) && (it->second != nullptr);
     }
 
     // recv shm
-    bool TransportRegistry::open_recv_shm(Label label, size_t label_size) {
-        if (has_send_shm(label)) return true;
+    bool TransportRegistry::open_recv_shm(NodeId my_id) {
+        if (m_recv_shm != nullptr) return true;
 
-        auto shm_block = std::make_shared<shm::Shm>(label, label_size);
-        auto open_err = shm_block->create_or_open();
-        if (open_err != shm::ShmErr::None) {
-            ERR_PRINT("open_recv_shm(): create_or_open failed label=", label);
+        m_recv_shm = std::make_shared<shm::ShmRecv>(my_id);
+        if (!m_recv_shm->create_or_open()) {
+            ERR_PRINT("open_recv_shm(): create_or_open failed for recv shm");
+            m_recv_shm->close();
+            m_recv_shm.reset();
             return false;
         }
 
-        m_recv_shm.emplace(label, std::move(shm_block));
         return true;
     }
 
-    bool TransportRegistry::delete_recv_shm(Label label) {
-        auto it = m_recv_shm.find(label);
-        if (it == m_recv_shm.end()) return false;
-
-        it->second->close();
-        m_recv_shm.erase(it);
-        return true;
-    }
-
-    std::shared_ptr<shm::Shm> TransportRegistry::get_recv_shm(Label label) const noexcept {
-        auto it = m_recv_shm.find(label);
-        if (it == m_recv_shm.end()) return nullptr;
-        return it->second;
-    }
-
-    bool TransportRegistry::has_recv_shm(Label label) const noexcept {
-        auto it = m_recv_shm.find(label);
-        return (it != m_recv_shm.end()) && (it->second != nullptr);
+    std::shared_ptr<shm::ShmRecv> TransportRegistry::get_recv_shm() const noexcept {
+        return m_recv_shm;
     }
 }

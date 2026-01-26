@@ -51,10 +51,10 @@ namespace eroil::evt {
     }
 
     NamedEvent::NamedEvent(NodeId id) : m_dst_id(id), m_sem(nullptr) {
-            if (open() != NamedEventErr::None) {
-                ERR_PRINT("failed to open named event m_dst_id=", id);
-            }
+        if (open() != NamedEventErr::None) {
+            ERR_PRINT("failed to open named event m_dst_id=", id);
         }
+    }
 
     NamedEvent::~NamedEvent() {
         close();
@@ -64,7 +64,7 @@ namespace eroil::evt {
         m_dst_id(other.m_dst_id),
         m_sem(other.m_sem) {
             
-        other.m_dst_id = INVALID_LABEL;
+        other.m_dst_id = INVALID_NODE;
         other.m_sem = nullptr;
     }
 
@@ -93,13 +93,21 @@ namespace eroil::evt {
             return NamedEventErr::InvalidName;
         }
 
-        const BOOL manual_reset = FALSE; // auto-reset
-        const BOOL initial_state = FALSE;
+        //const BOOL manual_reset = FALSE; // auto-reset
+        //const BOOL initial_state = FALSE;
 
-        HANDLE handle = ::CreateEventW(
+        // HANDLE handle = ::CreateEventW(
+        //     nullptr,
+        //     manual_reset,
+        //     initial_state,
+        //     wname.c_str()
+        // );
+
+        // counting semaphore linux style
+        HANDLE handle = ::CreateSemaphoreW(
             nullptr,
-            manual_reset,
-            initial_state,
+            0,
+            LONG_MAX,
             wname.c_str()
         );
 
@@ -114,9 +122,15 @@ namespace eroil::evt {
 
     NamedEventErr NamedEvent::post() const {
         if (m_sem == nullptr) return NamedEventErr::NotInitialized;
-        if (!::SetEvent(as_native(m_sem))) {
+        if (!::ReleaseSemaphore(as_native(m_sem), 1, nullptr)) {
+            DWORD e = ::GetLastError();
+            if (e == ERROR_TOO_MANY_POSTS) return NamedEventErr::MaxCount;
             return NamedEventErr::SignalFailed;
         }
+
+        // if (!::SetEvent(as_native(m_sem))) {
+        //     return NamedEventErr::SignalFailed;
+        // }
         return NamedEventErr::None;
     }
 
@@ -126,7 +140,7 @@ namespace eroil::evt {
 
     NamedEventErr NamedEvent::wait(uint32_t milliseconds) const {
         DWORD timeout = static_cast<DWORD>(milliseconds);
-        if (milliseconds <= 0) {
+        if (milliseconds == 0) {
             timeout = INFINITE;
         }
         return do_wait(m_sem, timeout);

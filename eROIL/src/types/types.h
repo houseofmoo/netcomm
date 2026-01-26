@@ -3,9 +3,15 @@
 #include <cstdint>
 #include <array>
 #include <memory>
+#include <string_view>
 #include "assertion.h"
 
 namespace eroil {
+    constexpr std::string_view MANAGE_CONFIG_FILE_PATH = "etc/manager.cfg";
+    constexpr std::string_view PEER_IP_FILE_PATH = "etc/peer_ips.cfg";
+    constexpr std::string_view LOCAL_HOST = "127.0.0.1";
+    constexpr std::uint16_t PORT_START = 8080;
+
     using Label = std::int32_t;
     using NodeId = std::int32_t;
     using handle_uid = std::uint64_t;
@@ -23,9 +29,7 @@ namespace eroil {
     static constexpr std::size_t SOCKET_DATA_MAX_SIZE = 1 * MEGABYTE;
     static_assert(SOCKET_DATA_MAX_SIZE % 64 == 0);
 
-    static constexpr std::size_t SHM_DESCRIPTOR_RING_SIZE = 8 * MEGABYTE;
     static constexpr std::size_t SHM_BLOCK_SIZE = 128 * MEGABYTE;
-    static_assert(SHM_DESCRIPTOR_RING_SIZE % 64 == 0);
     static_assert(SHM_BLOCK_SIZE % 64 == 0);
 
     using std::uint8_t;
@@ -112,7 +116,7 @@ namespace eroil {
 
         struct SendBuf {
             void* data_src_addr = nullptr; // where the data was copied from (for send IOSB)
-            std::unique_ptr<std::uint8_t[]> data = nullptr;
+            std::unique_ptr<std::byte[]> data = nullptr;
             std::size_t data_size = 0;
             std::size_t total_size = 0;  // size of data + header
 
@@ -122,7 +126,7 @@ namespace eroil {
 
                 data_size = size;
                 total_size = size + sizeof(LabelHeader);
-                data = std::make_unique<std::uint8_t[]>(total_size);
+                data = std::make_unique<std::byte[]>(total_size);
             }
                 
             // move ok

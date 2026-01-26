@@ -20,8 +20,12 @@ namespace eroil::addr {
         uint16_t port;
     };
 
+    bool init_address_book(NodeId my_id);
     const std::unordered_map<NodeId, NodeAddress>& get_address_book();
     NodeAddress get_address(NodeId id);
-    bool insert_addresses(const cfg::NodeInfo self, const std::vector<cfg::NodeInfo> nodes, const cfg::ManagerMode mode);
-    NodeAddress find_node_id(std::string ip, uint16_t port);
+    
+    // set up test-mode address book
+    void all_shm_address_book();
+    void all_socket_address_book();
+    void test_network_address_book();
 }

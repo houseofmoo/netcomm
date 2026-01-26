@@ -32,15 +32,10 @@ namespace eroil {
             void unregister_recv_subscriber(const hndl::RecvHandle* handle);
 
             // route interface
-            void add_local_send_subscriber(Label label, size_t label_size, NodeId my_id, NodeId to_id);
-            void add_remote_send_subscriber(Label label, size_t label_size, NodeId to_id);
-            void add_local_recv_publisher(Label label, size_t label_size, NodeId my_id, NodeId from_id);
-            void add_remote_recv_publisher(Label label, size_t label_size, NodeId from_id);
-
+            void add_local_send_subscriber(Label label, size_t size, NodeId dst_id);
+            void add_remote_send_subscriber(Label label, size_t size, NodeId dst_id);
             void remove_local_send_subscriber(Label label, NodeId to_id);
             void remove_remote_send_subscriber(Label label, NodeId to_id);
-            void remove_local_recv_publisher(Label label, NodeId my_id);
-            void remove_remote_recv_publisher(Label label, NodeId from_id);
 
             io::LabelsSnapshot get_send_labels_snapshot() const;
             io::LabelsSnapshot get_recv_labels_snapshot() const;
@@ -52,18 +47,19 @@ namespace eroil {
             bool has_send_route(Label label) const noexcept;
             bool has_recv_route(Label label) const noexcept;
             bool is_send_subscriber(Label label, NodeId to_id) const noexcept;
-            bool is_recv_publisher(Label label, NodeId from_id) const noexcept;
 
             bool upsert_socket(NodeId id, std::shared_ptr<sock::TCPClient> sock);
             std::shared_ptr<sock::TCPClient> get_socket(NodeId id) const noexcept;
             bool has_socket(NodeId id) const noexcept;
             std::vector<std::shared_ptr<sock::TCPClient>> get_all_sockets() const;
-            std::shared_ptr<shm::Shm> get_send_shm(Label label) const noexcept;
-            std::shared_ptr<shm::Shm> get_recv_shm(Label label) const noexcept;
-            const RecvRoute* get_recv_route(Label label) const noexcept;
+            
+            bool open_send_shm(NodeId dst_id);
+            std::shared_ptr<shm::ShmSend> get_send_shm(NodeId dst_id) const noexcept;
+            bool open_recv_shm(NodeId my_id);
+            std::shared_ptr<shm::ShmRecv> get_recv_shm() const noexcept;
 
-            SendResult send_to_subscribers(Label label, handle_uid uid, io::SendBuf send_buf) const;
-            void recv_from_publisher(Label label, const void* buf, size_t size) const;
+            SendResult send_to_subscribers(const NodeId my_id, const Label label, const handle_uid uid, io::SendBuf send_buf) const;
+            void recv_from_publisher(const Label label, const std::byte* buf, const size_t size, const size_t recv_offset) const;
 
     };
 }

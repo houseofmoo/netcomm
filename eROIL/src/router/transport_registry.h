@@ -6,14 +6,15 @@
 
 #include "types/types.h"
 #include "socket/tcp_socket.h"
-#include "shm/shm.h"
+#include "shm/shm_recv.h"
+#include "shm/shm_send.h"
 
 namespace eroil {
     class TransportRegistry {
         private:
+            std::shared_ptr<shm::ShmRecv> m_recv_shm;
+            std::unordered_map<NodeId, std::shared_ptr<shm::ShmSend>> m_send_shm;
             std::unordered_map<NodeId, std::shared_ptr<sock::TCPClient>> m_sockets;
-            std::unordered_map<Label, std::shared_ptr<shm::Shm>> m_send_shm;
-            std::unordered_map<Label, std::shared_ptr<shm::Shm>> m_recv_shm;
 
         public:
             // socket
@@ -24,15 +25,12 @@ namespace eroil {
             std::vector<std::shared_ptr<sock::TCPClient>> get_all_sockets() const;
 
             // send shm
-            bool open_send_shm(Label label, size_t label_size);
-            bool delete_send_shm(Label label);
-            std::shared_ptr<shm::Shm> get_send_shm(Label label) const noexcept;
-            bool has_send_shm(Label label) const noexcept;
+            bool open_send_shm(NodeId dst_id);
+            std::shared_ptr<shm::ShmSend> get_send_shm(NodeId dst_id) const noexcept;
+            bool has_send_shm(NodeId dst_id) const noexcept;
 
             // recv shm
-            bool open_recv_shm(Label label, size_t label_size);
-            bool delete_recv_shm(Label label);
-            std::shared_ptr<shm::Shm> get_recv_shm(Label label) const noexcept;
-            bool has_recv_shm(Label label) const noexcept;
+            bool open_recv_shm(NodeId my_id);
+            std::shared_ptr<shm::ShmRecv> get_recv_shm() const noexcept;
     };
 }

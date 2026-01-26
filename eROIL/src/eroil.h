@@ -17,7 +17,7 @@ namespace eroil {
     //
     hndl::SendHandle* open_send_label(
         Label label, 
-        uint8_t* buf, 
+        std::byte* buf, 
         int32_t size,
         iosb::IoType io_type,
         sem_handle sem,
@@ -27,7 +27,7 @@ namespace eroil {
 
     void send_label(
         hndl::SendHandle* handle, 
-        uint8_t* buf, 
+        std::byte* buf, 
         int32_t buf_size, 
         int32_t send_offset,
         int32_t recv_offset
@@ -40,10 +40,10 @@ namespace eroil {
     //
     hndl::RecvHandle* open_recv_label(
         Label label, 
-        uint8_t* buf, 
+        std::byte* buf, 
         int32_t size,
         int32_t num_slots,
-        uint8_t* aux_buf,
+        std::byte* aux_buf,
         sem_handle sem,
         iosb::ReceiveIosb* iosb,
         int32_t num_iosb,

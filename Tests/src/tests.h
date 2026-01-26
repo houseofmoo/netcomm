@@ -191,3 +191,47 @@ inline int add_remove_labels_test(int id) {
     // }
     return 0;
 }
+
+inline void init_test(int id) {
+    bool success = init_manager(id);
+    LOG("manager init success: ", success);
+
+    if (id == 1|| id == 2) {
+        auto send = std::make_shared<SendLabel>(make_send_label(0, 1024, 1000));
+        auto handle = open_send_label(send->id, send->buf.get(), send->size, 1, nullptr, nullptr, 0);
+        int count = 1;
+        if (id == 2) count = 1001;
+        while (true) {
+
+            send_label(handle, nullptr, 0, 0, 0);
+            LOG("sent: ", count);
+            count += 1;
+            std::memcpy(send->buf.get(), &count, sizeof(count));
+            std::this_thread::sleep_for(std::chrono::milliseconds(100));
+        }
+        close_send(handle);
+        LOG("exit");
+    } else {
+        auto recv = std::make_shared<RecvLabel>(make_recv_label(0, 1024));
+        auto handle = open_recv_label(
+            recv->id, 
+            recv->buf.get(), 
+            recv->size,
+            1, 
+            nullptr,
+            recv->sem,
+            nullptr,
+            0,
+            2
+        );
+
+        int count = 0;
+        while (true) {
+            recv->wait();
+            std::memcpy(&count, recv->buf.get(), sizeof(count));
+            LOG("recvd: ", count);
+        }
+        close_recv_label(handle);
+        LOG("exit");
+    }
+}

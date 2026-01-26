@@ -54,12 +54,6 @@ namespace eroil {
             ERR_PRINT("unregister_send_publisher(): route table did not contain publisher uid=", uid, " label=", label);
             // continue anyway
         }
-
-        // if route was deleted, close the shared memory block
-        const auto route = m_routes.get_send_route(label);
-        if (route == nullptr) {
-            m_transports.delete_send_shm(label);
-        }
     }
 
     void Router::register_recv_subscriber(std::unique_ptr<hndl::RecvHandle> handle) {
@@ -106,25 +100,19 @@ namespace eroil {
         if (!m_routes.remove_recv_subscriber(label, uid)) {
             ERR_PRINT("unregister_recv_subscriber(): route table did not contain subscriber uid=", uid, " label=", label);
         }
-
-        // if route was deleted, close the shared memory block
-        const auto route = m_routes.get_recv_route(label);
-        if (route == nullptr) {
-            m_transports.delete_recv_shm(label);
-        }
     }
 
     // route interface
-    void Router::add_local_send_subscriber(Label label, size_t label_size, NodeId my_id, NodeId to_id) {
+    void Router::add_local_send_subscriber(Label label, size_t size, NodeId dst_id) {
         std::unique_lock lock(m_router_mtx);
 
-        if (!m_transports.open_send_shm(label, label_size)) {
-            ERR_PRINT("add_local_send_subscriber(): could not create or open shm block for label=", label);
+        if (!m_transports.has_send_shm(dst_id)) {
+            ERR_PRINT(__func__, ": missing shm to nodeid=", dst_id);
             return;
         }
 
-        if (!m_routes.add_local_send_subscriber(label, label_size, my_id, to_id)) {
-            ERR_PRINT("add_local_send_subscriber(): failed to add local send subscriber for label=", label, " to_id=", to_id);
+        if (!m_routes.add_local_send_subscriber(label, size, dst_id)) {
+            ERR_PRINT(__func__, ": failed to add local send subscriber for label=", label, " to_id=", dst_id);
             return;
         }
     }
@@ -133,62 +121,24 @@ namespace eroil {
         std::unique_lock lock(m_router_mtx);
 
         if (!m_transports.has_socket(to_id)) {
-            ERR_PRINT("add_remote_send_subscriber(): missing socket to NodeId=", to_id);
+            ERR_PRINT(__func__, ": missing socket to NodeId=", to_id);
             return;
         }
 
         if (!m_routes.add_remote_send_subscriber(label, label_size, to_id)) {
-            ERR_PRINT("add_remote_send_subscriber(): could not add remove send subscriber for label=", label, " to_id=", to_id);
+            ERR_PRINT(__func__, ": failed to add remote send subscriber for label=", label, " to_id=", to_id);
             return;
         }
     }
 
-    void Router::add_local_recv_publisher(Label label, size_t label_size, NodeId my_id, NodeId from_id) {
+    void Router::remove_local_send_subscriber(Label label, NodeId dst_id) {
         std::unique_lock lock(m_router_mtx);
-
-        if (!m_transports.open_recv_shm(label, label_size)) {
-            ERR_PRINT("add_local_recv_publisher(): could not create or open shm block for label=", label);
-            return;
-        }
-
-        if (!m_routes.add_local_recv_publisher(label, label_size, my_id, from_id)) {
-            ERR_PRINT("add_local_recv_publisher(): failed to add local recv publisher for label=", label, " from_id=", from_id);
-            return;
-        }
+        m_routes.remove_local_send_subscriber(label, dst_id);
     }
 
-    void Router::add_remote_recv_publisher(Label label, size_t size, NodeId from_id) {
+    void Router::remove_remote_send_subscriber(Label label, NodeId dst_id) {
         std::unique_lock lock(m_router_mtx);
-
-        if (!m_transports.has_socket(from_id)) {
-            ERR_PRINT("add_remote_recv_publisher(): missing socket from NodeId=", from_id);
-            return;
-        }
-
-        if (!m_routes.add_remote_recv_publisher(label, size, from_id)) {
-            ERR_PRINT("add_remote_recv_publisher(): rejected (local publisher exists or overwrite) label=", label, " from_id=", from_id);
-            return;
-        }
-    }
-
-    void Router::remove_local_send_subscriber(Label label, NodeId to_id) {
-        std::unique_lock lock(m_router_mtx);
-        m_routes.remove_local_send_subscriber(label, to_id);
-    }
-
-    void Router::remove_remote_send_subscriber(Label label, NodeId to_id) {
-        std::unique_lock lock(m_router_mtx);
-        m_routes.remove_remote_send_subscriber(label, to_id);
-    }
-
-    void Router::remove_local_recv_publisher(Label label, NodeId from_id) {
-        std::unique_lock lock(m_router_mtx);
-        m_routes.remove_local_recv_publisher(label, from_id);
-    }
-
-    void Router::remove_remote_recv_publisher(Label label, NodeId from_id) {
-        std::unique_lock lock(m_router_mtx);
-        m_routes.remove_remote_recv_publisher(label, from_id);
+        m_routes.remove_remote_send_subscriber(label, dst_id);
     }
 
     io::LabelsSnapshot Router::get_send_labels_snapshot() const {
@@ -239,14 +189,6 @@ namespace eroil {
         return m_routes.is_local_send_subscriber(label, to_id);
     }
 
-    bool Router::is_recv_publisher(Label label, NodeId from_id) const noexcept {
-        std::shared_lock lock(m_router_mtx);
-        if (m_routes.is_remote_recv_publisher(label, from_id)) {
-            return true;
-        }
-        return m_routes.is_local_recv_publisher(label, from_id);
-    }
-
     bool Router::upsert_socket(NodeId id, std::shared_ptr<sock::TCPClient> sock) {
         return m_transports.upsert_socket(id, sock);
     }
@@ -263,20 +205,25 @@ namespace eroil {
         return m_transports.get_all_sockets();
     }
 
-    std::shared_ptr<shm::Shm> Router::get_send_shm(Label label) const noexcept {
-        return m_transports.get_send_shm(label);
+    bool Router::open_send_shm(NodeId dst_id) {
+        return m_transports.open_send_shm(dst_id);
     }
 
-    std::shared_ptr<shm::Shm> Router::get_recv_shm(Label label) const noexcept {
-        return m_transports.get_recv_shm(label);
+    std::shared_ptr<shm::ShmSend> Router::get_send_shm(NodeId dst_id) const noexcept {
+        return m_transports.get_send_shm(dst_id);
     }
 
-    const RecvRoute* Router::get_recv_route(Label label) const noexcept {
-        return m_routes.get_recv_route(label);
+    bool Router::open_recv_shm(NodeId my_id) {
+        return m_transports.open_recv_shm(my_id);
     }
 
-    SendResult Router::send_to_subscribers(Label label, handle_uid uid, io::SendBuf send_buf) const {
-        SendTargets targets{ label, nullptr, false, nullptr, {}, false, {} };
+    std::shared_ptr<shm::ShmRecv> Router::get_recv_shm() const noexcept {
+        return m_transports.get_recv_shm();
+    }
+
+
+    SendResult Router::send_to_subscribers(const NodeId my_id, const Label label, const handle_uid uid, io::SendBuf send_buf) const {
+        SendTargets targets{ my_id, label, nullptr, false, {}, false, {} };
         {
             std::shared_lock lock(m_router_mtx);
 
@@ -325,9 +272,13 @@ namespace eroil {
             targets.publisher = handle_it->second->data;
 
             // snapshot local subs
-            if (route->local_subscribers.has_value()) {
-                targets.shm = m_transports.get_send_shm(route->local_subscribers->shm_id);
-                targets.shm_signals = route->local_subscribers->subscribe_events;
+            if (!route->local_subscribers.empty()) {
+                targets.shm.reserve(route->local_subscribers.size());
+                for (const auto local : route->local_subscribers) {
+                    targets.shm.push_back(
+                        m_transports.get_send_shm(local)
+                    );
+                }
                 targets.has_local = true;
             }
             
@@ -336,7 +287,7 @@ namespace eroil {
                 targets.sockets.reserve(route->remote_subscribers.size());
                 for (const auto remote : route->remote_subscribers) {
                     targets.sockets.push_back(
-                        m_transports.get_socket(remote.socket_id)
+                        m_transports.get_socket(remote)
                     );
                 }
                 targets.has_remote = true;
@@ -351,7 +302,7 @@ namespace eroil {
         return m_dispatch.dispatch_send_targets(targets, std::move(send_buf));
     }
 
-    void Router::recv_from_publisher(Label label, const void* buf, size_t size) const {
+    void Router::recv_from_publisher(Label label, const std::byte* buf, const size_t size, const size_t recv_offset) const {
         if (!buf || size == 0) return;
         
         RecvTargets targets{};
@@ -386,6 +337,6 @@ namespace eroil {
             }
         }
 
-        m_dispatch.dispatch_recv_targets(targets, buf, size);
+        m_dispatch.dispatch_recv_targets(targets, buf, size, recv_offset);
     }
 }
