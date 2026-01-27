@@ -18,11 +18,7 @@ namespace eroil {
 TODO:
 1) allow sending to self
 
-2) shm_send and shm_recv probably need some clean up and robustness upgrades.
-
-3) recv_worker (shm) specifically needs serious clean up
-
-4) double check IOSB and buffer index writes
+2) double check IOSB and buffer index writes
 
 */
 

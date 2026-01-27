@@ -373,6 +373,19 @@ namespace eroil {
             subs->buf_index = (subs->buf_index + 1) % subs->buf_slots;
 
             // TODO: signal based on the signal mode?
+            switch (subs->signal_mode) {
+                case iosb::SignalMode::BUFFER_FULL: {
+
+                }
+
+                case iosb::SignalMode::OVERWRITE: {
+
+                }
+                
+                case iosb::SignalMode::EVERY_MESSAGE: {
+                    
+                }
+            }
             //if subs->signal_mode == ALWAYS ??
             int count = 0;
             std::memcpy(&count, buf, sizeof(count));
