@@ -6,71 +6,48 @@ namespace eroil::evtlog {
         enum class EventKind : std::uint16_t {
         None = 0,
 
-        // send pipeline
-        Send_Start,
+        // generic
+        Start,
+        Failed,
+        End,
+        Exit,
         Send,
-        Send_Failed,
-        Send_RouteLookup,
-        Send_Shm_Write,
-        Send_Socket_Write,
-        Send_End,
-
-        // recv pipeline
-        Recv_Start,
+        SendFailed,
         Recv,
-        Recv_Shm_Read,
-        Recv_Socket_Read,
-        Recv_End,
+        RecvFailed,
+        WaitError,
+        RecvError,
+        UnknownError,
+        UnhandledError,
 
-        // Workers / threads
-        SendWorker_Start,
-        SendWorker_Warning,
-        SendWorker_Error,
-        SendWorker_End,
-        SendWorker_Exits,
-        
-        ShmRecvWorker_Start,
-        ShmRecvWorker_Warning,
-        ShmRecvWorker_Error,
-        ShmRecvWorker_End,
-        ShmRecvWorker_Exit,
+        // shared
+        InvalidHeader,
+        InvalidFlags,
 
-        SocketRecvWorker_Start,
-        SocketRecvWorker_Warning,
-        SocketRecvWorker_Error,
-        SocketRecvWorker_End,
-        SocketRecvWorker_Exit,
+        // send/recv
+        MalformedRecv,
+        InvalidDataSize,
+        DataDistributed,
+        PublishTimeout,
+        BlockNotInitialized,
+        BlockCorruption,
 
         // subsribers / publishers
         AddLocalSendSubscriber,
         AddRemoteSendSubscriber,
         RemoveLocalSendSubscriber,
         RemoveRemoteSendSubscriber,
-        AddLocalRecvPublisher,
-        AddRemoteRecvPublisher,
-        RemoveLocalRecvPublisher,
-        RemoveRemoteRecvPublisher,
         DuplicateLabel,
 
-        // monitor
-        SocketMonitor_Start,
-        MissingSocket,
-        DeadSocket_Found,
-        Connect_Start,
-        Connect_Failed,
-        Connect_Send_Failed,
-        Connect_Success,
-        SocketMonitor_End,
-
-        // TCP Server
-        TCPServer_Start,
+        // socket
+        Connect,
+        Ping,
         StartFailed,
         AcceptFailed,
         ConnectionFailed,
-        InvalidHeader,
         NewConnection,
-
-        Error,
+        Reconnected,
+        DeadSocketFound,
     };
 
     enum class Severity : std::uint8_t { Debug, Info, Warning, Error, Critical };
@@ -80,7 +57,10 @@ namespace eroil::evtlog {
         Router, 
         Shm, 
         Socket, 
-        Worker, 
+        Worker,
+        SendWorker,
+        ShmRecvWorker,
+        SocketRecvWorker,
         Broadcast, 
         SocketMonitor, 
         TCPServer 

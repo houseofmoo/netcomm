@@ -24,11 +24,12 @@ namespace eroil {
     static constexpr std::size_t KILOBYTE = 1024u;
     static constexpr std::size_t MEGABYTE = 1024u * KILOBYTE;
 
-    static constexpr std::size_t SOCKET_DATA_MAX_SIZE = 1 * MEGABYTE;
-    static_assert(SOCKET_DATA_MAX_SIZE % 64 == 0);
+    static constexpr std::size_t MAX_LABEL_SEND_SIZE = 1 * MEGABYTE;
+    static_assert(MAX_LABEL_SEND_SIZE % 64 == 0);
 
     static constexpr std::size_t SHM_BLOCK_SIZE = 128 * MEGABYTE;
     static_assert(SHM_BLOCK_SIZE % 64 == 0);
+
 
     using std::uint8_t;
     using std::uint16_t;

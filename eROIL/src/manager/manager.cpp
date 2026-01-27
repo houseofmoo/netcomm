@@ -65,6 +65,12 @@ namespace eroil {
     }
 
     hndl::SendHandle* Manager::open_send(hndl::OpenSendData data) {
+        if (data.buf_size > MAX_LABEL_SEND_SIZE) {
+            ERR_PRINT(__func__, " got label size=", data.buf_size, " which is bigger than max=", MAX_LABEL_SEND_SIZE);
+            ERR_PRINT("ignored open_send for label=", data.label);
+            return nullptr;
+        }
+
         auto handle = std::make_unique<hndl::SendHandle>(unique_id(), data);
         hndl::SendHandle* raw_handle = handle.get();
         m_router.register_send_publisher(std::move(handle));
@@ -136,8 +142,6 @@ namespace eroil {
     }
 
     hndl::RecvHandle* Manager::open_recv(hndl::OpenReceiveData data) {
-        // TODO: validate open recv data
-
         auto handle = std::make_unique<hndl::RecvHandle>(unique_id(), data);
         hndl::RecvHandle* raw_handle = handle.get();
         m_router.register_recv_subscriber(std::move(handle));
@@ -185,7 +189,7 @@ namespace eroil {
         msg.id = m_id;
 
         while (true) {
-            evtlog::info(elog_kind::Send_Start, elog_cat::Broadcast);
+            EvtMark mark(elog_cat::Broadcast);
             
             msg.send_labels = m_router.get_send_labels_snapshot();
             msg.recv_labels = m_router.get_recv_labels_snapshot();
@@ -193,12 +197,11 @@ namespace eroil {
             // send broadcast
             auto err = m_broadcast.send_broadcast(&msg, sizeof(msg));
             if (err.code != sock::SockErr::None) {
-                evtlog::warn(elog_kind::Send_Failed, elog_cat::Broadcast);
+                evtlog::warn(elog_kind::SendFailed, elog_cat::Broadcast);
                 ERR_PRINT("broadcast send failed!");
                 print_socket_result(err);
             }
 
-            evtlog::info(elog_kind::Send_End, elog_cat::Broadcast);
             std::this_thread::sleep_for(std::chrono::milliseconds(3 * 1000));
         }
     }
@@ -210,7 +213,7 @@ namespace eroil {
             m_broadcast.recv_broadcast(&msg, sizeof(msg));
             if (msg.id == m_id) continue;
             
-            evtlog::info(elog_kind::Recv_Start, elog_cat::Broadcast);
+            EvtMark mark(elog_cat::Broadcast);
             // time how long this takes
             //time::Timer t("recv_broadcast()");
 
@@ -228,8 +231,6 @@ namespace eroil {
             }
             add_subscriber(msg.id, recv);
             remove_subscriber(msg.id, recv);
-            
-            evtlog::info(elog_kind::Recv_End, elog_cat::Broadcast);
         }
     }
 

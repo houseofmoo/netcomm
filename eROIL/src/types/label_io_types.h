@@ -1,6 +1,7 @@
 #pragma once
 #include <array>
 #include "const_types.h"
+#include <eROIL/print.h>
 
 namespace eroil::io {
     struct LabelInfo {

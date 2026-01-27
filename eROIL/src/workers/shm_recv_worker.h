@@ -1,22 +1,26 @@
 #pragma once
 #include <mutex>
+#include <memory>
+#include <utility>
 #include "router/router.h"
 #include "shm/shm_recv.h"
 #include "types/const_types.h"
-#include "timer/timer.h"
 #include "types/macros.h"
 
 namespace eroil::worker {
     class ShmRecvWorker {
         private:
             Router& m_router;
-            time::Timer m_timeout;
+            NodeId m_id;
+            std::shared_ptr<shm::ShmRecv> m_shm;
 
             std::atomic<bool> m_stop{false};
             std::thread m_thread;
+            
+            const int64_t MAX_TIMEOUT_MS = 50;
 
         public:
-            ShmRecvWorker(Router& router);
+            ShmRecvWorker(Router& router, NodeId id);
             ~ShmRecvWorker() { stop(); }
 
             EROIL_NO_COPY(ShmRecvWorker)
@@ -28,5 +32,6 @@ namespace eroil::worker {
         private:
             bool stop_requested() const { return m_stop.load(std::memory_order_acquire); }
             void run();
+            std::pair<bool, shm::ShmRecvPayload> get_next_record();
     };
 }

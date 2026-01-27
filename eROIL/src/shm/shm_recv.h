@@ -17,7 +17,6 @@ namespace eroil::shm {
         UnknownError        // re-init
     };
 
-    // shared memory we read labels from
     class ShmRecv {
         private:
             NodeId m_id;

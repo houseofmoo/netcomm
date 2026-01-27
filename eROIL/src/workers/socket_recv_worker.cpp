@@ -5,8 +5,8 @@
 #include "log/evtlog_api.h"
 
 namespace eroil::worker {
-    SocketRecvWorker::SocketRecvWorker(Router& router, NodeId id, NodeId peer_id)
-        : m_router(router), m_id(id), m_peer_id(peer_id), m_sock(nullptr) {
+    SocketRecvWorker::SocketRecvWorker(Router& router, NodeId id, NodeId peer_id) : 
+        m_router(router), m_id(id), m_peer_id(peer_id), m_sock(nullptr) {
             m_sock = m_router.get_socket(m_peer_id);
         }
 
@@ -38,67 +38,60 @@ namespace eroil::worker {
                 }
                 
                 if (stop_requested()) break;
-                evtlog::info(elog_kind::SocketRecvWorker_Start, elog_cat::Worker, hdr.label, hdr.data_size, m_peer_id);
+                EvtMark mark(elog_cat::SocketRecvWorker);
 
                 if (hdr.magic != MAGIC_NUM || hdr.version != VERSION) {
                     ERR_PRINT("socket recv got a header that did not have the correct magic and/or version");
-                    evtlog::warn(elog_kind::SocketRecvWorker_Warning, elog_cat::Worker, hdr.label, hdr.data_size, m_peer_id);
-                    evtlog::info(elog_kind::SocketRecvWorker_End, elog_cat::Worker, hdr.label, hdr.data_size, m_peer_id);
+                    evtlog::error(elog_kind::InvalidHeader, elog_cat::SocketRecvWorker);
                     continue;
                 }
                 
-                if (hdr.data_size > SOCKET_DATA_MAX_SIZE) {
-                    ERR_PRINT(
-                        "socket recv got a header that indicated data size is > ", SOCKET_DATA_MAX_SIZE,
-                        " label=", hdr.label, ", sourceid=", hdr.source_id
-                    );
-                    evtlog::error(elog_kind::SocketRecvWorker_Error, elog_cat::Worker, hdr.label, hdr.data_size, m_peer_id);
-                    break;
+                if (hdr.data_size > MAX_LABEL_SEND_SIZE) {
+                    ERR_PRINT("socket recv got header that indicates data size is > ", MAX_LABEL_SEND_SIZE);
+                    ERR_PRINT("    label=", hdr.label, ", sourceid=", hdr.source_id);
+                    evtlog::error(elog_kind::InvalidDataSize, elog_cat::SocketRecvWorker, hdr.label, hdr.data_size);
+                    continue;
                 }
                 
                 if (hdr.data_size <= 0 && io::has_flag(hdr.flags, io::LabelFlag::Data)) {
-                    ERR_PRINT(
-                        "socket recv got a header that indicated data size is 0, label=", hdr.label,
-                        ", sourceid=", hdr.source_id
-                    );
-                    evtlog::warn(elog_kind::SocketRecvWorker_Warning, elog_cat::Worker, hdr.label, hdr.data_size, m_peer_id);
-                    evtlog::info(elog_kind::SocketRecvWorker_End, elog_cat::Worker, hdr.label, hdr.data_size, m_peer_id);
+                    ERR_PRINT("socket recv got header that indicates data size is 0");
+                    ERR_PRINT("    label=", hdr.label, ", sourceid=", hdr.source_id);
+                    evtlog::error(elog_kind::InvalidDataSize, elog_cat::SocketRecvWorker, hdr.label, hdr.data_size);
                     continue;
                 }
 
                 if (!io::has_flag(hdr.flags, io::LabelFlag::Data)) {
                     if (!io::has_flag(hdr.flags, io::LabelFlag::Ping)) {
-                        ERR_PRINT("got a hdr that indicated it was not a ping or data, hdr.flag=", hdr.flags);
+                        ERR_PRINT("socket recv got header that indicates neither ping or data");
+                        ERR_PRINT("    label=", hdr.label, ", sourceid=", hdr.source_id, " flags=", hdr.flags);
                     }
-                    evtlog::warn(elog_kind::SocketRecvWorker_Warning, elog_cat::Worker, hdr.label, hdr.data_size, m_peer_id);
-                    evtlog::info(elog_kind::SocketRecvWorker_End, elog_cat::Worker, hdr.label, hdr.data_size, m_peer_id);
+                    evtlog::error(elog_kind::InvalidFlags, elog_cat::Worker, hdr.label, hdr.flags);
                     continue;
                 }
 
                 payload.resize(hdr.data_size);
                 if (!recv_exact(payload.data(), payload.size())) {
                     ERR_PRINT("socket recv failed to get expected data size, size=", hdr.data_size);
-                    evtlog::error(elog_kind::SocketRecvWorker_Error, elog_cat::Worker, hdr.label, hdr.data_size, m_peer_id);
+                    ERR_PRINT("    label=", hdr.label, ", sourceid=", hdr.source_id);
+                    evtlog::error(elog_kind::RecvError, elog_cat::SocketRecvWorker);
                     break;
                 }
                 if (stop_requested()) break;
 
-                m_router.recv_from_publisher(
+                m_router.distribute_recvd_label(
                     static_cast<Label>(hdr.label), 
                     payload.data(),
                     payload.size(), 
                     static_cast<size_t>(hdr.recv_offset)
                 );
-                
-                evtlog::info(elog_kind::SocketRecvWorker_End, elog_cat::Worker, hdr.label, hdr.data_size, m_peer_id);
             }
         } catch (const std::exception& e) {
-            ERR_PRINT("socket recv exception, attempting re-connect: ", e.what());
+            ERR_PRINT("socket recv exception: ", e.what());
         } catch (...) {
-            ERR_PRINT("unknown socket recv exception, re-connect");
+            ERR_PRINT("unknown socket recv exception");
         }
 
-        evtlog::info(elog_kind::SocketRecvWorker_Exit, elog_cat::Worker, 0, 0, m_peer_id);
+        evtlog::info(elog_kind::Exit, elog_cat::SocketRecvWorker, m_peer_id);
         PRINT("socket recv worker for nodeid=", m_peer_id, " exits");
     }
 
@@ -113,7 +106,7 @@ namespace eroil::worker {
 
             case sock::SockErr::WouldBlock: {
                 // should never happen with blocking sockets
-                std::this_thread::sleep_for(std::chrono::milliseconds(1));
+                std::this_thread::yield();
                 break;
             }
 

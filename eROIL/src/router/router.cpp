@@ -208,11 +208,7 @@ namespace eroil {
 
         {
             std::shared_lock lock(m_router_mtx);
-            if (job->send_buffer.total_size > SOCKET_DATA_MAX_SIZE) {
-                ERR_PRINT(__func__, "(): send size bigger than max label=", label,
-                          " size=", send_buf.total_size, " max=", SOCKET_DATA_MAX_SIZE);
-                return { SendTargetErr::SizeTooLarge, job };
-            }
+            DB_ASSERT(job->send_buffer.total_size <= MAX_LABEL_SEND_SIZE, "label too large to send");
 
             const SendRoute* route = m_routes.get_send_route(label);
             if (route == nullptr) {
@@ -277,7 +273,7 @@ namespace eroil {
         return { SendTargetErr::None, job };
     }
 
-    void Router::recv_from_publisher(Label label, const std::byte* buf, const size_t size, const size_t recv_offset) const {
+    void Router::distribute_recvd_label(Label label, const std::byte* buf, const size_t size, const size_t recv_offset) const {
         if (!buf || size == 0) return;
         
         // get subscribers snapshot

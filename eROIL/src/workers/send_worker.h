@@ -9,6 +9,7 @@
 #include "types/const_types.h"
 #include "events/semaphore.h"
 #include "types/macros.h"
+#include "log/evtlog_api.h"
 
 
 namespace eroil::worker {
@@ -104,10 +105,12 @@ namespace eroil::worker {
                         }
                         if (job == nullptr) break; // no jobs left
                         try {
+                            EvtMark mark(elog_cat::SendWorker);
                             for (const auto& recvr : SendPlan::receivers(*job)) {
                                 io::JobCompleteGuard guard{job};
                                 if (recvr == nullptr) continue;
                                 if (!SendPlan::send_one(*recvr, *job)) {
+                                    evtlog::warn(elog_kind::SendFailed, elog_cat::SendWorker);
                                     ++SendPlan::fail_count(*job);
                                 }
                             }

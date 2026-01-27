@@ -1,5 +1,8 @@
+#pragma once
+
 #include "evtlog.h"
 #include "evtrecord.h"
+#include "types/macros.h"
 
 namespace eroil {
     using elog_kind = eroil::evtlog::EventKind;
@@ -79,4 +82,21 @@ namespace eroil {
             evtlog::detail::log_hot_no_time<elog_sev::Critical>(kind, cat, a, b, c); 
         }
     }
+
+    // use RAII to mark start/stops for you
+    class EvtMark {
+        private:
+            elog_cat m_cat;
+        public:
+            explicit EvtMark(elog_cat cat) : m_cat(cat) {
+                evtlog::info(elog_kind::Start, cat);
+            }
+
+            ~EvtMark() {
+                evtlog::info(elog_kind::End, m_cat);
+            }
+
+            EROIL_NO_COPY(EvtMark)
+            EROIL_NO_MOVE(EvtMark)
+    };
 }

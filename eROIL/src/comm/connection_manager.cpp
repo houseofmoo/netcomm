@@ -23,7 +23,7 @@ namespace eroil {
         m_tcp_server{},
         m_local_sender{},
         m_remote_sender{},
-        m_shm_recvr{router},
+        m_shm_recvr{router, id},
         m_sock_recvrs{} {}
 
     bool ConnectionManager::start() {
@@ -178,12 +178,12 @@ namespace eroil {
     void ConnectionManager::run_tcp_server() {
         auto info = addr::get_address(m_id);
         LOG("tcp server listen start at ", info.ip, ":", info.port);
-        evtlog::info(elog_kind::TCPServer_Start, elog_cat::TCPServer, info.port);
+        EvtMark mark(elog_cat::TCPServer);
 
         auto ts_result = m_tcp_server.open_and_listen(info.port);
         if (ts_result.code != sock::SockErr::None) {
             ERR_PRINT("tcp server open failed, exiting");
-            evtlog::crit(elog_kind::StartFailed, elog_cat::TCPServer);
+            evtlog::error(elog_kind::StartFailed, elog_cat::TCPServer);
             print_socket_result(ts_result);
             return;
         }
@@ -218,7 +218,7 @@ namespace eroil {
 
             if (!io::has_flag(hdr.flags, io::LabelFlag::Connect)) {
                 ERR_PRINT("tcp server recvd invalid request type");
-                evtlog::warn(elog_kind::InvalidHeader, elog_cat::TCPServer, hdr.source_id);
+                evtlog::warn(elog_kind::InvalidFlags, elog_cat::TCPServer, hdr.source_id);
                 client->disconnect();
                 continue;
             }
@@ -249,13 +249,16 @@ namespace eroil {
         }
 
         while (true) {
+            EvtMark mark(elog_cat::SocketMonitor);
             for (const auto& info : remote_peers) {
                 auto socket = m_router.get_socket(info.id);
                 if (socket == nullptr) {
                     // if connection does not exist, connect
+                    evtlog::info(elog_kind::Connect, elog_cat::SocketMonitor);
                     connect_to_remote_peer(info);
                 } else {
                     // otherwise check socket connected
+                    evtlog::info(elog_kind::Ping, elog_cat::SocketMonitor);
                     ping_remote_peer(info, socket);
                 }
             }
@@ -268,8 +271,6 @@ namespace eroil {
     bool ConnectionManager::connect_to_remote_peer(addr::NodeAddress peer_info) {
         // do not attempt connection to ID's greater than ours, they'll connect to us
         if (peer_info.id >= m_id) return false;
-        
-        evtlog::info(elog_kind::Connect_Start, elog_cat::SocketMonitor, peer_info.id);
 
         // attempt connection
         LOG("attempt connection to nodeid=", peer_info.id, " ip=", peer_info.ip, ":", peer_info.port);
@@ -278,14 +279,14 @@ namespace eroil {
         if (result.code != sock::SockErr::None) {
             LOG("connection to nodeid=", peer_info.id, " failed");
             //print_socket_result(result);
-            evtlog::info(elog_kind::Connect_Failed, elog_cat::SocketMonitor, peer_info.id);
+            evtlog::info(elog_kind::ConnectionFailed, elog_cat::SocketMonitor, peer_info.id);
             return false;
         }
 
         // send them a notice of who we are
         if (!send_id(client.get())) {
             ERR_PRINT(__func__, "(): send ID failed unexpectedly during connection attempt");
-            evtlog::warn(elog_kind::Connect_Send_Failed, elog_cat::SocketMonitor, peer_info.id);
+            evtlog::warn(elog_kind::SendFailed, elog_cat::SocketMonitor, peer_info.id);
             return false;
         }
 
@@ -303,7 +304,7 @@ namespace eroil {
         start_remote_recv_worker(peer_info.id);
 
         LOG("established tcp connection to nodeid=", peer_info.id);
-        evtlog::info(elog_kind::Connect_Success, elog_cat::SocketMonitor, peer_info.id);
+        evtlog::info(elog_kind::NewConnection, elog_cat::SocketMonitor, peer_info.id);
         return true;
     }
 
@@ -322,7 +323,7 @@ namespace eroil {
         // do socket disconnect logic, this wont do anything if already disconnected
         client->disconnect();
         LOG("found dead socket to nodeid=", peer_info.id);
-        evtlog::info(elog_kind::DeadSocket_Found, elog_cat::SocketMonitor, peer_info.id);
+        evtlog::info(elog_kind::DeadSocketFound, elog_cat::SocketMonitor, peer_info.id);
 
         // if worker is still listening to dead socket, stop and erase them
         stop_remote_recv_worker(peer_info.id);
