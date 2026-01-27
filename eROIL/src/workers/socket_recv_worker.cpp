@@ -1,6 +1,6 @@
 #include "socket_recv_worker.h"
 #include <eROIL/print.h>
-#include "types/types.h"
+#include "types/const_types.h"
 #include "address/address.h"
 #include "log/evtlog_api.h"
 
@@ -9,6 +9,20 @@ namespace eroil::worker {
         : m_router(router), m_id(id), m_peer_id(peer_id), m_sock(nullptr) {
             m_sock = m_router.get_socket(m_peer_id);
         }
+
+    void SocketRecvWorker::start() {
+        if (m_thread.joinable()) return;
+        m_stop.store(false, std::memory_order_release);
+        m_thread = std::thread([this] { run(); });
+    }
+
+    void SocketRecvWorker::stop() {
+        //bool was_stopping = m_stop.exchange(true, std::memory_order_acq_rel);
+        m_stop.exchange(true, std::memory_order_acq_rel);
+        if (m_thread.joinable()) {
+            m_thread.join();
+        }
+    }
 
     void SocketRecvWorker::run() {
         try {

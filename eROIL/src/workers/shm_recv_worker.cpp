@@ -1,11 +1,25 @@
 #include "shm_recv_worker.h"
 #include <chrono>
 #include <eROIL/print.h>
-#include "types/types.h"
+#include "types/const_types.h"
 #include "log/evtlog_api.h"
 
 namespace eroil::worker {
     ShmRecvWorker::ShmRecvWorker(Router& router) : m_router(router) {}
+
+    void ShmRecvWorker::start() {
+        if (m_thread.joinable()) return;
+        m_stop.store(false, std::memory_order_release);
+        m_thread = std::thread([this] { run(); });
+    }
+
+    void ShmRecvWorker::stop() {
+        //bool was_stopping = m_stop.exchange(true, std::memory_order_acq_rel);
+        m_stop.exchange(true, std::memory_order_acq_rel);
+        if (m_thread.joinable()) {
+            m_thread.join();
+        }
+    }
 
     void ShmRecvWorker::run() {
         try {
@@ -114,17 +128,5 @@ namespace eroil::worker {
         }
         
         evtlog::info(elog_kind::ShmRecvWorker_Exit, elog_cat::Worker);
-    }
-
-    void ShmRecvWorker::on_stop_requested() {
-        // TODO: we should never request stop on this worker
-        // but if we did, how would we stop them?
-        // we cannot POST to wake up the worker
-        // and closing the block doesnt guarantee the worker will wake
-        //
-        // if (ev != nullptr) {
-        //     // wake worker so they see the stop request
-        //     ev->post();
-        // }
     }
 }

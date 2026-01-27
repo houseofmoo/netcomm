@@ -2,7 +2,8 @@
 #include <string>
 #include <vector>
 #include <atomic>
-#include "types/types.h"
+#include "types/const_types.h"
+#include "types/macros.h"
 
 namespace eroil::shm {
     enum class ShmErr {
@@ -40,13 +41,8 @@ namespace eroil::shm {
             Shm(const int32_t id, const size_t total_size);
             virtual ~Shm() { close(); }
 
-            // do not copy
-            Shm(const Shm&) = delete;
-            Shm& operator=(const Shm&) = delete;
-
-            // allow move
-            Shm(Shm&& other) noexcept;
-            Shm& operator=(Shm&& other) noexcept;
+            EROIL_NO_COPY(Shm)
+            EROIL_DECL_MOVE(Shm)
             
             // platform dependent
             bool is_valid() const noexcept;

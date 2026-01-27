@@ -1,4 +1,4 @@
-#include "eroil.h"
+#include "root.h"
 #include "config/config.h"
 #include "address/address.h"
 #include "manager/manager.h"
@@ -18,7 +18,7 @@ namespace eroil {
         // read etc/peer_ips.cfg
         if (!addr::init_address_book(id))return false;
 
-        // set up address book for our mode
+        // set up address book
         switch (config.mode) {
             case cfg::ManagerMode::Normal: break;
             case cfg::ManagerMode::TestMode_Local_ShmOnly: {
@@ -30,7 +30,7 @@ namespace eroil {
                 break;
             }
             case cfg::ManagerMode::TestMode_Sim_Network: {
-                addr::all_socket_address_book();
+                addr::test_network_address_book();
                 break;
             }
         }

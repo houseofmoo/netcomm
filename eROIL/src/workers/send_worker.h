@@ -6,42 +6,120 @@
 #include <atomic>
 #include <thread>
 
-#include "types/types.h"
-#include "types/handles.h"
+#include "types/const_types.h"
 #include "events/semaphore.h"
-#include "router/router.h"
+#include "types/macros.h"
 
 
 namespace eroil::worker {
-    struct SendQEntry {
-        handle_uid uid;
-        Label label;
-        io::SendBuf send_buf;
-    };
-
+    template <class SendPlan>
     class SendWorker {
         private:
-            NodeId m_id;
-            Router& m_router;
-            std::queue<SendQEntry> m_send_data_q;
+            std::queue<std::shared_ptr<io::SendJob>> m_send_q;
             evt::Semaphore m_sem;
             std::mutex m_mtx;
-            std::atomic<bool> continue_work{false};
-            std::thread work_thread;
+
+            std::atomic<bool> m_stop{false};
+            std::thread m_thread;
 
         public:
-            explicit SendWorker(NodeId id, Router& router);
-            ~SendWorker() = default;
+            explicit SendWorker() = default;
+            ~SendWorker() { stop(); };
 
-            // do not copy
-            SendWorker(const SendWorker&) = delete;
-            SendWorker& operator=(const SendWorker&) = delete;
+            EROIL_NO_COPY(SendWorker)
+            EROIL_NO_MOVE(SendWorker)
 
-            void start();
-            void stop();
-            void enqueue(SendQEntry entry);
+            void enqueue(std::shared_ptr<io::SendJob> job) {
+                if (stop_requested()) return;
+
+                {
+                    std::lock_guard lock(m_mtx);
+                    m_send_q.push(job);
+                }
+
+                auto err = m_sem.post();
+                if (err != evt::SemOpErr::None) {
+                    switch (err) {
+                        case evt::SemOpErr::MaxCountReached: {
+                            ERR_PRINT("cannot enqueue anymore send jobs"); 
+                            break;
+                        }
+                        case evt::SemOpErr::SysError: {
+                            ERR_PRINT("semaphore post got system error");
+                            break;
+                        }
+                        default: {
+                            ERR_PRINT("semaphore post failed to unknown error, SemOpErr: ", std::to_string((int)err));
+                            break;
+                        }
+                    }
+                }
+            }
+
+            void start() {
+                if (m_thread.joinable()) return;
+                m_stop.store(false, std::memory_order_release);
+                m_thread = std::thread([this] { run(); });
+            }
+
+            void stop() {
+                bool was_stopping = m_stop.exchange(true, std::memory_order_acq_rel);
+                if (!was_stopping) {
+                    m_sem.post();
+                }
+
+                if (m_thread.joinable()) {
+                    m_thread.join();
+                }
+
+                // pop all remaining data entries
+                std::lock_guard lock(m_mtx);
+                while (!m_send_q.empty()) m_send_q.pop();
+            }
 
         private:
-            void work();
+            bool stop_requested() const { return m_stop.load(std::memory_order_acquire); }
+
+            void run() {
+                while (!stop_requested()) {
+                    if (m_sem.wait() != evt::SemOpErr::None) {
+                        ERR_PRINT("send worker got sem error waiting on work");
+                        continue;
+                    }
+
+                    if (stop_requested()) {
+                        LOG("send worker got stop request, exiting");
+                        break;
+                    }
+
+                    // drain queue of all jobs
+                    while (true) {
+                        std::shared_ptr<io::SendJob> job = nullptr;
+                        {
+                            std::lock_guard lock(m_mtx);
+                            if (!m_send_q.empty()) {
+                                job = std::move(m_send_q.front());
+                                m_send_q.pop();
+                            }
+                        }
+                        if (job == nullptr) break; // no jobs left
+                        try {
+                            for (const auto& recvr : SendPlan::receivers(*job)) {
+                                io::JobCompleteGuard guard{job};
+                                if (recvr == nullptr) continue;
+                                if (!SendPlan::send_one(*recvr, *job)) {
+                                    ++SendPlan::fail_count(*job);
+                                }
+                            }
+                            // IOSB is written by which ever sender completes last, occurs when
+                            // job->pending_sends == 0
+                        } catch (const std::exception& e) {
+                            ERR_PRINT("send worker exception, label: ", job->label, ", exception: ", e.what());
+                        } catch (...) {
+                            ERR_PRINT("send worker unknown exception, label: ", job->label);
+                        }
+                    }
+                }
+            }
     };
 }

@@ -1,7 +1,8 @@
 #pragma once
 
 #include <string>
-#include "types/types.h"
+#include "types/const_types.h"
+#include "types/macros.h"
 
 namespace eroil::evt {
     enum class NamedEventErr {
@@ -28,13 +29,8 @@ namespace eroil::evt {
             NamedEvent(NodeId id);
             ~NamedEvent();
 
-            // do not copy
-            NamedEvent(const NamedEvent&) = delete;
-            NamedEvent& operator=(const NamedEvent&) = delete;
-
-            // allow move
-            NamedEvent(NamedEvent&& other) noexcept;
-            NamedEvent& operator=(NamedEvent&& other) noexcept;
+            EROIL_NO_COPY(NamedEvent)
+            EROIL_DECL_MOVE(NamedEvent)
             
             std::string name() const;
             NodeId get_dst_id() const { return m_dst_id; }

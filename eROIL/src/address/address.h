@@ -1,9 +1,8 @@
 #pragma once
 #include <string>
 #include <unordered_map>
-#include <vector>
 #include "config/config.h"
-#include "types/types.h"
+#include "types/const_types.h"
 
 namespace eroil::addr {
     enum class RouteKind {

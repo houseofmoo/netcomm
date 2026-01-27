@@ -207,7 +207,7 @@ inline void init_test(int id) {
             LOG("sent: ", count);
             count += 1;
             std::memcpy(send->buf.get(), &count, sizeof(count));
-            std::this_thread::sleep_for(std::chrono::milliseconds(100));
+            std::this_thread::sleep_for(std::chrono::milliseconds(1000));
         }
         close_send(handle);
         LOG("exit");

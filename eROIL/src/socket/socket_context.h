@@ -1,5 +1,5 @@
 #pragma once
-
+#include "types/macros.h"
 namespace eroil::sock {
     // use RAII to control lifetime of socket initialization
     class SocketContext {
@@ -7,11 +7,8 @@ namespace eroil::sock {
             SocketContext();
             ~SocketContext();
 
-            SocketContext(const SocketContext&) = delete;
-            SocketContext& operator=(const SocketContext&) = delete;
-
-            SocketContext(SocketContext&& other) = delete;
-            SocketContext& operator=(SocketContext&& other) = delete;
+            EROIL_NO_COPY(SocketContext)
+            EROIL_NO_MOVE(SocketContext)
 
             bool ok() const noexcept;
 

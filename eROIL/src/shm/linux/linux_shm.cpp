@@ -8,7 +8,7 @@
 #include <cerrno>
 
 #include "shm/shm_header.h"
-#include "types/types.h"
+#include "types/const_types.h"
 
 namespace eroil::shm {
     // static int as_native(shm_handle h) noexcept {

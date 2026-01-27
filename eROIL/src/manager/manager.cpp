@@ -5,10 +5,11 @@
 #include <chrono>
 #include <algorithm>
 #include <eROIL/print.h>
-#include "types/types.h"
+#include "types/const_types.h"
 #include "timer/timer.h"
 #include "platform/platform.h"
 #include "log/evtlog_api.h"
+#include "types/label_io_types.h"
 
 namespace eroil {
     static int32_t unique_id() {
@@ -106,14 +107,11 @@ namespace eroil {
         io::SendBuf sbuf(data_buf, data_size);
 
         // attach header for send
-        uint16_t flags = 0;
-        io::set_flag(flags, io::LabelFlag::Data);
-
         io::LabelHeader hdr;
         hdr.magic = MAGIC_NUM;
         hdr.version = VERSION;
         hdr.source_id = m_id;
-        hdr.flags = flags;
+        hdr.flags = static_cast<uint16_t>(io::LabelFlag::Data);
         hdr.label = handle->data->label;
         hdr.data_size = static_cast<uint32_t>(data_size);
         hdr.recv_offset = recv_offset;

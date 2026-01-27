@@ -1,8 +1,9 @@
 #pragma once
 #include "shm.h"
 #include "events/named_event.h"
-#include "types/types.h"
+#include "types/const_types.h"
 #include "shm_header.h"
+#include "types/macros.h"
 
 namespace eroil::shm {
     enum class ShmSendErr {
@@ -21,13 +22,20 @@ namespace eroil::shm {
             NodeId m_dst_id;
             Shm m_shm;
             evt::NamedEvent m_event;
-        
+
         public:
             ShmSend(NodeId dst_id);
             ~ShmSend();
 
+            EROIL_NO_COPY(ShmSend)
+            EROIL_NO_MOVE(ShmSend)
+
             bool open();
             void close();
-            ShmSendErr write_data(ShmSendPayload send);
+            ShmSendErr send(const NodeId id, 
+                            const Label label, 
+                            const uint32_t seq, 
+                            const size_t buf_size, 
+                            const std::byte* buf);
     };
 }

@@ -2,6 +2,7 @@
 #include <thread>
 #include <chrono>
 #include <eROIL/print.h>
+#include "types/label_io_types.h"
 #include "log/evtlog_api.h"
 
 namespace eroil {
@@ -20,12 +21,14 @@ namespace eroil {
         m_id(id),
         m_router(router), 
         m_tcp_server{},
-        m_sender{id, router},
+        m_local_sender{},
+        m_remote_sender{},
         m_shm_recvr{router},
         m_sock_recvrs{} {}
 
     bool ConnectionManager::start() {
-        m_sender.start();
+        m_local_sender.start();
+        m_remote_sender.start();
 
         // open shm recv block
         if (!m_router.open_recv_shm(m_id)) {
@@ -122,11 +125,23 @@ namespace eroil {
     }
 
     void ConnectionManager::send_label(handle_uid uid, Label label, io::SendBuf send_buf) {
-        m_sender.enqueue(worker::SendQEntry{
-            uid,
-            label,
-            std::move(send_buf)
-        });
+        auto [err, job] = m_router.build_send_job(m_id, label, uid, std::move(send_buf));
+        if (err != SendTargetErr::None) {
+            return; 
+        }
+
+        if (job->local_recvrs.empty() && job->remote_recvrs.empty()) {
+            job->finalize_iosb();
+            return;
+        }
+
+        if (!job->local_recvrs.empty()) {
+            m_local_sender.enqueue(job);
+        }
+
+        if (!job->remote_recvrs.empty()) {
+            m_remote_sender.enqueue(job);
+        }
     }
 
     void ConnectionManager::start_remote_recv_worker(NodeId peer_id) {
@@ -318,14 +333,12 @@ namespace eroil {
 
     bool ConnectionManager::send_id(sock::TCPClient* sock) {
         // send them a notice of who we are
-        uint16_t flags = 0;
-        io::set_flag(flags, io::LabelFlag::Connect);
         io::LabelHeader hdr{};
         hdr.magic = MAGIC_NUM;
-        hdr.version = VERSION,
-        hdr.source_id = m_id,
-        hdr.flags = flags,
-        hdr.label = 0,
+        hdr.version = VERSION;
+        hdr.source_id = m_id;
+        hdr.flags = static_cast<uint16_t>(io::LabelFlag::Connect);
+        hdr.label = 0;
         hdr.data_size = 0;
 
         auto err = sock->send_all(&hdr, sizeof(hdr));
@@ -334,13 +347,11 @@ namespace eroil {
 
     bool ConnectionManager::send_ping(sock::TCPClient* sock) {
         // send ping header
-        uint16_t flags = 0;
-        io::set_flag(flags, io::LabelFlag::Ping);
         io::LabelHeader hdr{};
         hdr.magic = MAGIC_NUM;
         hdr.version = VERSION,
         hdr.source_id = m_id,
-        hdr.flags = flags,
+        hdr.flags = static_cast<uint16_t>(io::LabelFlag::Ping),
         hdr.label = 0,
         hdr.data_size = 0;
 

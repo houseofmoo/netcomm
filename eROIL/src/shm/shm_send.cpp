@@ -27,9 +27,14 @@ namespace eroil::shm {
         m_event.close();
     }
 
-    ShmSendErr ShmSend::write_data(ShmSendPayload send) {
+    ShmSendErr ShmSend::send(const NodeId id, 
+                             const Label label, 
+                             const uint32_t seq, 
+                             const size_t buf_size, 
+                             const std::byte* buf) {
+
         // if not initialized, this message is lost (consumer is re-initing)
-        auto* hdr  = m_shm.map_to_type<ShmHeader>(ShmLayout::HDR_OFFSET);
+        auto* hdr = m_shm.map_to_type<ShmHeader>(ShmLayout::HDR_OFFSET);
         if (hdr->state.load(std::memory_order_acquire) != SHM_READY) {
             ERR_PRINT(__func__, " shm block not initialized for nodeid=", m_dst_id);
             return ShmSendErr::BlockNotInitialized;
@@ -38,10 +43,9 @@ namespace eroil::shm {
         auto* meta = m_shm.map_to_type<ShmMetaData>(ShmLayout::META_DATA_OFFSET);
         uint64_t gen = meta->generation.load(std::memory_order_acquire);
 
-        // attempt to allocate space in shared memory
-        const size_t size = send.buf_size + sizeof(RecordHeader);
-        const size_t reserved = align_up(size, 8);
-
+        // how much space will we need for this data send
+        const size_t reserved = align_up(buf_size + sizeof(RecordHeader), 8);
+        
         // this is a hard error condition that should never occur
         if (reserved > ShmLayout::DATA_BLOCK_SIZE) {
             ERR_PRINT(__func__, " tried to reserve more than allowed, reserved=", reserved, 
@@ -56,21 +60,23 @@ namespace eroil::shm {
         for (int tries = 0; tries < 100; ++tries) {
             const size_t tail = meta->tail_bytes.load(std::memory_order_acquire);
             if (head < tail) {
-                // reload head and try agian
+                // assumption: consumer moved tail after we loaded head
+                // if the head/tail are actually corrupted, consumer should fix it
                 head = meta->head_bytes.load(std::memory_order_acquire);
                 continue;
             }
-            const size_t used = head - tail;
             
             // consumer has not freed enough space for this message
+            const size_t used = head - tail;
             if (used + reserved > ShmLayout::DATA_BLOCK_SIZE) {
                 ERR_PRINT(__func__, " not enough space available size=", reserved,
                          " to nodeid=", m_dst_id, " CONSUMER IS TOO SLOW!");
                 return ShmSendErr::NotEnoughSpace;
             }
 
+            // logic error: some writer wrote a data record instead of wrap record and broke things
             const size_t head_offset = head % ShmLayout::DATA_BLOCK_SIZE;
-            if (head_offset > ShmLayout::DATA_USABLE_LIMIT) { // should never occur
+            if (head_offset > ShmLayout::DATA_USABLE_LIMIT) {
                 ERR_PRINT(__func__, " head pushed out of usable zone, allocator corrupted");
                 return ShmSendErr::AllocatorCorrupted;
             }
@@ -80,12 +86,11 @@ namespace eroil::shm {
                 const size_t space_til_wrap = ShmLayout::DATA_BLOCK_SIZE - head_offset;
                 const size_t new_head = head + space_til_wrap;
 
-                // compare exchange success means we allocatedor 
-                // failure writes the actual head value back into head
+                // compare exchange success means we allocated for wrap record
+                // failure means someone else handled it
                 if (meta->head_bytes.compare_exchange_weak(head, new_head,
                                                            std::memory_order_acq_rel,
                                                            std::memory_order_relaxed)) {
-                    // we've allocated pad bytes, write the wrap record header
                     auto* rec_hdr = m_shm.map_to_type<RecordHeader>(get_header_offset(head));
                     rec_hdr->state.store(WRITING, std::memory_order_relaxed);
                     rec_hdr->magic = MAGIC_NUM;
@@ -102,22 +107,22 @@ namespace eroil::shm {
                 continue;
             }
 
+            // compare exchange success means we allocated for data record
+            // failure means someone else allocated before us and we need to retry
             const size_t new_head = head + reserved;
             if (meta->head_bytes.compare_exchange_weak(head, new_head,
                                                        std::memory_order_acq_rel,
                                                        std::memory_order_relaxed)) {
-                // successfully allocated space for our record
                 reserved_success = true;
                 break;
             }
-            // someone else allocated before us, we need to try again
         }
 
         // was never able to allocate space
         if (!reserved_success) {
             ERR_PRINT(
                 __func__, 
-                " could not allocate space for label=", send.label, " to nodeid=", m_dst_id
+                " could not allocate space for label=", label, " to nodeid=", m_dst_id
             );
             return ShmSendErr::CouldNotAllocate;
         }
@@ -133,15 +138,15 @@ namespace eroil::shm {
         rec_hdr->state.store(WRITING, std::memory_order_relaxed);
         rec_hdr->magic = MAGIC_NUM;
         rec_hdr->total_size = reserved;
-        rec_hdr->payload_size = send.buf_size;
+        rec_hdr->payload_size = buf_size;
         rec_hdr->flags = 0;
-        rec_hdr->user_seq = send.user_seq;
+        rec_hdr->user_seq = seq;
         rec_hdr->epoch = gen;
-        rec_hdr->label = send.label;
-        rec_hdr->source_id = send.source_id;
+        rec_hdr->label = label;
+        rec_hdr->source_id = id;
 
         // copy data immediately after record header
-        m_shm.write(send.buf.get(), send.buf_size, get_data_offset(head));
+        m_shm.write(buf, buf_size, get_data_offset(head));
 
         // publish this record is ready
         rec_hdr->state.store(COMMITTED, std::memory_order_release);
@@ -151,10 +156,6 @@ namespace eroil::shm {
 
         // notify
         m_event.post();
-
-        // LOG("END: tail=", meta->tail_bytes.load(std::memory_order_acquire));
-        // LOG("END: head=", meta->head_bytes.load(std::memory_order_acquire));
-        // LOG("END: allocated=", reserved);
 
         return ShmSendErr::None;
     }

@@ -1,26 +1,32 @@
 #pragma once
 #include <mutex>
-#include "thread_worker.h"
 #include "router/router.h"
 #include "shm/shm_recv.h"
-#include "types/types.h"
+#include "types/const_types.h"
 #include "timer/timer.h"
+#include "types/macros.h"
 
 namespace eroil::worker {
-    class ShmRecvWorker final : public ThreadWorker {
+    class ShmRecvWorker {
         private:
             Router& m_router;
             time::Timer m_timeout;
 
+            std::atomic<bool> m_stop{false};
+            std::thread m_thread;
+
         public:
             ShmRecvWorker(Router& router);
+            ~ShmRecvWorker() { stop(); }
 
-            // do not copy
-            ShmRecvWorker(const ShmRecvWorker&) = delete;
-            ShmRecvWorker& operator=(const ShmRecvWorker&) = delete;
+            EROIL_NO_COPY(ShmRecvWorker)
+            EROIL_NO_MOVE(ShmRecvWorker)
 
-        protected:
-            void run() override;
-            void on_stop_requested() override;
+            void start();
+            void stop();
+
+        private:
+            bool stop_requested() const { return m_stop.load(std::memory_order_acquire); }
+            void run();
     };
 }

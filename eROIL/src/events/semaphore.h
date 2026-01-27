@@ -1,5 +1,6 @@
 #pragma once
-#include "types/types.h"
+#include "types/const_types.h"
+#include "types/macros.h"
 
 namespace eroil::evt {
     enum class SemOpErr {
@@ -21,13 +22,8 @@ namespace eroil::evt {
             explicit Semaphore(uint32_t max_count);
             ~Semaphore();
 
-            // do not copy
-            Semaphore(const Semaphore&) = delete;
-            Semaphore& operator=(const Semaphore&) = delete;
-
-            // allow move
-            Semaphore(Semaphore&& other) noexcept;
-            Semaphore& operator=(Semaphore&& other) noexcept;
+            EROIL_NO_COPY(Semaphore)
+            EROIL_DECL_MOVE(Semaphore)
 
             SemOpErr post();
             SemOpErr try_wait();

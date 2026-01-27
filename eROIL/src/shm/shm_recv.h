@@ -1,8 +1,9 @@
 #pragma once
 #include "shm.h"
 #include "events/named_event.h"
-#include "types/types.h"
+#include "types/const_types.h"
 #include "shm_header.h"
+#include "types/macros.h"
 
 namespace eroil::shm {
     enum class ShmRecvErr {
@@ -26,6 +27,9 @@ namespace eroil::shm {
         public:
             ShmRecv(NodeId id);
             ~ShmRecv();
+
+            EROIL_NO_COPY(ShmRecv)
+            EROIL_NO_MOVE(ShmRecv)
 
             bool create_or_open();
             void close();

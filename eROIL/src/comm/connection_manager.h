@@ -7,7 +7,9 @@
 #include "workers/send_worker.h"
 #include "workers/socket_recv_worker.h"
 #include "workers/shm_recv_worker.h"
-#include "types/types.h"
+#include "types/const_types.h"
+#include "types/send_io_types.h"
+#include "types/macros.h"
 
 namespace eroil {
     class ConnectionManager {
@@ -16,13 +18,17 @@ namespace eroil {
             Router& m_router;
             sock::TCPServer m_tcp_server;
 
-            worker::SendWorker m_sender;
+            worker::SendWorker<io::ShmSendPlan> m_local_sender;
+            worker::SendWorker<io::TcpSendPlan> m_remote_sender;
             worker::ShmRecvWorker m_shm_recvr;
             std::unordered_map<NodeId, std::unique_ptr<worker::SocketRecvWorker>> m_sock_recvrs;
 
         public:
             ConnectionManager(NodeId id, Router& router);
             ~ConnectionManager() = default;
+
+            EROIL_NO_COPY(ConnectionManager)
+            EROIL_NO_MOVE(ConnectionManager)
 
             bool start();
             void send_label(handle_uid uid, Label label, io::SendBuf send_buf);

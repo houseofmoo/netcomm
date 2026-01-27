@@ -2,7 +2,7 @@
 
 #include "socket/udp_multicast.h"
 
-#include <sys/types.h>
+#include <sys/const_types.h>
 #include <sys/socket.h>
 #include <netinet/in.h>   // sockaddr_in, IPPROTO_IP
 #include <arpa/inet.h>    // inet_pton

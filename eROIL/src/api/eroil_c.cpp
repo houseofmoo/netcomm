@@ -1,11 +1,11 @@
 #include <eROIL/eroil_c.h>
 #include <eROIL/print.h>
 #include "types/handles.h"
-#include "types/types.h"
-#include "eroil.h"
+#include "types/const_types.h"
+#include "root.h"
 
 // implementation for eroil_c.h
-// calls into eroil.cpp
+// calls into root.cpp
 
 int NAE_Init(int /*iModuleId*/, int /*iProgramIDOffset*/, int /*iManager_CPU_ID*/, int /*iMaxNumCpus*/, int iNodeId) {
     bool success = eroil::init_manager(static_cast<int32_t>(iNodeId));

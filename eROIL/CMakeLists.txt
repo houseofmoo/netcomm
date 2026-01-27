@@ -35,14 +35,15 @@ target_compile_definitions(eROIL
 
 # platform independent sources
 target_sources(eROIL 
-    PRIVATE 
-        ${CMAKE_CURRENT_SOURCE_DIR}/src/eroil.cpp
+    PRIVATE
+        ${CMAKE_CURRENT_SOURCE_DIR}/src/api/root.cpp
+        ${CMAKE_CURRENT_SOURCE_DIR}/src/api/eroil_c.cpp
+        ${CMAKE_CURRENT_SOURCE_DIR}/src/api/eroil_cpp.cpp
         ${CMAKE_CURRENT_SOURCE_DIR}/src/address/address.cpp
         ${CMAKE_CURRENT_SOURCE_DIR}/src/config/config.cpp
         ${CMAKE_CURRENT_SOURCE_DIR}/src/comm/connection_manager.cpp
         ${CMAKE_CURRENT_SOURCE_DIR}/src/log/evtlog.cpp
         ${CMAKE_CURRENT_SOURCE_DIR}/src/manager/manager.cpp
-        ${CMAKE_CURRENT_SOURCE_DIR}/src/router/dispatch.cpp
         ${CMAKE_CURRENT_SOURCE_DIR}/src/router/route_table.cpp
         ${CMAKE_CURRENT_SOURCE_DIR}/src/router/router.cpp
         ${CMAKE_CURRENT_SOURCE_DIR}/src/router/transport_registry.cpp
@@ -50,11 +51,9 @@ target_sources(eROIL
         ${CMAKE_CURRENT_SOURCE_DIR}/src/shm/shm_send.cpp
         ${CMAKE_CURRENT_SOURCE_DIR}/src/shm/shm.cpp
         ${CMAKE_CURRENT_SOURCE_DIR}/src/timer/time_log.cpp
-        ${CMAKE_CURRENT_SOURCE_DIR}/src/workers/send_worker.cpp
         ${CMAKE_CURRENT_SOURCE_DIR}/src/workers/shm_recv_worker.cpp
         ${CMAKE_CURRENT_SOURCE_DIR}/src/workers/socket_recv_worker.cpp
-        ${CMAKE_CURRENT_SOURCE_DIR}/src/wrappers/eroil_c.cpp
-        ${CMAKE_CURRENT_SOURCE_DIR}/src/wrappers/eroil_cpp.cpp
+
 )
 
 # platform dependent sources

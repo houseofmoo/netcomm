@@ -1,6 +1,7 @@
 #include "route_table.h"
 #include <algorithm>
 #include <eROIL/print.h>
+#include "types/label_io_types.h"
 
 namespace eroil {
     SendRoute* RouteTable::require_send_route(Label label, const char* fn) {
@@ -77,7 +78,6 @@ namespace eroil {
 
     std::array<io::LabelInfo, MAX_LABELS> RouteTable::get_send_labels_sorted() const {
         std::array<io::LabelInfo, MAX_LABELS> labels = get_send_labels();
-
         std::sort(
             labels.begin(), 
             labels.end(),

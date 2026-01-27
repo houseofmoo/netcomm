@@ -1,11 +1,11 @@
 #include <eROIL/eroil_cpp.h>
 #include <eROIL/print.h>
 #include "types/handles.h"
-#include "types/types.h"
-#include "eroil.h"
+#include "types/const_types.h"
+#include "root.h"
 
 // implementation for eroil_cpp.h
-// calls into eroil.cpp
+// calls into root.cpp
 
 bool init_manager(std::int32_t id) {
     return eroil::init_manager(static_cast<eroil::NodeId>(id));

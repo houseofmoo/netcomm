@@ -2,8 +2,9 @@
 #include <string>
 #include <mutex>
 #include <memory>
-#include "types/types.h"
+#include "types/const_types.h"
 #include "socket_result.h"
+#include "types/macros.h"
 
 namespace eroil::sock {
     class TCPSocket {
@@ -15,13 +16,8 @@ namespace eroil::sock {
             TCPSocket();
             ~TCPSocket();
 
-            // do not copy
-            TCPSocket(const TCPSocket&) = delete;
-            TCPSocket& operator=(const TCPSocket&) = delete;
-
-            // allow move
-            TCPSocket(TCPSocket&& other) noexcept;
-            TCPSocket& operator=(TCPSocket&& other) noexcept;
+            EROIL_NO_COPY(TCPSocket)
+            EROIL_DECL_MOVE(TCPSocket)
 
             SockResult open();
             void shutdown() noexcept;
@@ -61,13 +57,8 @@ namespace eroil::sock {
             TCPClient();
             ~TCPClient() = default;
 
-            // do not copy
-            TCPClient(const TCPClient&) = delete;
-            TCPClient& operator=(const TCPClient&) = delete;
-
-            // do not allow move (due to mutex)
-            TCPClient(TCPClient&&) noexcept = delete;
-            TCPClient& operator=(TCPClient&&) noexcept = delete;
+            EROIL_NO_COPY(TCPClient)
+            EROIL_NO_MOVE(TCPClient)
 
             void set_destination_id(NodeId dest_id) { m_dest_id = dest_id; };
             NodeId get_destination_id() { return m_dest_id; }
@@ -93,13 +84,8 @@ namespace eroil::sock {
             TCPServer() = default;
             ~TCPServer() = default;
 
-            // do not copy
-            TCPServer(const TCPServer&) = delete;
-            TCPServer& operator=(const TCPServer&) = delete;
-
-            // allow move
-            TCPServer(TCPServer&&) noexcept = default;
-            TCPServer& operator=(TCPServer&&) noexcept = default;
+            EROIL_NO_COPY(TCPServer)
+            EROIL_DEFAULT_MOVE(TCPServer)
 
             SockResult bind(uint16_t port, const char* ip = "0.0.0.0");
             SockResult listen(int backlog = 0);

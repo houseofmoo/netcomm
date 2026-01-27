@@ -2,7 +2,7 @@
 #include <atomic>
 #include <memory>
 #include <cstddef>
-#include "types/types.h"
+#include "types/const_types.h"
 
 namespace eroil::shm {
     enum ShmState : uint32_t {
@@ -64,14 +64,6 @@ namespace eroil::shm {
     };
 
     struct ShmRecvPayload {
-        NodeId source_id = INVALID_NODE;
-        Label label = INVALID_LABEL;
-        uint32_t user_seq = 0;
-        size_t buf_size = 0;
-        std::unique_ptr<std::byte[]> buf = nullptr;
-    };
-
-    struct ShmSendPayload{
         NodeId source_id = INVALID_NODE;
         Label label = INVALID_LABEL;
         uint32_t user_seq = 0;

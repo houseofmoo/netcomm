@@ -4,7 +4,7 @@
 #include <string>
 #include <cstdint>
 #include <mutex>
-#include "types/types.h"
+#include "types/const_types.h"
 
 namespace eroil::time {
 

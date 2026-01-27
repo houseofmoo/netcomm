@@ -2,15 +2,30 @@
 #include <vector>
 #include <unordered_map>
 
-#include "types/types.h"
+#include "types/const_types.h"
 #include "config/config.h"
 #include "address/address.h"
 #include "router/router.h"
 #include "socket/udp_multicast.h"
 #include "socket/socket_context.h"
 #include "comm/connection_manager.h"
+#include "types/macros.h"
 
 namespace eroil {
+
+/*
+
+TODO:
+1) allow sending to self
+
+2) shm_send and shm_recv probably need some clean up and robustness upgrades.
+
+3) recv_worker (shm) specifically needs serious clean up
+
+4) double check IOSB and buffer index writes
+
+*/
+
     class Manager {
         private:
             NodeId m_id;
@@ -24,6 +39,9 @@ namespace eroil {
         public:
             Manager(cfg::ManagerConfig cfg);
             ~Manager() = default;
+
+            EROIL_NO_COPY(Manager)
+            EROIL_NO_MOVE(Manager)
 
             bool init();
             hndl::SendHandle* open_send(hndl::OpenSendData data);

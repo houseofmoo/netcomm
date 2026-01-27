@@ -7,8 +7,10 @@
 #include <atomic>
 
 #include "events/named_event.h"
-#include "types/types.h"
+#include "types/const_types.h"
 #include "types/handles.h"
+#include "types/label_io_types.h"
+#include "types/macros.h"
 
 namespace eroil {
     struct SendRoute {
@@ -27,8 +29,6 @@ namespace eroil {
 
     class RouteTable {
         private:
-            // all labels we send and recv and their data routes stored here
-            // SendRoute and RecvRoute store indexes into TransportRegistry
             std::unordered_map<Label, SendRoute> m_send_routes;
             std::unordered_map<Label, RecvRoute> m_recv_routes;
 
@@ -43,6 +43,12 @@ namespace eroil {
             bool require_route_size(size_t expected, size_t actual, const char* fn);
             
         public:
+            RouteTable() = default;
+            ~RouteTable() = default;
+
+            EROIL_NO_COPY(RouteTable)
+            EROIL_NO_MOVE(RouteTable)
+
             io::LabelsSnapshot get_send_labels_snapshot() const;
             io::LabelsSnapshot get_recv_labels_snapshot() const;
             std::array<io::LabelInfo, MAX_LABELS> get_send_labels() const;
@@ -63,7 +69,6 @@ namespace eroil {
             const SendRoute* get_send_route(Label label) const noexcept;
             SendRoute* get_send_route(Label label) noexcept;
 
-            // send route query
             bool has_send_route(Label label) const noexcept;
             bool is_send_publisher(Label label, handle_uid uid) const noexcept;
             bool is_local_send_subscriber(Label label, NodeId dst_id) const noexcept;
@@ -76,7 +81,6 @@ namespace eroil {
             const RecvRoute* get_recv_route(Label label) const noexcept;
             RecvRoute* get_recv_route(Label label) noexcept;
 
-            // recv route query
             bool has_recv_route(Label label) const noexcept;
             bool is_recv_subscriber(Label label, handle_uid id) const noexcept;
 

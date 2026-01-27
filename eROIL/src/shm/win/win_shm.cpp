@@ -2,7 +2,7 @@
 
 #include "shm/shm.h"
 #include "windows_hdr.h"
-#include "types/types.h"
+#include "types/const_types.h"
 #include "shm/shm_header.h"
 
 namespace eroil::shm {
