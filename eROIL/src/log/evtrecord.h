@@ -3,7 +3,7 @@
 #include <atomic>
 
 namespace eroil::evtlog {
-        enum class EventKind : std::uint16_t {
+    enum class EventKind : std::uint16_t {
         None = 0,
 
         // generic

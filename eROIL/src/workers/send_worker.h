@@ -11,7 +11,6 @@
 #include "types/macros.h"
 #include "log/evtlog_api.h"
 
-
 namespace eroil::worker {
     template <class SendPlan>
     class SendWorker {
