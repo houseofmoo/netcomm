@@ -386,7 +386,6 @@ namespace eroil {
                     
                 }
             }
-            //if subs->signal_mode == ALWAYS ??
             int count = 0;
             std::memcpy(&count, buf, sizeof(count));
             LOG("signaling for val: ", count);

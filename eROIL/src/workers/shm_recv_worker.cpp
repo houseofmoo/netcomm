@@ -7,10 +7,10 @@
 namespace eroil::worker {
     ShmRecvWorker::ShmRecvWorker(Router& router, NodeId id) : 
         m_router{router}, m_id{id}, m_shm{nullptr} {
-        m_shm = m_router.get_recv_shm();
     }
 
     void ShmRecvWorker::start() {
+        m_shm = m_router.get_recv_shm();
         if (m_shm == nullptr) {
             ERR_PRINT("shm recv worker got nullptr instead of shm recv block, worker exits");
             return;

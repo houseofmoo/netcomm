@@ -76,7 +76,6 @@ namespace eroil::io {
 
         void finalize_iosb() noexcept {
             // write IOSB using status
-            LOG("writing iosb");
             if (publisher == nullptr) {
                 return;
             }
