@@ -108,6 +108,31 @@ namespace eroil::addr {
         return it->second;
     }
 
+    PeerSet get_peer_set(NodeId my_id) {
+        PeerSet sets{};
+        for (const auto& [id, info] : get_address_book()) {
+            switch (info.kind) {
+                case addr::RouteKind::Self: // fallthrough
+                case addr::RouteKind::Shm: {
+                     sets.local.push_back(info); 
+                     break; 
+                }
+                case addr::RouteKind::Socket: {
+                    sets.remote.push_back(info);
+                    if (id < my_id) {
+                        sets.remote_connect_to.push_back(info);
+                    }
+                    break;
+                }
+                default: {
+                    ERR_PRINT("found unknown routekind in address book");
+                    break;
+                }
+            }
+        }
+        return sets;
+    }
+
     void all_shm_address_book() {
         PRINT("TEST MODE: making shm only address book");
         

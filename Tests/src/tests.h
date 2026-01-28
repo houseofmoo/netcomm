@@ -196,11 +196,34 @@ inline void init_test(int id) {
     bool success = init_manager(id);
     LOG("manager init success: ", success);
 
-    if (id == 1|| id == 2) {
+    if (id == 0) {
+        auto recv = std::make_shared<RecvLabel>(make_recv_label(0, 1024));
+        auto recv_handle = open_recv_label(recv->id, recv->buf.get(), recv->size, 1, nullptr, recv->sem, nullptr, 0, 2);
+
+        // auto send = std::make_shared<SendLabel>(make_send_label(0, 1024, 1000));
+        // auto send_handle = open_send_label(send->id, send->buf.get(), send->size, 1, nullptr, nullptr, 0);
+
+        std::this_thread::sleep_for(std::chrono::milliseconds(5000));
+        int count = 0;
+        while (true) {
+            // send_label(send_handle, nullptr, 0, 0, 0);
+            // LOG("sent: ", count);
+            // count += 1;
+            // std::memcpy(send->buf.get(), &count, sizeof(count));
+
+            recv->wait();
+            std::memcpy(&count, recv->buf.get(), sizeof(count));
+            LOG("recvd: ", count);
+        }
+        close_recv_label(recv_handle);
+       //close_send_label(send_handle);
+        LOG("exit");
+        
+    } else {
         auto send = std::make_shared<SendLabel>(make_send_label(0, 1024, 1000));
         auto handle = open_send_label(send->id, send->buf.get(), send->size, 1, nullptr, nullptr, 0);
         int count = 1;
-        if (id == 2) count = 1001;
+        //if (id == 2) count = 1001;
         while (true) {
 
             send_label(handle, nullptr, 0, 0, 0);
@@ -209,29 +232,7 @@ inline void init_test(int id) {
             std::memcpy(send->buf.get(), &count, sizeof(count));
             std::this_thread::sleep_for(std::chrono::milliseconds(1000));
         }
-        close_send(handle);
-        LOG("exit");
-    } else {
-        auto recv = std::make_shared<RecvLabel>(make_recv_label(0, 1024));
-        auto handle = open_recv_label(
-            recv->id, 
-            recv->buf.get(), 
-            recv->size,
-            1, 
-            nullptr,
-            recv->sem,
-            nullptr,
-            0,
-            2
-        );
-
-        int count = 0;
-        while (true) {
-            recv->wait();
-            std::memcpy(&count, recv->buf.get(), sizeof(count));
-            LOG("recvd: ", count);
-        }
-        close_recv_label(handle);
+        close_send_label(handle);
         LOG("exit");
     }
 }

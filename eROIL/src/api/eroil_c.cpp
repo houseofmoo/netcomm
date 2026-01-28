@@ -65,7 +65,7 @@ void NAE_Send_Label(void* iHandle,
 }
 
 void NAE_Close_Send_Label(void* iHandle) { 
-    eroil::close_send(static_cast<eroil::hndl::SendHandle*>(iHandle));
+    eroil::close_send_label(static_cast<eroil::hndl::SendHandle*>(iHandle));
 }
 
 void* NAE_Open_Receive_Label(int iLabel,

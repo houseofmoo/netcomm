@@ -94,19 +94,18 @@ namespace eroil::worker {
         evtlog::info(elog_kind::Exit, elog_cat::ShmRecvWorker);
     }
 
-    std::pair<bool, shm::ShmRecvPayload> ShmRecvWorker::get_next_record() {
+    std::pair<bool, shm::ShmRecvResult> ShmRecvWorker::get_next_record() {
         time::Timer timer;
         while (true) {
-            shm::ShmRecvPayload recv;
-            auto rerr = m_shm->read_data(recv);
+            auto result = m_shm->recv();
 
-            switch (rerr) {
+            switch (result.err) {
                 case shm::ShmRecvErr::None: {
-                    return { true, std::move(recv) };
+                    return { true, std::move(result) };
                 }
                 
                 case shm::ShmRecvErr::NoRecords: { 
-                    return { false, std::move(recv) };
+                    return { false, std::move(result) };
                 }
 
                 // next record isnt published, continue trying until we get it or timer expires
@@ -116,7 +115,7 @@ namespace eroil::worker {
                         ERR_PRINT("shm recv worker flushing backlog due to publisher timeout");
                         m_shm->flush_backlog();
                         evtlog::warn(elog_kind::PublishTimeout, elog_cat::ShmRecvWorker);
-                        return { false, std::move(recv) };
+                        return { false, std::move(result) };
                     }
                     std::this_thread::yield();
                     continue;
@@ -126,28 +125,28 @@ namespace eroil::worker {
                     ERR_PRINT("shm recv worker block not initialized, worker exits");
                     m_stop.store(true, std::memory_order_release);
                     evtlog::error(elog_kind::BlockNotInitialized, elog_cat::ShmRecvWorker);
-                    return { false, std::move(recv) };
+                    return { false, std::move(result) };
                 }
 
                 case shm::ShmRecvErr::TailCorruption: // fall through
                 case shm::ShmRecvErr::BlockCorrupted: {
-                    ERR_PRINT("shm recv worker re-initializing shared memory block due to corruption, err=", static_cast<int>(rerr));
+                    ERR_PRINT("shm recv worker re-initializing shared memory block due to corruption, err=", static_cast<int>(result.err));
                     m_shm->reinit();
                     evtlog::error(elog_kind::BlockCorruption, elog_cat::ShmRecvWorker);
-                    return { false, std::move(recv) };
+                    return { false, std::move(result) };
                 }
             
                 case shm::ShmRecvErr::UnknownError: { 
                     ERR_PRINT("shm recv worker re-initializing due to unknown error");
                     m_shm->reinit();
                     evtlog::error(elog_kind::UnknownError, elog_cat::ShmRecvWorker);
-                    return { false, std::move(recv) };
+                    return { false, std::move(result) };
                 }
 
                 default: {
                     ERR_PRINT("recv worker got unhandled error case");
                     evtlog::error(elog_kind::UnhandledError, elog_cat::ShmRecvWorker);
-                    return { false, std::move(recv) };
+                    return { false, std::move(result) };
                 }
             }
         }

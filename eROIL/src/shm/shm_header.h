@@ -13,7 +13,7 @@ namespace eroil::shm {
     struct ShmHeader {
         uint32_t magic = 0;              // number we recognize
         uint32_t version = 0;            // bump when layout changes
-        std::uint32_t _pad= 0;
+        uint32_t _pad= 0;
         std::atomic<uint32_t> state{0};  // readiness of shm block
         size_t total_size = 0;           // total size of this memory block
     };
@@ -22,11 +22,11 @@ namespace eroil::shm {
 
     struct ShmMetaData {
         NodeId node_id = INVALID_NODE;
-        std::uint32_t _pad= 0;
-        size_t  data_block_size;
+        uint32_t _pad= 0;
+        size_t data_block_size;
         alignas(64) std::atomic<uint64_t> generation{0};
-        alignas(64) std::atomic<size_t> head_bytes{0};
-        alignas(64) std::atomic<size_t> tail_bytes{0};
+        alignas(64) std::atomic<uint64_t> head_bytes{0};
+        alignas(64) std::atomic<uint64_t> tail_bytes{0};
         alignas(64) std::atomic<uint64_t> published_count{0}; // for debugging
     };
     static_assert(sizeof(ShmMetaData) % 64 == 0);
@@ -55,27 +55,42 @@ namespace eroil::shm {
     }
 
     struct ShmLayout {
-        static constexpr std::size_t HDR_OFFSET = 0;
-        static constexpr std::size_t META_DATA_OFFSET = align_up(sizeof(shm::ShmHeader), 64);
-        static constexpr std::size_t DATA_BLOCK_OFFSET = align_up(META_DATA_OFFSET + sizeof(ShmMetaData), 64);
-        static constexpr std::size_t DATA_BLOCK_SIZE = SHM_BLOCK_SIZE - DATA_BLOCK_OFFSET;
+        static constexpr size_t HDR_OFFSET = 0;
+        static constexpr size_t META_DATA_OFFSET = align_up(sizeof(shm::ShmHeader), 64);
+        static constexpr size_t DATA_BLOCK_OFFSET = align_up(META_DATA_OFFSET + sizeof(ShmMetaData), 64);
+        static constexpr size_t DATA_BLOCK_SIZE = SHM_BLOCK_SIZE - DATA_BLOCK_OFFSET;
         // largest allowed position where a payload write ends (leaves enough room for wrap record header in all cases)
-        static constexpr std::size_t DATA_USABLE_LIMIT = DATA_BLOCK_SIZE - sizeof(RecordHeader);
+        static constexpr size_t DATA_USABLE_LIMIT = DATA_BLOCK_SIZE - sizeof(RecordHeader);
     };
 
-    struct ShmRecvPayload {
+    enum class ShmRecvErr {
+        None,               // success
+        BlockNotInitialized,// hard error, we should only be running when the block is initialized
+        NoRecords,          // wait for event
+        NotYetPublished,    // try again later
+        
+        TailCorruption,     // re-init
+        BlockCorrupted,     // re-init
+        UnknownError        // re-init
+    };
+
+    struct ShmRecvResult {
+        ShmRecvErr err = ShmRecvErr::None;
         NodeId source_id = INVALID_NODE;
         Label label = INVALID_LABEL;
         uint32_t user_seq = 0;
         size_t buf_size = 0;
         std::unique_ptr<std::byte[]> buf = nullptr;
+
+        explicit ShmRecvResult() = default;
+        explicit ShmRecvResult(ShmRecvErr error) : err(error) {}
     };
 
-    static inline size_t get_header_offset(size_t pos_bytes) noexcept {
+    static inline size_t get_header_offset(uint64_t pos_bytes) noexcept {
         return ShmLayout::DATA_BLOCK_OFFSET + (pos_bytes % ShmLayout::DATA_BLOCK_SIZE);
     }
 
-    static inline size_t get_data_offset(size_t pos_bytes) noexcept {
+    static inline size_t get_data_offset(uint64_t pos_bytes) noexcept {
         return get_header_offset(pos_bytes) + sizeof(RecordHeader);
     }
 }

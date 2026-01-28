@@ -54,11 +54,11 @@ namespace eroil::shm {
         }
 
         bool reserved_success = false;
-        size_t head = meta->head_bytes.load(std::memory_order_acquire);
+        uint64_t head = meta->head_bytes.load(std::memory_order_acquire);
         //LOG("START: head=", head);
         
         for (int tries = 0; tries < 100; ++tries) {
-            const size_t tail = meta->tail_bytes.load(std::memory_order_acquire);
+            const uint64_t tail = meta->tail_bytes.load(std::memory_order_acquire);
             if (head < tail) {
                 // assumption: consumer moved tail after we loaded head
                 // if the head/tail are actually corrupted, consumer should fix it
@@ -67,7 +67,7 @@ namespace eroil::shm {
             }
             
             // consumer has not freed enough space for this message
-            const size_t used = head - tail;
+            const uint64_t used = head - tail;
             if (used + reserved > ShmLayout::DATA_BLOCK_SIZE) {
                 ERR_PRINT(__func__, " not enough space available size=", reserved,
                          " to nodeid=", m_dst_id, " CONSUMER IS TOO SLOW!");
@@ -84,7 +84,7 @@ namespace eroil::shm {
             // current position + allocation would prevent a wrap header from being written, wrap now
             if (head_offset + reserved > ShmLayout::DATA_USABLE_LIMIT) {
                 const size_t space_til_wrap = ShmLayout::DATA_BLOCK_SIZE - head_offset;
-                const size_t new_head = head + space_til_wrap;
+                const uint64_t new_head = head + static_cast<uint64_t>(space_til_wrap);
 
                 // compare exchange success means we allocated for wrap record
                 // failure means someone else handled it
@@ -109,7 +109,7 @@ namespace eroil::shm {
 
             // compare exchange success means we allocated for data record
             // failure means someone else allocated before us and we need to retry
-            const size_t new_head = head + reserved;
+            const uint64_t new_head = head + static_cast<uint64_t>(reserved);
             if (meta->head_bytes.compare_exchange_weak(head, new_head,
                                                        std::memory_order_acq_rel,
                                                        std::memory_order_relaxed)) {

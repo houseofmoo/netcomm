@@ -1,6 +1,7 @@
 #pragma once
 #include <unordered_map>
 #include <memory>
+#include <vector>
 #include "address/address.h"
 #include "router/router.h"
 #include "socket/tcp_socket.h"
@@ -12,6 +13,8 @@
 #include "types/macros.h"
 
 namespace eroil {
+
+
     class ConnectionManager {
         private:
             NodeId m_id;
@@ -36,11 +39,14 @@ namespace eroil {
             void stop_remote_recv_worker(NodeId from_id);
 
         private:
+            void initial_remote_connection(std::vector<addr::NodeAddress> remote_peers);
+            void spawn_local_shm_opener(std::vector<addr::NodeAddress> local_peers);
             void run_tcp_server();
             void remote_connection_monitor();
             bool connect_to_remote_peer(addr::NodeAddress peer_info);
             void ping_remote_peer(addr::NodeAddress peer_info, std::shared_ptr<sock::TCPClient> client);
             bool send_id(sock::TCPClient* sock);
             bool send_ping(sock::TCPClient* sock);
+
     };
 }

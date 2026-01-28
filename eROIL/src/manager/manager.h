@@ -16,9 +16,8 @@ namespace eroil {
 /*
 
 TODO:
-1) allow sending to self
 
-2) double check IOSB and buffer index writes
+1) double check IOSB and buffer index writes
 
 */
 

@@ -96,21 +96,21 @@ namespace eroil::shm {
         return m_event.wait();
     }
 
-    ShmRecvErr ShmRecv::read_data(ShmRecvPayload& out) {
+    ShmRecvResult ShmRecv::recv() {
         auto* hdr  = m_shm.map_to_type<ShmHeader>(ShmLayout::HDR_OFFSET);
         if (hdr->state.load(std::memory_order_acquire) != SHM_READY) {
-            return ShmRecvErr::BlockNotInitialized;
+            return ShmRecvResult{ShmRecvErr::BlockNotInitialized};
         }
 
         auto* meta = m_shm.map_to_type<ShmMetaData>(ShmLayout::META_DATA_OFFSET);
         uint64_t gen = meta->generation.load(std::memory_order_acquire);
-        size_t tail = meta->tail_bytes.load(std::memory_order_acquire);
-        size_t head = meta->head_bytes.load(std::memory_order_acquire);
+        uint64_t tail = meta->tail_bytes.load(std::memory_order_acquire);
+        uint64_t head = meta->head_bytes.load(std::memory_order_acquire);
 
-        if (head == tail) return ShmRecvErr::NoRecords;
+        if (head == tail) return ShmRecvResult{ShmRecvErr::NoRecords};
         if (head < tail) {
             ERR_PRINT(__func__, " tail advanced passed head, requires re-init");
-            return ShmRecvErr::TailCorruption;
+            return ShmRecvResult{ShmRecvErr::TailCorruption};
         }
 
         // find next COMMITTED record, moving passed WRAP records we find
@@ -120,18 +120,18 @@ namespace eroil::shm {
             const auto state = rec_hdr->state.load(std::memory_order_acquire);
             
             if (state == WRITING) {
-                return ShmRecvErr::NotYetPublished;
+                return ShmRecvResult{ShmRecvErr::NotYetPublished};
             }
 
             if (rec_hdr->magic != MAGIC_NUM) {
-                return ShmRecvErr::BlockCorrupted;
+                return ShmRecvResult{ShmRecvErr::BlockCorrupted};
             }
 
             // we cannot trust messages, flush the backlog and continue
             if (rec_hdr->epoch != gen) {
                 ERR_PRINT("flushing backlog due to invalid record generation");
                 flush_backlog();
-                return ShmRecvErr::NoRecords;
+                return ShmRecvResult{ShmRecvErr::NoRecords};
             }
 
             switch (state) {
@@ -143,39 +143,41 @@ namespace eroil::shm {
                 case WRAP: {
                     // validate best we can
                     const size_t total_size = rec_hdr->total_size;
-                    if (total_size < sizeof(RecordHeader)) return ShmRecvErr::BlockCorrupted;
-                    if ((total_size & 7u) != 0) return ShmRecvErr::BlockCorrupted;
-                    if (total_size > ShmLayout::DATA_BLOCK_SIZE) return ShmRecvErr::BlockCorrupted;
-                    if (rec_hdr->payload_size != 0) return ShmRecvErr::BlockCorrupted;
+                    if (total_size < sizeof(RecordHeader) ||
+                       ((total_size & 7u) != 0) ||
+                       (total_size > ShmLayout::DATA_BLOCK_SIZE) ||
+                       (rec_hdr->payload_size != 0)) return ShmRecvResult{ShmRecvErr::BlockCorrupted};
 
                     // move tail_bytes passed the wrap record for next iteration
                     // update head incase someone allocated while we did this
-                    meta->tail_bytes.store(tail + rec_hdr->total_size, std::memory_order_release);
-                    tail += rec_hdr->total_size;
+                    const uint64_t new_tail = tail + static_cast<uint64_t>(total_size);
+                    meta->tail_bytes.store(new_tail, std::memory_order_release);
+                    tail = new_tail;
                     head = meta->head_bytes.load(std::memory_order_acquire);
                     continue;
                 }
 
                 default: { // this should NEVER happen
                     ERR_PRINT(__func__, " got unknown record hdr state=", state);
-                    return ShmRecvErr::UnknownError;
+                    return ShmRecvResult{ShmRecvErr::UnknownError};
                 }
             }
         }
 
         // nothing to read
-        if (!found) return ShmRecvErr::NoRecords;
+        if (!found) return ShmRecvResult{ShmRecvErr::NoRecords};
         
         // read header and data
         auto* rec_hdr = m_shm.map_to_type<RecordHeader>(get_header_offset(tail));
 
         // validate best we can
         const size_t total_size = rec_hdr->total_size;
-        if (total_size < sizeof(RecordHeader)) return ShmRecvErr::BlockCorrupted;       // total size does not make sense
-        if ((total_size & 7u) != 0) return ShmRecvErr::BlockCorrupted;                  // total size is not aligned as expected
-        if (total_size > ShmLayout::DATA_BLOCK_SIZE) return ShmRecvErr::BlockCorrupted; // total size is larger than entire data block size
-        if (rec_hdr->payload_size == 0) return ShmRecvErr::BlockCorrupted;              // payload is empty on a non-wrap record
-        
+        if (total_size < sizeof(RecordHeader) ||
+           ((total_size & 7u) != 0) ||
+           (total_size > ShmLayout::DATA_BLOCK_SIZE) ||
+           (rec_hdr->payload_size == 0)) return ShmRecvResult{ShmRecvErr::BlockCorrupted};
+
+        ShmRecvResult out;
         out.source_id = rec_hdr->source_id;
         out.label = rec_hdr->label;
         out.user_seq = rec_hdr->user_seq;
@@ -184,12 +186,13 @@ namespace eroil::shm {
         m_shm.read(out.buf.get(), out.buf_size, get_data_offset(tail));
 
         // move tail_bytes passed the record we've just read
-        meta->tail_bytes.store(tail + rec_hdr->total_size, std::memory_order_release);
+        const uint64_t new_tail = tail + static_cast<uint64_t>(total_size);
+        meta->tail_bytes.store(new_tail, std::memory_order_release);
 
         // use publish count to keep an eye on the number of items published vs yet to consume (debugging only)
         meta->published_count.fetch_sub(1, std::memory_order_relaxed);
 
-        return ShmRecvErr::None;
+        return out;
     }
 
     void ShmRecv::flush_backlog() {
@@ -205,7 +208,7 @@ namespace eroil::shm {
         //
 
         auto* meta = m_shm.map_to_type<ShmMetaData>(ShmLayout::META_DATA_OFFSET);
-        size_t head = meta->tail_bytes.load(std::memory_order_acquire);
+        const uint64_t head = meta->head_bytes.load(std::memory_order_acquire);
         meta->tail_bytes.store(head, std::memory_order_release);
         LOG("flushed shm recv backlog");
     }

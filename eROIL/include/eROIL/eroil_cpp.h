@@ -34,7 +34,7 @@ void send_label(
     std::int32_t recv_offset
 );
 
-void close_send(void* handle);
+void close_send_label(void* handle);
 
 //
 // recv label

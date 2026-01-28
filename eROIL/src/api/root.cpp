@@ -133,7 +133,7 @@ namespace eroil {
         );
     }
 
-    void close_send(hndl::SendHandle* handle) {
+    void close_send_label(hndl::SendHandle* handle) {
         if (!is_ready()) return;
         if (handle == nullptr) return;
 

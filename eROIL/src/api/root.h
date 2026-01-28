@@ -33,7 +33,7 @@ namespace eroil {
         int32_t recv_offset
     );
 
-    void close_send(hndl::SendHandle* handle);
+    void close_send_label(hndl::SendHandle* handle);
     
     //
     // recv label

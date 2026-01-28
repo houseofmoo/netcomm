@@ -211,8 +211,6 @@ namespace eroil {
 
         while (true) {
             m_broadcast.recv_broadcast(&msg, sizeof(msg));
-            if (msg.id == m_id) continue;
-            
             EvtMark mark(elog_cat::Broadcast);
             // time how long this takes
             //time::Timer t("recv_broadcast()");
@@ -247,6 +245,7 @@ namespace eroil {
             // add them as a subscriber of this label
             const auto addr = addr::get_address(source_id);
             switch (addr.kind) {
+                case addr::RouteKind::Self: // fallthrough
                 case addr::RouteKind::Shm: {
                     PRINT("adding local send subscriber, nodeid=", source_id, " label=", label);
                     m_router.add_local_send_subscriber(label, size, source_id);
@@ -270,7 +269,7 @@ namespace eroil {
     void Manager::remove_subscriber(const NodeId source_id, const std::unordered_map<Label, uint32_t>& recv_labels) {
         auto send_labels = m_router.get_send_labels();
         for (const auto& [label, _] : send_labels) {
-            if (label <= INVALID_LABEL) continue; // should never occur
+            if (label <= INVALID_LABEL) continue;
 
             // if theyre not a recver of this label, continue
             if (!m_router.is_send_subscriber(label, source_id)) continue;
@@ -281,6 +280,7 @@ namespace eroil {
             // they no longer subscribe to this label, remove them
             const auto addr = addr::get_address(source_id);
             switch (addr.kind) {
+                case addr::RouteKind::Self: // fallthrough
                 case addr::RouteKind::Shm: {
                     PRINT("removing local send subscriber, nodeid=", source_id, " label=", label);
                     m_router.remove_local_send_subscriber(label, source_id);

@@ -64,8 +64,8 @@ void send_label(void* handle,
     );
 }
 
-void close_send(void* handle) {
-    eroil::close_send(static_cast<eroil::hndl::SendHandle*>(handle));
+void close_send_label(void* handle) {
+    eroil::close_send_label(static_cast<eroil::hndl::SendHandle*>(handle));
 }
 
 void* open_recv_label(std::int32_t label, 

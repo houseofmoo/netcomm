@@ -6,16 +6,7 @@
 #include "types/macros.h"
 
 namespace eroil::shm {
-    enum class ShmRecvErr {
-        None,               // success
-        BlockNotInitialized,// hard error, we should only be running when the block is initialized
-        NoRecords,          // wait for event
-        NotYetPublished,    // try again later
-        
-        TailCorruption,     // re-init
-        BlockCorrupted,     // re-init
-        UnknownError        // re-init
-    };
+
 
     class ShmRecv {
         private:
@@ -35,7 +26,7 @@ namespace eroil::shm {
             void init_as_new();
             void reinit();
             evt::NamedEventErr wait();
-            ShmRecvErr read_data(ShmRecvPayload& recv);
+            ShmRecvResult recv();
             void flush_backlog();
     };
 }

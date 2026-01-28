@@ -27,6 +27,7 @@ namespace eroil {
         m_sock_recvrs{} {}
 
     bool ConnectionManager::start() {
+        // start sender thread workers
         m_local_sender.start();
         m_remote_sender.start();
 
@@ -39,89 +40,79 @@ namespace eroil {
         m_shm_recvr.start();
 
         // tcp server listener thread
-        std::thread([this]() {
-            run_tcp_server();
-        }).detach();
+        std::thread([this]() { run_tcp_server(); }).detach();
 
         // split peers into local and remote
-        std::vector<addr::NodeAddress> remote_peers;
-        std::vector<addr::NodeAddress> local_peers;
-        for (const auto& [id, info] : addr::get_address_book()) {
-            switch (info.kind) {
-                case addr::RouteKind::Self: { continue; }
-                case addr::RouteKind::Shm: { local_peers.push_back(info); break; }
-                case addr::RouteKind::Socket: {
-                    if (id >= m_id) continue;
-                    remote_peers.push_back(info);
-                    break;
-                }
-                default: {
-                    ERR_PRINT("found unknown routekind in address book");
-                    break;
-                }
-            }
-        }
+        auto peers = addr::get_peer_set(m_id);
 
-        const int max_attempts = 5;
-        int attempts = 0;
-        const int expected_peers = remote_peers.size();
-        int connected_peers = 0;
+        // connect to peers with a id < ours
+        initial_remote_connection(peers.remote_connect_to);
+
+        // start monitor thread
+        std::thread([this]() { remote_connection_monitor(); }).detach();
+
+        // open local peers shared memory blocks
+        spawn_local_shm_opener(peers.local);
         
-        // try to find remote peers to connect to N times before moving on
-        while (attempts < max_attempts) {
+        return true;
+    }
+
+    void ConnectionManager::initial_remote_connection(std::vector<addr::NodeAddress> remote_peers) {
+        // attempt to connect to remote peers a few times
+        // if this fails and exit, monitor thread will continue trying
+        const int max_attempts = 5;
+        const int expected = remote_peers.size();
+        for (int attempts = 0; attempts < max_attempts; ++attempts) {
+            int connected = 0;
             for (const auto& info : remote_peers) {
-                auto socket = m_router.get_socket(info.id);
-                if (socket != nullptr) continue;
+                if (m_router.get_socket(info.id) != nullptr) {
+                    connected += 1;
+                    continue;
+                }
                 
                 if (connect_to_remote_peer(info)) {
-                    connected_peers += 1;
+                    connected += 1;
                 }
             }
 
             // if we found all peers we expected to connect to, we're done
-            if (connected_peers >= expected_peers) {
-                LOG("connected to ", connected_peers, " out of ", expected_peers, " expected remote peers");
+            if (connected >= expected) {
+                LOG("connected to ", connected, " out of ", expected, " expected remote peers");
                 break;
             }
 
-            // only sleep if we're going to try again
             if (attempts + 1 < max_attempts) {
                 std::this_thread::sleep_for(std::chrono::milliseconds(1 * 1000));
             }
         }
+    }
 
-        // start monitor thread
-        std::thread([this]() { 
-            remote_connection_monitor(); 
-        }).detach();
-
-        // open local peers shared memory blocks, try endlessly incase someone joins late
+    void ConnectionManager::spawn_local_shm_opener(std::vector<addr::NodeAddress> local_peers) {
+        // this continues trying every 5 seconds until it finds all expected local shared memory blocks
+        // incase someone joins the party late
         std::thread([this, local_peers]() {
-            int expected_local = local_peers.size();
-            int found_local = 0;
+            const int expected = local_peers.size();
+            int found = 0;
 
             while (true) {
                 for (const auto& info : local_peers) {
-                    const auto shm = m_router.get_send_shm(info.id);
-                    if (shm != nullptr) continue;
+                    if (m_router.get_send_shm(info.id) != nullptr) continue;
 
                     if (m_router.open_send_shm(info.id)) {
                         LOG("established shm send block to nodeid=", info.id);
-                        found_local += 1;
+                        found += 1;
                     } else {
                         LOG("shm send block to nodeid=", info.id, " does not yet exist, cannot open");
                     }
                 }
 
-                if (found_local >= expected_local) {
-                    LOG("opened shm send blocks for ", found_local, " out of ", expected_local , " expected local peers");
+                if (found >= expected) {
+                    LOG("opened shm send blocks for ", found, " out of ", expected , " expected local peers");
                     break;
                 }
                 std::this_thread::sleep_for(std::chrono::milliseconds(5 * 1000));
             }
         }).detach();
-        
-        return true;
     }
 
     void ConnectionManager::send_label(handle_uid uid, Label label, io::SendBuf send_buf) {
@@ -236,21 +227,15 @@ namespace eroil {
 
     void ConnectionManager::remote_connection_monitor() {
         LOG("remote peers to monitor thread starts");
-        std::vector<addr::NodeAddress> remote_peers;
-        for (const auto& [id, info] : addr::get_address_book()) {
-            if (info.kind == addr::RouteKind::Shm) continue;
-            if (info.kind == addr::RouteKind::Self) continue;
-            remote_peers.push_back(info);
-        }
-
-        if (remote_peers.empty()) {
+        auto peers = addr::get_peer_set(m_id);
+        if (peers.remote.empty()) {
             LOG("no remote peers to monitor, remote peer monitor thread exits");
             return;
         }
 
         while (true) {
             EvtMark mark(elog_cat::SocketMonitor);
-            for (const auto& info : remote_peers) {
+            for (const auto& info : peers.remote) {
                 auto socket = m_router.get_socket(info.id);
                 if (socket == nullptr) {
                     // if connection does not exist, connect
