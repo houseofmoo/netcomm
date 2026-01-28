@@ -21,7 +21,7 @@ namespace eroil::evtlog {
         #else
             static constexpr bool enabled = false;
         #endif
-        static constexpr Severity min_severity = Severity::Info;
+        static constexpr Severity min_severity = Severity::Warning;
     };
 
     class EventLog {
@@ -70,7 +70,8 @@ namespace eroil::evtlog {
         //
         // these exist to allow the compiler to remove logging calls at compile time
         // that do not meet the min severity level or if logging is disabled entirely
-        // set compiler enabled via compiler flags, change min servity via EventLogBuildConfig
+        // set event logging enabled via compiler flags (DEROIL_ELOG_ENABLED=1)
+        // change min servity via EventLogBuildConfig
         //
 
         // black magic to make our constexpr evaluation work on linux
