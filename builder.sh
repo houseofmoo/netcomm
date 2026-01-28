@@ -3,7 +3,7 @@ set -euo pipefail
 
 # ============================================================
 # Usage:
-#   ./build.sh [--debug | --release] [--clean] [--run]
+#   ./build.sh [--debug | --release] [--clean] [--run] [--log]
 # ------------------------------------------------------------
 # Examples:
 #   ./build.sh --debug

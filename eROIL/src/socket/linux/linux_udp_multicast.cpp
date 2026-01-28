@@ -2,7 +2,7 @@
 
 #include "socket/udp_multicast.h"
 
-#include <sys/const_types.h>
+#include <sys/types.h>
 #include <sys/socket.h>
 #include <netinet/in.h>   // sockaddr_in, IPPROTO_IP
 #include <arpa/inet.h>    // inet_pton
@@ -42,7 +42,7 @@ namespace eroil::sock {
         return *this;
     }
 
-    SockResult UDPMulticastSocket::open_and_join(const UdpMcastConfig& cfg) {
+    SockResult UDPMulticastSocket::open_and_join(const cfg::UdpMcastConfig& cfg) {
         SockResult result{};
         result.op = SockOp::Open;
 

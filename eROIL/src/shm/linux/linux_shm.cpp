@@ -56,7 +56,7 @@ namespace eroil::shm {
     }
 
     std::string Shm::name() const noexcept {
-        return "/eroil.node." + std::to_string(m_label);
+        return "/eroil.node." + std::to_string(m_id);
     }
 
     ShmErr Shm::create() {
@@ -75,20 +75,18 @@ namespace eroil::shm {
         }
 
         const size_t total = total_size();
-        if (::ftruncate(fd, static_cast<off_t>(total)) != 0) {
-            ::close(fd);
+        if (::ftruncate(m_handle, static_cast<off_t>(total)) != 0) {
+            ::close(m_handle);
             ::shm_unlink(n.c_str()); // delete the partially created file
             return ShmErr::UnknownError;
         }
 
-        m_view = ::mmap(nullptr, total, PROT_READ | PROT_WRITE, MAP_SHARED, fd, 0);
+        m_view = ::mmap(nullptr, total, PROT_READ | PROT_WRITE, MAP_SHARED, m_handle, 0);
         if (m_view == MAP_FAILED) {
-            ::close(fd);
+            ::close(m_handle);
             ::shm_unlink(n.c_str()); // delete the partially created file
             return ShmErr::FileMapFailed;
         }
-
-        write_shm_header();
        
         return ShmErr::None;
     }
@@ -109,13 +107,13 @@ namespace eroil::shm {
 
         const size_t total = total_size();
 
-        m_view = ::mmap(nullptr, total, PROT_READ | PROT_WRITE, MAP_SHARED, fd, 0);
+        m_view = ::mmap(nullptr, total, PROT_READ | PROT_WRITE, MAP_SHARED, m_handle, 0);
         if (m_view == MAP_FAILED) {
             ::close(m_handle);
             return ShmErr::FileMapFailed;
         }
 
-        return validate_shm_header();
+        return ShmErr::None;
     }
 
     void Shm::close() noexcept {

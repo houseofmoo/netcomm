@@ -67,7 +67,7 @@ namespace eroil::evtlog {
     };
 
     // 20 bytes payload keeps record at 48 bytes (on typical packing).
-    static constexpr size_t PAYLOAD_BYTES = 20;
+    static constexpr std::size_t PAYLOAD_BYTES = 20;
 
     struct EventRecord {
         std::uint64_t tick = 0;

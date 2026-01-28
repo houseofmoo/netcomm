@@ -17,8 +17,11 @@ namespace eroil::evtlog {
     // controls for compile-time logging enable/disable and min severity
     struct EventLogBuildConfig {
         #if defined(EROIL_ELOG_ENABLED) && EROIL_ELOG_ENABLED == 1
+
+        #pragma message("ENABLED = TRUE")
         static constexpr bool enabled = true;
         #else
+        #pragma message("ENABLED = FALSE")
         static constexpr bool enabled = false;
         #endif
         static constexpr Severity min_severity = Severity::Info;
@@ -27,7 +30,7 @@ namespace eroil::evtlog {
     class EventLog {
         private:
             alignas(64) std::atomic<uint32_t> m_seq{};
-            alignas(64) std::atomic<size_t> m_idx{};
+            alignas(64) std::atomic<std::size_t> m_idx{};
             alignas(64) std::array<EventRecord, EVENT_LOG_CAPACITY> m_evt_logs{};
 
         public:

@@ -63,10 +63,9 @@ inline RecvLabel make_recv_label(int id, int size) {
 struct RecvLabel {
     int id;
     int size;
-    std::unique_ptr<std::uint8_t[]> buf;
+    std::unique_ptr<std::byte[]> buf;
     sem_t* sem;
 
-    std::uint8_t* get_buf() { return buf.get(); }
     void wait() {
         if (sem != nullptr) {
             sem_wait(sem);
@@ -81,7 +80,7 @@ inline RecvLabel make_recv_label(int id, int size) {
     return RecvLabel {
         id,
         size,
-        std::make_unique<std::uint8_t[]>(size),
+        std::make_unique<std::byte[]>(size),
         sem
     };
 }

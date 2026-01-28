@@ -1,7 +1,7 @@
 #if defined(EROIL_LINUX)
 #include "socket/tcp_socket.h"
 
-#include <sys/const_types.h>
+#include <sys/types.h>
 #include <sys/socket.h>
 #include <netinet/in.h>
 #include <arpa/inet.h>

@@ -2,7 +2,7 @@
 
 #include "socket/tcp_socket.h"
 
-#include <sys/const_types.h>
+#include <sys/types.h>
 #include <sys/socket.h>
 #include <netinet/in.h>
 #include <arpa/inet.h>
@@ -194,7 +194,7 @@ namespace eroil::sock {
             );
 
             if (recv_bytes > 0) {
-                total += static_cast<size_t>(r);
+                total += static_cast<size_t>(recv_bytes);
                 continue;
             }
 
