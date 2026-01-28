@@ -27,8 +27,9 @@ option(EROIL_ELOG_ENABLED "Enable eROIL event logging" OFF)
 
 # macro defs
 target_compile_definitions(eROIL
-    PRIVATE
+    PUBLIC
         EROIL_ELOG_ENABLED=$<BOOL:${EROIL_ELOG_ENABLED}>
+    PRIVATE
         $<$<PLATFORM_ID:Windows>:EROIL_WIN32>
         $<$<PLATFORM_ID:Linux>:EROIL_LINUX>
 )
