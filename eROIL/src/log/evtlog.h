@@ -16,13 +16,10 @@ namespace eroil::evtlog {
     
     // controls for compile-time logging enable/disable and min severity
     struct EventLogBuildConfig {
-        #if defined(EROIL_ELOG_ENABLED) && EROIL_ELOG_ENABLED == 1
-
-        #pragma message("ENABLED = TRUE")
-        static constexpr bool enabled = true;
+        #if EROIL_ELOG_ENABLED
+            static constexpr bool enabled = true;
         #else
-        #pragma message("ENABLED = FALSE")
-        static constexpr bool enabled = false;
+            static constexpr bool enabled = false;
         #endif
         static constexpr Severity min_severity = Severity::Info;
     };
@@ -76,11 +73,16 @@ namespace eroil::evtlog {
         // set compiler enabled via compiler flags, change min servity via EventLogBuildConfig
         //
 
+        // black magic to make our constexpr evaluation work on linux
+        template <auto>
+        inline constexpr bool dependent_false_v = false;
+
         template <Severity Sev>
         inline void log_payload(EventKind kind, Category cat, std::uint32_t a=0, std::uint32_t b=0, std::uint32_t c=0, const void* payload=nullptr, std::uint32_t payload_size=0) noexcept {
             if constexpr (EventLogBuildConfig::enabled && 
-               static_cast<std::uint8_t>(Sev) >= static_cast<std::uint8_t>(EventLogBuildConfig::min_severity)) {
-                static_assert(EventLogBuildConfig::enabled, "should never compile when disabled");
+                          Sev >= EventLogBuildConfig::min_severity) {
+                // double check this code is removed if EventLogBuildConfig::enabled = false
+                static_assert(EventLogBuildConfig::enabled || dependent_false_v<Sev>, "should never compile when disabled");
                 eroil::evtlog::g_event_log.log_payload(kind, Sev, cat, a, b, c, payload, payload_size);
             }
         }
@@ -88,8 +90,9 @@ namespace eroil::evtlog {
         template <Severity Sev>
         inline void log_hot(EventKind kind, Category cat, std::uint32_t a=0, std::uint32_t b=0, std::uint32_t c=0) noexcept {
             if constexpr (EventLogBuildConfig::enabled && 
-               static_cast<std::uint8_t>(Sev) >= static_cast<std::uint8_t>(EventLogBuildConfig::min_severity)) {
-                static_assert(EventLogBuildConfig::enabled, "should never compile when disabled");
+                          Sev >= EventLogBuildConfig::min_severity) {
+                // double check this code is removed if EventLogBuildConfig::enabled = false
+                static_assert(EventLogBuildConfig::enabled || dependent_false_v<Sev>, "should never compile when disabled");
                 eroil::evtlog::g_event_log.log_hot(kind, Sev, cat, a, b, c);
             }
         }
@@ -97,8 +100,9 @@ namespace eroil::evtlog {
         template <Severity Sev>
         inline void log_hot_no_time(EventKind kind, Category cat, std::uint32_t a=0, std::uint32_t b=0, std::uint32_t c=0) noexcept {
             if constexpr (EventLogBuildConfig::enabled && 
-               static_cast<std::uint8_t>(Sev) >= static_cast<std::uint8_t>(EventLogBuildConfig::min_severity)) {
-                static_assert(EventLogBuildConfig::enabled, "should never compile when disabled");
+                          Sev >= EventLogBuildConfig::min_severity) {
+                // double check this code is removed if EventLogBuildConfig::enabled = false
+                static_assert(EventLogBuildConfig::enabled || dependent_false_v<Sev>, "should never compile when disabled");
                 eroil::evtlog::g_event_log.log_hot_no_time(kind, Sev, cat, a, b, c);
             }
         }

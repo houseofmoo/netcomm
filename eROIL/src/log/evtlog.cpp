@@ -13,7 +13,7 @@
 #endif
 
 // notify build system of evtlog status, just nice to confirm
-#if defined(EROIL_ELOG_ENABLED) && EROIL_ELOG_ENABLED == 1
+#if EROIL_ELOG_ENABLED
 #pragma message("EROIL ELOG ENABLED")
 #else
 #pragma message("EROIL ELOG DISABLED")
