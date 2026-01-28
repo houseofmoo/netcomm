@@ -134,7 +134,7 @@ namespace eroil::addr {
     }
 
     void all_shm_address_book() {
-        PRINT("TEST MODE: making shm only address book");
+        LOG("TEST MODE: making shm only address book");
         
         NodeAddress* self = nullptr;
         for (auto& [id, addr] : address_book) {
@@ -156,7 +156,7 @@ namespace eroil::addr {
     }
 
     void all_socket_address_book() {
-        PRINT("TEST MODE: making socket only address book");
+        LOG("TEST MODE: making socket only address book");
         
         NodeAddress* self = nullptr;
         for (auto& [id, addr] : address_book) {
@@ -178,7 +178,7 @@ namespace eroil::addr {
     }
 
     void test_network_address_book() {
-        PRINT("TEST MODE: making test network address book");
+        LOG("TEST MODE: making test network address book");
 
         NodeAddress* self = nullptr;
         for (auto& [id, addr] : address_book) {

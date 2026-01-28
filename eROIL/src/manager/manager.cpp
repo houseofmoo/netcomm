@@ -66,7 +66,7 @@ namespace eroil {
 
     hndl::SendHandle* Manager::open_send(hndl::OpenSendData data) {
         if (data.buf_size > MAX_LABEL_SEND_SIZE) {
-            ERR_PRINT(__func__, " got label size=", data.buf_size, " which is bigger than max=", MAX_LABEL_SEND_SIZE);
+            ERR_PRINT(" got label size=", data.buf_size, " which is bigger than max=", MAX_LABEL_SEND_SIZE);
             ERR_PRINT("ignored open_send for label=", data.label);
             return nullptr;
         }
@@ -79,12 +79,13 @@ namespace eroil {
 
     void Manager::send_label(hndl::SendHandle* handle, std::byte* buf, size_t buf_size, size_t send_offset, size_t recv_offset) {
         if (handle == nullptr) {
-            ERR_PRINT(__func__, "(): got null send handle");
+            ERR_PRINT("(): got null send handle");
             return;
         }
 
         // if this is not an offset send, 0 the offset sizes
         if (!handle->data->is_offset) {
+            // TODO: send offset 0 here may be wrong
             send_offset = 0;
             recv_offset = 0;
         }
@@ -100,12 +101,12 @@ namespace eroil {
         }
 
         if (data_size <= 0 || data_size != handle->data->buf_size) {
-            ERR_PRINT(__func__, "(): got data size=", data_size, " that does not match expected size=", handle->data->buf_size);
+            ERR_PRINT("(): got data size=", data_size, " that does not match expected size=", handle->data->buf_size);
             return;
         }
 
         if (data_buf == nullptr) {
-            ERR_PRINT(__func__, "(): got null data buffer");
+            ERR_PRINT("(): got null data buffer");
             return;
         }
 
@@ -129,12 +130,12 @@ namespace eroil {
         std::memcpy(sbuf.data.get() + sizeof(hdr), data_buf + send_offset, data_size);
         
         // hand off to sender
-        m_comms.send_label(handle->uid, handle->data->label, std::move(sbuf));
+        m_comms.enqueue_send(handle->uid, handle->data->label, std::move(sbuf));
     }
 
     void Manager::close_send(hndl::SendHandle* handle) {
         if (handle == nullptr) {
-            ERR_PRINT(__func__, "(): got handle that was nullptr");
+            ERR_PRINT("(): got handle that was nullptr");
             return;
         }
         
@@ -150,7 +151,7 @@ namespace eroil {
 
     void Manager::close_recv(hndl::RecvHandle* handle) {
         if (handle == nullptr) {
-            ERR_PRINT(__func__, "(): got handle that was nullptr");
+            ERR_PRINT("(): got handle that was nullptr");
             return;
         }
 

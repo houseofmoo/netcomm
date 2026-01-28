@@ -12,7 +12,7 @@ namespace eroil {
     // }
 
     inline iosb::RTOSTime RTOS_Current_Time_Raw() {
-        // linux only, rewrite for portability
+        // original was linux only, rewrote for portability
         // struct timespec ts;
         // int status = clock_gettime(CLOCK_REALTIME, &ts);
         // time->uiMsb = (status == 0) ? static_cast<unsigned int>(ts.tv_sec) : 0;

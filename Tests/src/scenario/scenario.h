@@ -1,7 +1,6 @@
 #pragma once
 #include <vector>
 #include <string>
-constexpr int NUM_NODES = 20;
 constexpr int MAX_LABELS = 200;
 
 constexpr int MIN_SEND_LABELS = 10;
@@ -42,5 +41,5 @@ struct TestScenario {
     TestScenario(int seed, int num_nodes) : seed(seed), nodes(std::vector<NodeIo>(num_nodes))  {} 
 };
 
-TestScenario generate_test_scenario(const int seed);
+TestScenario generate_test_scenario(const int seed, const int num_nodes);
 void write_scenario_to_file(const TestScenario& scenario, const bool detailed);

@@ -14,7 +14,6 @@
 
 namespace eroil {
 
-
     class ConnectionManager {
         private:
             NodeId m_id;
@@ -34,7 +33,7 @@ namespace eroil {
             EROIL_NO_MOVE(ConnectionManager)
 
             bool start();
-            void send_label(handle_uid uid, Label label, io::SendBuf send_buf);
+            void enqueue_send(handle_uid uid, Label label, io::SendBuf send_buf);
             void start_remote_recv_worker(NodeId from_id);
             void stop_remote_recv_worker(NodeId from_id);
 
@@ -47,6 +46,5 @@ namespace eroil {
             void ping_remote_peer(addr::NodeAddress peer_info, std::shared_ptr<sock::TCPClient> client);
             bool send_id(sock::TCPClient* sock);
             bool send_ping(sock::TCPClient* sock);
-
     };
 }

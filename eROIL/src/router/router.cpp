@@ -105,12 +105,12 @@ namespace eroil {
         std::unique_lock lock(m_router_mtx);
 
         if (!m_transports.has_send_shm(dst_id)) {
-            ERR_PRINT(__func__, ": missing shm to nodeid=", dst_id);
+            ERR_PRINT(": missing shm to nodeid=", dst_id);
             return;
         }
 
         if (!m_routes.add_local_send_subscriber(label, size, dst_id)) {
-            ERR_PRINT(__func__, ": failed to add local send subscriber for label=", label, " to_id=", dst_id);
+            ERR_PRINT(": failed to add local send subscriber for label=", label, " to_id=", dst_id);
             return;
         }
     }
@@ -119,12 +119,12 @@ namespace eroil {
         std::unique_lock lock(m_router_mtx);
 
         if (!m_transports.has_socket(to_id)) {
-            ERR_PRINT(__func__, ": missing socket to NodeId=", to_id);
+            ERR_PRINT(": missing socket to NodeId=", to_id);
             return;
         }
 
         if (!m_routes.add_remote_send_subscriber(label, label_size, to_id)) {
-            ERR_PRINT(__func__, ": failed to add remote send subscriber for label=", label, " to_id=", to_id);
+            ERR_PRINT(": failed to add remote send subscriber for label=", label, " to_id=", to_id);
             return;
         }
     }
@@ -202,9 +202,11 @@ namespace eroil {
 
     std::pair<SendTargetErr, std::shared_ptr<io::SendJob>> 
     Router::build_send_job(const NodeId my_id, const Label label, const handle_uid uid, io::SendBuf send_buf) {
+        static uint32_t seq = 0;
         auto job = std::make_shared<io::SendJob>(std::move(send_buf));
         job->source_id = my_id;
         job->label = label;
+        job->seq = seq++;
 
         {
             std::shared_lock lock(m_router_mtx);
@@ -212,25 +214,25 @@ namespace eroil {
 
             const SendRoute* route = m_routes.get_send_route(label);
             if (route == nullptr) {
-                ERR_PRINT(__func__, "(): no route for label=", label);
+                ERR_PRINT("(): no route for label=", label);
                 return { SendTargetErr::RouteNotFound, job };
             }
 
             size_t expected_size = route->label_size + sizeof(io::LabelHeader);
             if (expected_size != job->send_buffer.total_size ) {
-                ERR_PRINT(__func__, "(): size mismatch label=", label, " expected=", expected_size, " got=", send_buf.total_size);
+                ERR_PRINT("(): size mismatch label=", label, " expected=", expected_size, " got=", send_buf.total_size);
                 return { SendTargetErr::SizeMismatch, job };
             }
 
             auto handle_it = m_send_handles.find(uid);
             if (handle_it == m_send_handles.end()) {
-                ERR_PRINT(__func__, "(): got handle uid that does not match any known send handles, uid=", uid);
+                ERR_PRINT("(): got handle uid that does not match any known send handles, uid=", uid);
                 return { SendTargetErr::UnknownHandle, job };
             }
 
             auto uids = m_routes.snapshot_send_publishers(label);
             if (uids.empty()) {
-                ERR_PRINT(__func__, "(): no send publishers for label=", label);
+                ERR_PRINT("(): no send publishers for label=", label);
                 return { SendTargetErr::NoPublishers, job };
             }
 
@@ -241,7 +243,7 @@ namespace eroil {
                 uid
             );
             if (uids_it == uids.end()) {
-                ERR_PRINT(__func__, "(): handle was not a member of the send publishers list, uid=", uid);
+                ERR_PRINT("(): handle was not a member of the send publishers list, uid=", uid);
                 return { SendTargetErr::IncorrectPublisher, job };
             }
 
@@ -274,7 +276,7 @@ namespace eroil {
     }
 
     void Router::distribute_recvd_label(Label label, const std::byte* buf, const size_t size, const size_t recv_offset) const {
-        if (!buf || size == 0) return;
+        if (buf == nullptr || size == 0) return;
         
         // get subscribers snapshot
         std::vector<std::shared_ptr<hndl::OpenReceiveData>> subscribers;
@@ -283,19 +285,19 @@ namespace eroil {
             
             const RecvRoute* route = m_routes.get_recv_route(label);
             if (route == nullptr) {
-                ERR_PRINT(__func__, "(): unknown label=", label);
+                ERR_PRINT("(): unknown label=", label);
                 return;
             }
 
             if (route->label_size != size) {
-                ERR_PRINT(__func__, "(): size mismatch label=", label,
+                ERR_PRINT("(): size mismatch label=", label,
                         " expected=", route->label_size, " got=", size);
                 return;
             }
 
             auto uids = m_routes.snapshot_recv_subscribers(label);
             if (uids.empty()) {
-                ERR_PRINT(__func__, "(): no recv subscribers for label=", label);
+                ERR_PRINT("(): no recv subscribers for label=", label);
                 return;
             }
 
@@ -312,27 +314,27 @@ namespace eroil {
         for (const auto& subs : subscribers) {
             // TODO: we need to write filed into recv IOSB when something goes wrong
             if (subs == nullptr) {
-                ERR_PRINT(__func__, "(): got null subscriber for label=", label);
+                ERR_PRINT("(): got null subscriber for label=", label);
                 continue;
             }
 
             if (subs->buf == nullptr) { 
-                ERR_PRINT(__func__, "(): subscriber has no buffer for label=", label);
+                ERR_PRINT("(): subscriber has no buffer for label=", label);
                 continue;
             }
 
             if (subs->buf_slots == 0) {
-                ERR_PRINT(__func__, "(): subscriber has no buffer slots for label=", label);
+                ERR_PRINT("(): subscriber has no buffer slots for label=", label);
                 continue;
             }
 
             if (subs->buf_size == 0) { 
-                ERR_PRINT(__func__, "(): subscriber buffer size is 0 for label=", label);
+                ERR_PRINT("(): subscriber buffer size is 0 for label=", label);
                 continue;
             }
 
             if (recv_offset > subs->buf_size) {
-                ERR_PRINT(__func__, "(): recv offset > buf size for label=", label);
+                ERR_PRINT("(): recv offset > buf size for label=", label);
                 continue;
             }
 
@@ -340,6 +342,9 @@ namespace eroil {
             std::byte* dst = subs->buf + (slot * subs->buf_size);
             std::memcpy(dst + recv_offset, buf, size);
 
+            // TODO: since we have multiple threads recving
+            // we could race on writing the recv IOSB
+            
             // write recvrs IOSB 
             if (subs->iosb != nullptr && subs->num_iosb > 0) {
                 iosb::ReceiveIosb* iosb = subs->iosb + subs->iosb_index;
@@ -388,7 +393,6 @@ namespace eroil {
             }
             int count = 0;
             std::memcpy(&count, buf, sizeof(count));
-            LOG("signaling for val: ", count);
             plat::try_signal_sem(subs->sem);
         }
     }

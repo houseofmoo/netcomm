@@ -4,30 +4,6 @@
 #include "types/label_io_types.h"
 
 namespace eroil {
-    SendRoute* RouteTable::require_send_route(Label label, const char* fn) {
-        auto* route = get_send_route(label);
-        if (!route) {
-            ERR_PRINT(fn, "(): send route not found, label=", label);
-        }
-        return route;
-    }
-
-    RecvRoute* RouteTable::require_recv_route(Label label, const char* fn) {
-        auto* route = get_recv_route(label);
-        if (!route) {
-            ERR_PRINT(fn, "(): recv route not found, label=", label);
-        }
-        return route;
-    }
-
-    bool RouteTable::require_route_size(size_t expected, size_t actual, const char* fn) {
-        if (expected != actual) {
-            ERR_PRINT(fn, "(): size mismatch, expected=", expected, ", actual=", actual);
-            return false;
-        }
-        return true;
-    }
-
     io::LabelsSnapshot RouteTable::get_send_labels_snapshot() const {
         io::LabelsSnapshot snapshot{};
         snapshot.gen = m_send_gen.load(std::memory_order_relaxed);
@@ -48,7 +24,7 @@ namespace eroil {
         size_t index = 0;
         for (const auto& [label, route] : m_send_routes) {
             if (index >= MAX_LABELS) {
-                ERR_PRINT(__func__, "(): too many send labels for broadcast message to send");
+                ERR_PRINT("(): too many send labels for broadcast message to send");
                 break;
             }
             labels[index].label = label;
@@ -65,7 +41,7 @@ namespace eroil {
         size_t index = 0;
         for (const auto& [label, route] : m_recv_routes) {
             if (index >= MAX_LABELS) {
-                ERR_PRINT(__func__, "(): too many recv labels for broadcast message to send");
+                ERR_PRINT("(): too many recv labels for broadcast message to send");
                 break;
             }
             labels[index].label = label;
@@ -111,14 +87,14 @@ namespace eroil {
         (void)it;
 
         if (!inserted) {
-            ERR_PRINT(__func__, "(): failed to insert new send route");
+            ERR_PRINT("(): failed to insert new send route");
             return;
         }
     }
 
     bool RouteTable::add_send_publisher(Label label, hndl::SendHandle* handle) {
         if (handle == nullptr) {
-            ERR_PRINT(__func__, "(): given a null handle");
+            ERR_PRINT("(): given a null handle");
             return false;
         }
         
@@ -127,9 +103,16 @@ namespace eroil {
             ++m_send_gen;
         }
 
-        auto route = require_send_route(label, __func__);
-        if (route == nullptr) return false;
-        if (!require_route_size(route->label_size, handle->data->buf_size, __func__)) return false;
+        auto* route = get_send_route(label);
+        if (route == nullptr) {
+            ERR_PRINT("send route not found, label=", label);
+            return false;
+        }
+
+        if (route->label_size != handle->data->buf_size) {
+            ERR_PRINT("size mismatch, expected=", route->label_size, ", actual=", handle->data->buf_size);
+            return false;
+        }
 
         auto it = std::find(
             route->publishers.begin(),
@@ -138,7 +121,7 @@ namespace eroil {
         );
 
         if (it != route->publishers.end()) {
-            ERR_PRINT(__func__, "(): publisher already exists in publishers list, uid=", handle->uid);
+            ERR_PRINT("(): publisher already exists in publishers list, uid=", handle->uid);
             return false;
         }
 
@@ -147,8 +130,11 @@ namespace eroil {
     }
 
     bool RouteTable::remove_send_publisher(Label label,  handle_uid uid) {
-        auto route = require_send_route(label, __func__);
-        if (route == nullptr) return false;
+        auto* route = get_send_route(label);
+        if (route == nullptr) {
+            ERR_PRINT("send route not found, label=", label);
+            return false;
+        }
 
         auto it = std::find(
             route->publishers.begin(),
@@ -157,7 +143,7 @@ namespace eroil {
         );
 
         if (it == route->publishers.end()) {
-            ERR_PRINT(__func__, "(): not a send publisher, label=", label, ", uid=", uid);
+            ERR_PRINT("(): not a send publisher, label=", label, ", uid=", uid);
             return false;
         }
         route->publishers.erase(it);
@@ -172,13 +158,19 @@ namespace eroil {
     }
 
     bool RouteTable::add_local_send_subscriber(Label label, size_t size, NodeId dst_id) {
-        auto route = require_send_route(label, __func__);
-        if (route == nullptr) return false;
-        
-        if (!require_route_size(route->label_size, size, __func__)) return false;
+        auto* route = get_send_route(label);
+        if (route == nullptr) {
+            ERR_PRINT("send route not found, label=", label);
+            return false;
+        }
+
+        if (route->label_size != size) {
+            ERR_PRINT("size mismatch, expected=", route->label_size, ", actual=", size);
+            return false;
+        }
 
         if (is_local_send_subscriber(label, dst_id)) {
-            ERR_PRINT(__func__, "(): already a send subscriber, label=", label, ", to_id=", dst_id);
+            ERR_PRINT("(): already a send subscriber, label=", label, ", to_id=", dst_id);
             return false;
         }
 
@@ -187,8 +179,11 @@ namespace eroil {
     }
 
     bool RouteTable::remove_local_send_subscriber(Label label, NodeId dst_id) {
-        auto route = require_send_route(label, __func__);
-        if (route == nullptr) return false;
+        auto* route = get_send_route(label);
+        if (route == nullptr) {
+            ERR_PRINT("send route not found, label=", label);
+            return false;
+        }
 
         auto it = std::find(
             route->local_subscribers.begin(),
@@ -197,7 +192,7 @@ namespace eroil {
         );
 
         if (it == route->local_subscribers.end()) {
-            ERR_PRINT(__func__, "(): event not found, label=", label, ", to_id=", dst_id);
+            ERR_PRINT("(): event not found, label=", label, ", to_id=", dst_id);
             return false;
         }
 
@@ -206,13 +201,19 @@ namespace eroil {
     }
 
     bool RouteTable::add_remote_send_subscriber(Label label, size_t size, NodeId dst_id) {
-        auto route = require_send_route(label, __func__);
-        if (route == nullptr) return false;
+        auto* route = get_send_route(label);
+        if (route == nullptr) {
+            ERR_PRINT("send route not found, label=", label);
+            return false;
+        }
    
-        if (!require_route_size(route->label_size, size, __func__)) return false;
+        if (route->label_size != size) {
+            ERR_PRINT("size mismatch, expected=", route->label_size, ", actual=", size);
+            return false;
+        }
 
         if (is_remote_send_subscriber(label, dst_id)) {
-            ERR_PRINT(__func__, "(): already a send subscriber, label=", label, ", to_id=", dst_id);
+            ERR_PRINT("(): already a send subscriber, label=", label, ", to_id=", dst_id);
             return false;
         }
 
@@ -221,8 +222,11 @@ namespace eroil {
     }
 
     bool RouteTable::remove_remote_send_subscriber(Label label, NodeId dst_id) {
-        auto route = require_send_route(label, __func__);
-        if (route == nullptr) return false;
+        auto* route = get_send_route(label);
+        if (route == nullptr) {
+            ERR_PRINT("send route not found, label=", label);
+            return false;
+        }
 
         auto it = std::find(
             route->remote_subscribers.begin(),
@@ -231,7 +235,7 @@ namespace eroil {
         );
 
         if (it == route->remote_subscribers.end()) {
-            ERR_PRINT(__func__, "(): not a remote send subscriber, label=", label, ", to_id=", dst_id);
+            ERR_PRINT("(): not a remote send subscriber, label=", label, ", to_id=", dst_id);
             return false;
         }
         route->remote_subscribers.erase(it);
@@ -302,14 +306,14 @@ namespace eroil {
         (void)it;
 
         if (!inserted) {
-            ERR_PRINT(__func__, "(): failed to insert new recv route");
+            ERR_PRINT("(): failed to insert new recv route");
             return;
         }
     }
 
     bool RouteTable::add_recv_subscriber(Label label, hndl::RecvHandle* handle) {
         if (handle == nullptr) {
-            ERR_PRINT(__func__, "(): given a null handle");
+            ERR_PRINT("(): given a null handle");
             return false;
         }
 
@@ -318,9 +322,16 @@ namespace eroil {
             ++m_recv_gen;
         }
 
-        auto route = require_recv_route(label, __func__);
-        if (route == nullptr) return false;
-        if (!require_route_size(route->label_size, handle->data->buf_size, __func__)) return false;
+        auto* route = get_recv_route(label);
+        if (route == nullptr) {
+            ERR_PRINT("recv route not found, label=", label);
+            return false;
+        }
+
+        if (route->label_size != handle->data->buf_size) {
+            ERR_PRINT("size mismatch, expected=", route->label_size, ", actual=", handle->data->buf_size);
+            return false;
+        }
 
         auto it = std::find(
             route->subscribers.begin(),
@@ -329,7 +340,7 @@ namespace eroil {
         );
 
         if (it != route->subscribers.end()) {
-            ERR_PRINT(__func__, "(): subscriber already exists in subscribers list, uid=", handle->uid);
+            ERR_PRINT("(): subscriber already exists in subscribers list, uid=", handle->uid);
             return false;
         }
 
@@ -338,8 +349,11 @@ namespace eroil {
     }
     
     bool RouteTable::remove_recv_subscriber(Label label, handle_uid uid) {
-        auto route = require_recv_route(label, __func__);
-        if (route == nullptr) return false;
+        auto* route = get_recv_route(label);
+        if (route == nullptr) {
+            ERR_PRINT("recv route not found, label=", label);
+            return false;
+        }
 
         auto it = std::find(
             route->subscribers.begin(),
@@ -348,7 +362,7 @@ namespace eroil {
         );
 
         if (it == route->subscribers.end()) {
-            ERR_PRINT(__func__, "(): not a recv subscriber, label=", label, ", uid=", uid);
+            ERR_PRINT("(): not a recv subscriber, label=", label, ", uid=", uid);
             return false;
         }
 

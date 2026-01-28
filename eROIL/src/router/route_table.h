@@ -37,10 +37,6 @@ namespace eroil {
 
             void create_send_route(Label label, hndl::SendHandle* handle);
             void create_recv_route(Label label, hndl::RecvHandle* handle);
-
-            SendRoute* require_send_route(Label label, const char* fn);
-            RecvRoute* require_recv_route(Label label, const char* fn);
-            bool require_route_size(size_t expected, size_t actual, const char* fn);
             
         public:
             RouteTable() = default;

@@ -115,7 +115,7 @@ namespace eroil {
         }).detach();
     }
 
-    void ConnectionManager::send_label(handle_uid uid, Label label, io::SendBuf send_buf) {
+    void ConnectionManager::enqueue_send(handle_uid uid, Label label, io::SendBuf send_buf) {
         auto [err, job] = m_router.build_send_job(m_id, label, uid, std::move(send_buf));
         if (err != SendTargetErr::None) {
             return; 
@@ -270,7 +270,7 @@ namespace eroil {
 
         // send them a notice of who we are
         if (!send_id(client.get())) {
-            ERR_PRINT(__func__, "(): send ID failed unexpectedly during connection attempt");
+            ERR_PRINT("(): send ID failed unexpectedly during connection attempt");
             evtlog::warn(elog_kind::SendFailed, elog_cat::SocketMonitor, peer_info.id);
             return false;
         }
@@ -295,7 +295,7 @@ namespace eroil {
 
     void ConnectionManager::ping_remote_peer(addr::NodeAddress peer_info, std::shared_ptr<sock::TCPClient> client) {
         if (client->get_destination_id() != peer_info.id) {
-            ERR_PRINT(__func__, "(): got mismatching IDs for socket and info, socket list corrupted");
+            ERR_PRINT("(): got mismatching IDs for socket and info, socket list corrupted");
             return;
         }
 

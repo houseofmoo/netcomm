@@ -36,7 +36,7 @@ namespace eroil::shm {
         // if not initialized, this message is lost (consumer is re-initing)
         auto* hdr = m_shm.map_to_type<ShmHeader>(ShmLayout::HDR_OFFSET);
         if (hdr->state.load(std::memory_order_acquire) != SHM_READY) {
-            ERR_PRINT(__func__, " shm block not initialized for nodeid=", m_dst_id);
+            ERR_PRINT(" shm block not initialized for nodeid=", m_dst_id);
             return ShmSendErr::BlockNotInitialized;
         }
 
@@ -48,7 +48,7 @@ namespace eroil::shm {
         
         // this is a hard error condition that should never occur
         if (reserved > ShmLayout::DATA_BLOCK_SIZE) {
-            ERR_PRINT(__func__, " tried to reserve more than allowed, reserved=", reserved, 
+            ERR_PRINT(" tried to reserve more than allowed, reserved=", reserved, 
                       ", allowed=", ShmLayout::DATA_BLOCK_SIZE, ", to nodeid=", m_dst_id);
             return ShmSendErr::SizeTooLarge;
         }
@@ -69,7 +69,7 @@ namespace eroil::shm {
             // consumer has not freed enough space for this message
             const uint64_t used = head - tail;
             if (used + reserved > ShmLayout::DATA_BLOCK_SIZE) {
-                ERR_PRINT(__func__, " not enough space available size=", reserved,
+                ERR_PRINT(" not enough space available size=", reserved,
                          " to nodeid=", m_dst_id, " CONSUMER IS TOO SLOW!");
                 return ShmSendErr::NotEnoughSpace;
             }
@@ -77,7 +77,7 @@ namespace eroil::shm {
             // logic error: some writer wrote a data record instead of wrap record and broke things
             const size_t head_offset = head % ShmLayout::DATA_BLOCK_SIZE;
             if (head_offset > ShmLayout::DATA_USABLE_LIMIT) {
-                ERR_PRINT(__func__, " head pushed out of usable zone, allocator corrupted");
+                ERR_PRINT(" head pushed out of usable zone, allocator corrupted");
                 return ShmSendErr::AllocatorCorrupted;
             }
 

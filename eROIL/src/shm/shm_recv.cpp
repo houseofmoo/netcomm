@@ -109,7 +109,7 @@ namespace eroil::shm {
 
         if (head == tail) return ShmRecvResult{ShmRecvErr::NoRecords};
         if (head < tail) {
-            ERR_PRINT(__func__, " tail advanced passed head, requires re-init");
+            ERR_PRINT(" tail advanced passed head, requires re-init");
             return ShmRecvResult{ShmRecvErr::TailCorruption};
         }
 
@@ -158,7 +158,7 @@ namespace eroil::shm {
                 }
 
                 default: { // this should NEVER happen
-                    ERR_PRINT(__func__, " got unknown record hdr state=", state);
+                    ERR_PRINT(" got unknown record hdr state=", state);
                     return ShmRecvResult{ShmRecvErr::UnknownError};
                 }
             }

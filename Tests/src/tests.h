@@ -49,9 +49,9 @@ inline int timed_test(int id) {
     return 0;
 }
 
-inline void generate_specific_scenario(const int seed, const bool detailed) {
+inline void generate_specific_scenario(const int seed, int num_nodes, const bool detailed) {
     PRINT("generating scenario for seed: ", seed);
-    auto scenario = generate_test_scenario(seed);
+    auto scenario = generate_test_scenario(seed, num_nodes);
     if (scenario.nodes.empty()) {
         PRINT("scenarios empty");
     }
@@ -59,12 +59,12 @@ inline void generate_specific_scenario(const int seed, const bool detailed) {
     write_scenario_to_file(scenario, detailed);
 }
 
-inline void generate_and_write_scenarios(const int num_scenarios, const bool detailed) {
+inline void generate_and_write_scenarios(const int num_scenarios, int num_nodes, const bool detailed) {
     // generate a visualization of N scenarios
     for (int i = 0; i < num_scenarios; i++) {
         auto seed = rng::random_int(1000, 9999);
         PRINT("generating scenario for seed: ", seed);
-        auto scenario = generate_test_scenario(seed);
+        auto scenario = generate_test_scenario(seed, num_nodes);
         if (scenario.nodes.empty()) {
             PRINT("scenarios empty");
         }
@@ -73,8 +73,8 @@ inline void generate_and_write_scenarios(const int num_scenarios, const bool det
 }
 
 // simulate a full network with multiple sending/recving labels
-inline int run_network_sim(int id, int seed, bool show_send, bool show_recv) {
-    auto scenario = generate_test_scenario(seed);
+inline int run_network_sim(int id, int seed, int num_nodes, bool show_send, bool show_recv) {
+    auto scenario = generate_test_scenario(seed, num_nodes);
     if (scenario.nodes.size() < static_cast<size_t>(id) || scenario.nodes[id].id != id) {
         ERR_PRINT("scenarios list did not contain this nodes labels list");
         return 1;
@@ -192,7 +192,7 @@ inline int add_remove_labels_test(int id) {
     return 0;
 }
 
-inline void init_test(int id) {
+inline void small_test(int id) {
     bool success = init_manager(id);
     LOG("manager init success: ", success);
 

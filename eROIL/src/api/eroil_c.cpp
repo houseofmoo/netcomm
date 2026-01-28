@@ -81,7 +81,7 @@ void* NAE_Open_Receive_Label(int iLabel,
 
     // forward label is alawys -1, log if it isnt for the future
     if (iForwardLabel != -1) {
-        ERR_PRINT(__func__, " expected forward label to always be -1, but got forward label=", iForwardLabel);
+        ERR_PRINT("expected forward label to always be -1, but got forward label=", iForwardLabel);
     }
 
     eroil::iosb::SignalMode smode = eroil::iosb::SignalMode::OVERWRITE;
@@ -113,7 +113,7 @@ void NAE_Update_Receive_Label(
     int /*iNumSlots*/,
     int /*iSizeInWords*/
 ) {
-    ERR_PRINT(__func__, " someone called this ?? weird, it shouldnt be used");
+    ERR_PRINT(" someone called this ?? weird, it shouldnt be used");
     // this is implemented by NAE but unused
     // updates buffers to point to the new addrs provided
     // maybe changes the size? that is going to be a pain

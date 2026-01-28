@@ -22,8 +22,9 @@ namespace eroil::worker {
     }
 
     void ShmRecvWorker::stop() {
-        //TODO: if someone external calls stop, we will wait on join() until someone wakes us up
+        // if someone external calls stop, we will wait on join() until someone wakes us up
         // in theory this doesnt matter cause this thread should live the entire time the application does
+        
         //bool was_stopping = m_stop.exchange(true, std::memory_order_acq_rel);
         m_stop.exchange(true, std::memory_order_acq_rel);
         if (m_thread.joinable()) {

@@ -40,6 +40,7 @@ namespace eroil::io {
         NodeId source_id;
         Label label;
         SendBuf send_buffer;
+        uint32_t seq;
         std::shared_ptr<hndl::OpenSendData> publisher;
         
         uint32_t local_failure_count;
@@ -64,7 +65,6 @@ namespace eroil::io {
         void complete_one() noexcept {
             const uint32_t prev = pending_sends.fetch_sub(1, std::memory_order_acq_rel);
             if (prev == 0) {
-                // TODO: underflowed somehow
                 ERR_PRINT("pending sends underflowed");
                 return;
             }
@@ -131,7 +131,7 @@ namespace eroil::io {
             auto err = shm.send(
                 job.source_id, 
                 job.label, 
-                0,
+                job.seq,
                 job.send_buffer.total_size,
                 job.send_buffer.data.get()
             );

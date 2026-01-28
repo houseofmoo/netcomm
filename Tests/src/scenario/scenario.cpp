@@ -19,8 +19,8 @@ int align_64_bit(int num) {
     return (num + 63) & ~63;;
 }
 
-TestScenario generate_test_scenario(int seed) {
-    TestScenario scenario(seed, NUM_NODES);
+TestScenario generate_test_scenario(int seed, int num_nodes) {
+    TestScenario scenario(seed, num_nodes);
     std::mt19937 rng(scenario.seed); // seed randomizer
 
     // genreate labels 0..MAX_LABELS and a random 64 bit aligned size
@@ -35,7 +35,7 @@ TestScenario generate_test_scenario(int seed) {
     }
 
     // generate everyones send labels list
-    for (int i = 0; i < NUM_NODES; i++) {
+    for (int i = 0; i < num_nodes; i++) {
         auto& node = scenario.nodes[i];
         node.id = i;
 
@@ -63,7 +63,7 @@ TestScenario generate_test_scenario(int seed) {
     }
 
     // generate everyones recv labels list
-    for (int i = 0; i < NUM_NODES; i++) {
+    for (int i = 0; i < num_nodes; i++) {
         auto& node = scenario.nodes[i];
         node.id = i;
 
