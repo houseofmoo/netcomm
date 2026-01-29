@@ -12,7 +12,7 @@ namespace eroil::shm {
         // senders only ever open a destination nodes shared memory block
         // never create it. try a few times before giving up
         for (int i = 0; i < 50; ++i) {
-            auto oerr = m_shm.open();
+            shm::ShmErr oerr = m_shm.open();
             if (oerr == shm::ShmErr::None) {
                 return true;
             }
@@ -36,7 +36,7 @@ namespace eroil::shm {
         // if not initialized, this message is lost (consumer is re-initing)
         auto* hdr = m_shm.map_to_type<ShmHeader>(ShmLayout::HDR_OFFSET);
         if (hdr->state.load(std::memory_order_acquire) != SHM_READY) {
-            ERR_PRINT(" shm block not initialized for nodeid=", m_dst_id);
+            ERR_PRINT("shm block not initialized for nodeid=", m_dst_id);
             return ShmSendErr::BlockNotInitialized;
         }
 
@@ -48,8 +48,8 @@ namespace eroil::shm {
         
         // this is a hard error condition that should never occur
         if (reserved > ShmLayout::DATA_BLOCK_SIZE) {
-            ERR_PRINT(" tried to reserve more than allowed, reserved=", reserved, 
-                      ", allowed=", ShmLayout::DATA_BLOCK_SIZE, ", to nodeid=", m_dst_id);
+            ERR_PRINT("tried to reserve more than allowed, reserved=", reserved, 
+                      " allowed=", ShmLayout::DATA_BLOCK_SIZE, ", to nodeid=", m_dst_id);
             return ShmSendErr::SizeTooLarge;
         }
 
@@ -69,15 +69,15 @@ namespace eroil::shm {
             // consumer has not freed enough space for this message
             const uint64_t used = head - tail;
             if (used + reserved > ShmLayout::DATA_BLOCK_SIZE) {
-                ERR_PRINT(" not enough space available size=", reserved,
-                         " to nodeid=", m_dst_id, " CONSUMER IS TOO SLOW!");
+                ERR_PRINT("not enough space available size=", reserved,
+                          " to nodeid=", m_dst_id, " CONSUMER IS TOO SLOW!");
                 return ShmSendErr::NotEnoughSpace;
             }
 
             // logic error: some writer wrote a data record instead of wrap record and broke things
             const size_t head_offset = head % ShmLayout::DATA_BLOCK_SIZE;
             if (head_offset > ShmLayout::DATA_USABLE_LIMIT) {
-                ERR_PRINT(" head pushed out of usable zone, allocator corrupted");
+                ERR_PRINT("head pushed out of usable zone, allocator corrupted");
                 return ShmSendErr::AllocatorCorrupted;
             }
 
@@ -108,7 +108,7 @@ namespace eroil::shm {
             }
 
             // compare exchange success means we allocated for data record
-            // failure means someone else allocated before us and we need to retry
+            // failure means someone else allocated before us and head contains the updated head
             const uint64_t new_head = head + static_cast<uint64_t>(reserved);
             if (meta->head_bytes.compare_exchange_weak(head, new_head,
                                                        std::memory_order_acq_rel,
@@ -120,10 +120,7 @@ namespace eroil::shm {
 
         // was never able to allocate space
         if (!reserved_success) {
-            ERR_PRINT(
-                __func__, 
-                " could not allocate space for label=", label, " to nodeid=", m_dst_id
-            );
+            ERR_PRINT(" could not allocate space for label=", label, " to nodeid=", m_dst_id);
             return ShmSendErr::CouldNotAllocate;
         }
         

@@ -37,7 +37,7 @@ void* NAE_Open_Send_Label(int iLabel,
         io_type = eroil::iosb::IoType::OFFSET;
     }
 
-    auto handle = eroil::open_send_label(
+    eroil::hndl::SendHandle* handle = eroil::open_send_label(
         static_cast<eroil::Label>(iLabel),
         static_cast<std::byte*>(pSendBuffer),
         static_cast<int32_t>(iSizeInWords * 4),
@@ -91,7 +91,7 @@ void* NAE_Open_Receive_Label(int iLabel,
         smode = eroil::iosb::SignalMode::EVERY_MESSAGE;
     }
 
-    auto handle = eroil::open_recv_label(
+    eroil::hndl::RecvHandle* handle = eroil::open_recv_label(
         static_cast<int32_t>(iLabel),
         reinterpret_cast<std::byte*>(pBuffer),
         static_cast<int32_t>(iSizeInWords * 4),
@@ -124,7 +124,7 @@ void NAE_Close_Receive_Label(void* iHandle) {
 }
 
 int NAE_Receive_Count(void* iHandle) {
-    auto count = eroil::recv_count(static_cast<eroil::hndl::RecvHandle*>(iHandle));
+    uint32_t count = eroil::recv_count(static_cast<eroil::hndl::RecvHandle*>(iHandle));
     return static_cast<int>(count);
 }
 
@@ -152,49 +152,49 @@ void NAE_Receive_Redirect(void* iHandle) {
 }
 
 int NAE_Get_Message_Label(void* pIosb) {
-    auto label = eroil::get_msg_label(
+    int32_t label = eroil::get_msg_label(
         static_cast<eroil::iosb::Iosb*>(pIosb)
     );
     return static_cast<int>(label);
 }
 
 int NAE_Get_Message_Status(void* pIosb) {
-    auto status = eroil::get_msg_status(
+    int32_t status = eroil::get_msg_status(
         static_cast<eroil::iosb::Iosb*>(pIosb)
     );
     return static_cast<int>(status);
 }
 
 int NAE_Get_Message_Size(void* pIosb) {
-    auto size = eroil::get_msg_size(
+    int32_t size = eroil::get_msg_size(
         static_cast<eroil::iosb::Iosb*>(pIosb)
     );
     return static_cast<int>(size);
 }
 
 void* NAE_Get_Message_Address(void* pIosb) {
-    auto addr = eroil::get_msg_address(
+    void* addr = eroil::get_msg_address(
         static_cast<eroil::iosb::Iosb*>(pIosb)
     );
     return addr;
 }
 
 int NAE_Get_Message_Offset(void* pIosb) {
-    auto offset = eroil::get_msg_offset(
+    int32_t offset = eroil::get_msg_offset(
         static_cast<eroil::iosb::Iosb*>(pIosb)
     );
     return static_cast<int>(offset);
 }
 
 void* NAE_Get_Message_Buffer(void* pIosb) {
-    auto buf = eroil::get_msg_buffer(
+    void* buf = eroil::get_msg_buffer(
         static_cast<eroil::iosb::Iosb*>(pIosb)
     );
     return buf;
 }
 
 int NAE_Get_Message_Slot(void* pIosb) {
-    auto slot = eroil::get_msg_slot(
+    int32_t slot = eroil::get_msg_slot(
         static_cast<eroil::iosb::Iosb*>(pIosb)
     );
     return static_cast<int>(slot);

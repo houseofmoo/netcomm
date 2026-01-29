@@ -6,7 +6,7 @@
 #include "socket/tcp_socket.h"
 #include "types/macros.h"
 
-namespace eroil::worker {
+namespace eroil::wrk {
     class SocketRecvWorker {
         private:
             Router& m_router;

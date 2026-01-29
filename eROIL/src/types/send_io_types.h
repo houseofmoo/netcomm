@@ -9,10 +9,12 @@
 #include "socket/tcp_socket.h"
 #include "handles.h"
 #include "const_types.h"
+#include "label_io_types.h"
 #include "assertion.h"
+#include "types/macros.h"
 
 namespace eroil::io {
-     struct SendBuf {
+    struct SendBuf {
         void* data_src_addr = nullptr; // where the data was copied from (for send IOSB)
         std::unique_ptr<std::byte[]> data = nullptr;
         std::size_t data_size = 0;
@@ -26,14 +28,22 @@ namespace eroil::io {
             total_size = size + sizeof(LabelHeader);
             data = std::make_unique<std::byte[]>(total_size);
         }
+        
+        EROIL_NO_COPY(SendBuf)
+        EROIL_DEFAULT_MOVE(SendBuf)
+    };
 
-        // move ok
-        SendBuf(SendBuf&&) noexcept = default;
-        SendBuf& operator=(SendBuf&&) noexcept = default;
-
-        // copy deleted
-        SendBuf(const SendBuf&) = delete;
-        SendBuf& operator=(const SendBuf&) = delete;
+    enum class SendJobErr {
+        None,
+        RouteNotFound,
+        SizeMismatch,
+        SizeTooLarge,
+        ShmMissing,
+        SocketMissing,
+        UnknownHandle,
+        NoPublishers,
+        IncorrectPublisher,
+        Failed
     };
 
     struct SendJob {
@@ -89,7 +99,7 @@ namespace eroil::io {
                 status = -1;
             }
 
-            auto* iosb = publisher->iosb + publisher->iosb_index;
+            iosb::SendIosb* iosb = publisher->iosb + publisher->iosb_index;
             iosb->Status = status;  // -1 is error, 0 is ok
             iosb->Reserve1 = 0;
             iosb->Header_Valid = 1;
@@ -119,51 +129,5 @@ namespace eroil::io {
     struct JobCompleteGuard {
         std::shared_ptr<SendJob> job;
         ~JobCompleteGuard() { if (job != nullptr) job->complete_one(); }
-    };
-
-    struct ShmSendPlan {
-        static const auto& receivers(const SendJob& job) noexcept { return job.local_recvrs; }
-        static auto& fail_count(SendJob& job) noexcept { return job.local_failure_count; }
-        static bool is_local() noexcept { return true; }
-        static bool is_remote() noexcept { return false; }
-
-        static bool send_one(shm::ShmSend& shm, SendJob& job) noexcept {
-            auto err = shm.send(
-                job.source_id, 
-                job.label, 
-                job.seq,
-                job.send_buffer.total_size,
-                job.send_buffer.data.get()
-            );
-            
-            if (err != shm::ShmSendErr::None) {
-                // TODO: is there something to handle here?
-                ERR_PRINT("shm send for label=", job.label, ", errorcode=", (int)err);
-            }
-
-            return err == shm::ShmSendErr::None;
-        }
-    };
-
-    struct TcpSendPlan {
-        static const auto& receivers(const SendJob& job) noexcept { return job.remote_recvrs; }
-        static auto& fail_count(SendJob& job) noexcept { return job.remote_failure_count; }
-        static bool is_local() noexcept { return false; }
-        static bool is_remote() noexcept { return true; }
-
-        static bool send_one(sock::TCPClient& sock, SendJob& job) noexcept {
-            if (!sock.is_connected()) return false; // re-connection is being attempted in the background
-            auto err = sock.send(
-                job.send_buffer.data.get(),
-                job.send_buffer.total_size
-            );
-            
-            if (err.code != sock::SockErr::None) {
-                // TODO: is there something to handle here?
-                ERR_PRINT("sokcet send for label=", job.label, ", errorcode=", (int)err.code);
-            }
-
-            return err.code == sock::SockErr::None;
-        }
     };
 }

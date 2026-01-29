@@ -103,7 +103,7 @@ namespace eroil {
             ++m_send_gen;
         }
 
-        auto* route = get_send_route(label);
+        SendRoute* route = get_send_route(label);
         if (route == nullptr) {
             ERR_PRINT("send route not found, label=", label);
             return false;
@@ -130,7 +130,7 @@ namespace eroil {
     }
 
     bool RouteTable::remove_send_publisher(Label label,  handle_uid uid) {
-        auto* route = get_send_route(label);
+        SendRoute* route = get_send_route(label);
         if (route == nullptr) {
             ERR_PRINT("send route not found, label=", label);
             return false;
@@ -158,7 +158,7 @@ namespace eroil {
     }
 
     bool RouteTable::add_local_send_subscriber(Label label, size_t size, NodeId dst_id) {
-        auto* route = get_send_route(label);
+        SendRoute* route = get_send_route(label);
         if (route == nullptr) {
             ERR_PRINT("send route not found, label=", label);
             return false;
@@ -179,7 +179,7 @@ namespace eroil {
     }
 
     bool RouteTable::remove_local_send_subscriber(Label label, NodeId dst_id) {
-        auto* route = get_send_route(label);
+        SendRoute* route = get_send_route(label);
         if (route == nullptr) {
             ERR_PRINT("send route not found, label=", label);
             return false;
@@ -201,7 +201,7 @@ namespace eroil {
     }
 
     bool RouteTable::add_remote_send_subscriber(Label label, size_t size, NodeId dst_id) {
-        auto* route = get_send_route(label);
+        SendRoute* route = get_send_route(label);
         if (route == nullptr) {
             ERR_PRINT("send route not found, label=", label);
             return false;
@@ -222,7 +222,7 @@ namespace eroil {
     }
 
     bool RouteTable::remove_remote_send_subscriber(Label label, NodeId dst_id) {
-        auto* route = get_send_route(label);
+        SendRoute* route = get_send_route(label);
         if (route == nullptr) {
             ERR_PRINT("send route not found, label=", label);
             return false;
@@ -260,7 +260,7 @@ namespace eroil {
     }
 
     bool RouteTable::is_send_publisher(Label label, handle_uid uid) const noexcept {
-        auto route = get_send_route(label);
+        const SendRoute* route = get_send_route(label);
         if (route == nullptr) return false;
 
         auto it = std::find(
@@ -272,7 +272,7 @@ namespace eroil {
     }
 
     bool RouteTable::is_local_send_subscriber(Label label, NodeId dst_id) const noexcept {
-        auto route = get_send_route(label);
+        const SendRoute* route = get_send_route(label);
         if (route == nullptr) return false;
         if (route->local_subscribers.empty()) return false;
 
@@ -285,7 +285,7 @@ namespace eroil {
     }
 
     bool RouteTable::is_remote_send_subscriber(Label label, NodeId dst_id) const noexcept {
-        auto route = get_send_route(label);
+        const SendRoute* route = get_send_route(label);
         if (route == nullptr) return false;
         if (route->remote_subscribers.empty()) return false;
 
@@ -322,7 +322,7 @@ namespace eroil {
             ++m_recv_gen;
         }
 
-        auto* route = get_recv_route(label);
+        RecvRoute* route = get_recv_route(label);
         if (route == nullptr) {
             ERR_PRINT("recv route not found, label=", label);
             return false;
@@ -349,7 +349,7 @@ namespace eroil {
     }
     
     bool RouteTable::remove_recv_subscriber(Label label, handle_uid uid) {
-        auto* route = get_recv_route(label);
+        RecvRoute* route = get_recv_route(label);
         if (route == nullptr) {
             ERR_PRINT("recv route not found, label=", label);
             return false;
@@ -394,7 +394,7 @@ namespace eroil {
     }
 
     bool RouteTable::is_recv_subscriber(Label label, handle_uid uid) const noexcept {
-        auto route = get_recv_route(label);
+        const RecvRoute* route = get_recv_route(label);
         if (route == nullptr) return false;
 
         auto it = std::find(

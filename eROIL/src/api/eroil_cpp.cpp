@@ -36,7 +36,7 @@ void* open_send_label(std::int32_t label,
         io_type = eroil::iosb::IoType::OFFSET;
     }
 
-    auto handle = eroil::open_send_label(
+    eroil::hndl::SendHandle* handle = eroil::open_send_label(
         static_cast<eroil::Label>(label),
         buf,
         size_in_words,

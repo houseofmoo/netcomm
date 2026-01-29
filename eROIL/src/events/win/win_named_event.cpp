@@ -87,7 +87,7 @@ namespace eroil::evt {
     NamedEventErr NamedEvent::open() {
         if (m_sem != nullptr) return NamedEventErr::DoubleOpen;
 
-        auto wname = to_windows_wstring(name());
+        std::wstring wname = to_windows_wstring(name());
         if (wname.empty()) {
             m_sem = nullptr;
             return NamedEventErr::InvalidName;

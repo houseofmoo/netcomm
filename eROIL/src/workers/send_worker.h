@@ -11,7 +11,7 @@
 #include "types/macros.h"
 #include "log/evtlog_api.h"
 
-namespace eroil::worker {
+namespace eroil::wrk {
     template <class SendPlan>
     class SendWorker {
         private:
@@ -37,11 +37,11 @@ namespace eroil::worker {
                     m_send_q.push(job);
                 }
 
-                auto err = m_sem.post();
+                evt::SemOpErr err = m_sem.post();
                 if (err != evt::SemOpErr::None) {
                     switch (err) {
                         case evt::SemOpErr::MaxCountReached: {
-                            ERR_PRINT("cannot enqueue anymore send jobs"); 
+                            ERR_PRINT("cannot signal anymore send jobs"); 
                             break;
                         }
                         case evt::SemOpErr::SysError: {

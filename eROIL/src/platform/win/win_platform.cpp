@@ -66,7 +66,7 @@ namespace eroil::plat {
     }
 
     void affinitize_current_thread_to_current_cpu() {
-        auto cpu = ::GetCurrentProcessorNumber();
+        DWORD cpu = ::GetCurrentProcessorNumber();
         affinitize_current_thread(cpu);
     }
 }

@@ -13,18 +13,6 @@
 #include "types/macros.h"
 
 namespace eroil {
-    enum class SendTargetErr {
-        None,
-        RouteNotFound,
-        SizeMismatch,
-        SizeTooLarge,
-        ShmMissing,
-        SocketMissing,
-        UnknownHandle,
-        NoPublishers,
-        IncorrectPublisher,
-        Failed
-    };
 
     class Router {
         private:
@@ -72,7 +60,7 @@ namespace eroil {
             bool open_recv_shm(NodeId my_id);
             std::shared_ptr<shm::ShmRecv> get_recv_shm() const noexcept;
 
-            std::pair<SendTargetErr, std::shared_ptr<io::SendJob>> 
+            std::pair<io::SendJobErr, std::shared_ptr<io::SendJob>> 
             build_send_job(const NodeId my_id, const Label label, const handle_uid uid, io::SendBuf send_buf);
             void distribute_recvd_label(const Label label, const std::byte* buf, const size_t size, const size_t recv_offset) const;
 

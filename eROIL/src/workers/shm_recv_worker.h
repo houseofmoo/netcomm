@@ -7,7 +7,7 @@
 #include "types/const_types.h"
 #include "types/macros.h"
 
-namespace eroil::worker {
+namespace eroil::wrk {
     class ShmRecvWorker {
         private:
             Router& m_router;

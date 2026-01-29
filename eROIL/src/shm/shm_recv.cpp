@@ -12,20 +12,20 @@ namespace eroil::shm {
         // 3 possibilities:
         //      block doesnt exist -> create it and set it up
         //      block exists but invalid -> reset it
-        //      block exists but valid -> still reset it (we crashed likely)
-        auto cerr = m_shm.create();
+        //      block exists but valid -> reset it
+        shm::ShmErr cerr = m_shm.create();
         if (cerr == shm::ShmErr::None) {
             init_as_new();
             return true;
         }
 
-        auto oerr = m_shm.open();
+        shm::ShmErr oerr = m_shm.open();
         if (oerr == shm::ShmErr::None) {
             reinit();
             return true;
         }
 
-        // failed
+        // failed to open
         return false;
     }
 
@@ -86,7 +86,7 @@ namespace eroil::shm {
         meta->published_count.store(0, std::memory_order_relaxed);
 
         // zero out block
-        m_shm.memset(ShmLayout::DATA_BLOCK_OFFSET, 0, ShmLayout::DATA_BLOCK_SIZE);
+        //m_shm.memset(ShmLayout::DATA_BLOCK_OFFSET, 0, ShmLayout::DATA_BLOCK_SIZE);
         
         // announce this is ready for use
         hdr->state.store(SHM_READY, std::memory_order_release);
@@ -117,7 +117,7 @@ namespace eroil::shm {
         bool found = false;
         while (head > tail && !found) {
             auto* rec_hdr = m_shm.map_to_type<RecordHeader>(get_header_offset(tail));
-            const auto state = rec_hdr->state.load(std::memory_order_acquire);
+            const uint32_t state = rec_hdr->state.load(std::memory_order_acquire);
             
             if (state == WRITING) {
                 return ShmRecvResult{ShmRecvErr::NotYetPublished};
@@ -158,7 +158,7 @@ namespace eroil::shm {
                 }
 
                 default: { // this should NEVER happen
-                    ERR_PRINT(" got unknown record hdr state=", state);
+                    ERR_PRINT("got unknown record hdr state=", state);
                     return ShmRecvResult{ShmRecvErr::UnknownError};
                 }
             }

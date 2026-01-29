@@ -43,7 +43,7 @@ namespace eroil {
         std::thread([this]() { run_tcp_server(); }).detach();
 
         // split peers into local and remote
-        auto peers = addr::get_peer_set(m_id);
+        addr::PeerSet peers = addr::get_peer_set(m_id);
 
         // connect to peers with a id < ours
         initial_remote_connection(peers.remote_connect_to);
@@ -64,7 +64,7 @@ namespace eroil {
         const int expected = remote_peers.size();
         for (int attempts = 0; attempts < max_attempts; ++attempts) {
             int connected = 0;
-            for (const auto& info : remote_peers) {
+            for (const addr::NodeAddress& info : remote_peers) {
                 if (m_router.get_socket(info.id) != nullptr) {
                     connected += 1;
                     continue;
@@ -95,7 +95,7 @@ namespace eroil {
             int found = 0;
 
             while (true) {
-                for (const auto& info : local_peers) {
+                for (const addr::NodeAddress& info : local_peers) {
                     if (m_router.get_send_shm(info.id) != nullptr) continue;
 
                     if (m_router.open_send_shm(info.id)) {
@@ -117,7 +117,7 @@ namespace eroil {
 
     void ConnectionManager::enqueue_send(handle_uid uid, Label label, io::SendBuf send_buf) {
         auto [err, job] = m_router.build_send_job(m_id, label, uid, std::move(send_buf));
-        if (err != SendTargetErr::None) {
+        if (err != io::SendJobErr::None) {
             return; 
         }
 
@@ -148,11 +148,7 @@ namespace eroil {
 
         auto [w_it, _] = m_sock_recvrs.emplace(
             peer_id,
-            std::make_unique<worker::SocketRecvWorker>(
-                m_router, 
-                m_id,
-                peer_id
-            )
+            std::make_unique<wrk::SocketRecvWorker>(m_router, m_id, peer_id)
         );
         w_it->second->start();
     }
@@ -167,11 +163,11 @@ namespace eroil {
     }
 
     void ConnectionManager::run_tcp_server() {
-        auto info = addr::get_address(m_id);
+        addr::NodeAddress info = addr::get_address(m_id);
         LOG("tcp server listen start at ", info.ip, ":", info.port);
         EvtMark mark(elog_cat::TCPServer);
 
-        auto ts_result = m_tcp_server.open_and_listen(info.port);
+        sock::SockResult ts_result = m_tcp_server.open_and_listen(info.port);
         if (ts_result.code != sock::SockErr::None) {
             ERR_PRINT("tcp server open failed, exiting");
             evtlog::error(elog_kind::StartFailed, elog_cat::TCPServer);
@@ -191,7 +187,7 @@ namespace eroil {
 
             // they connected to us, they'll send a follow up message
             io::LabelHeader hdr{};
-            auto recv_result = client->recv_all(&hdr, sizeof(hdr));
+            sock::SockResult recv_result = client->recv_all(&hdr, sizeof(hdr));
             if (recv_result.code != sock::SockErr::None) {
                 ERR_PRINT("tcp server had an error recving client information");
                 evtlog::warn(elog_kind::ConnectionFailed, elog_cat::TCPServer);
@@ -227,7 +223,7 @@ namespace eroil {
 
     void ConnectionManager::remote_connection_monitor() {
         LOG("remote peers to monitor thread starts");
-        auto peers = addr::get_peer_set(m_id);
+        addr::PeerSet peers = addr::get_peer_set(m_id);
         if (peers.remote.empty()) {
             LOG("no remote peers to monitor, remote peer monitor thread exits");
             return;
@@ -235,8 +231,8 @@ namespace eroil {
 
         while (true) {
             EvtMark mark(elog_cat::SocketMonitor);
-            for (const auto& info : peers.remote) {
-                auto socket = m_router.get_socket(info.id);
+            for (const addr::NodeAddress& info : peers.remote) {
+                std::shared_ptr<sock::TCPClient> socket = m_router.get_socket(info.id);
                 if (socket == nullptr) {
                     // if connection does not exist, connect
                     evtlog::info(elog_kind::Connect, elog_cat::SocketMonitor);
@@ -260,7 +256,7 @@ namespace eroil {
         // attempt connection
         LOG("attempt connection to nodeid=", peer_info.id, " ip=", peer_info.ip, ":", peer_info.port);
         auto client = std::make_shared<sock::TCPClient>();
-        auto result = client->open_and_connect(peer_info.ip.c_str(), peer_info.port);
+        sock::SockResult result = client->open_and_connect(peer_info.ip.c_str(), peer_info.port);
         if (result.code != sock::SockErr::None) {
             LOG("connection to nodeid=", peer_info.id, " failed");
             //print_socket_result(result);
@@ -327,7 +323,7 @@ namespace eroil {
         hdr.label = 0;
         hdr.data_size = 0;
 
-        auto err = sock->send_all(&hdr, sizeof(hdr));
+        sock::SockResult err = sock->send_all(&hdr, sizeof(hdr));
         return map_sock_failures(err.code);
     }
 
@@ -341,7 +337,7 @@ namespace eroil {
         hdr.label = 0,
         hdr.data_size = 0;
 
-        auto err = sock->send_all(&hdr, sizeof(hdr));
+        sock::SockResult err = sock->send_all(&hdr, sizeof(hdr));
         return map_sock_failures(err.code);
     }
 }

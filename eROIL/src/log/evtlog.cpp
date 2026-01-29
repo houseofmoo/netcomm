@@ -38,14 +38,12 @@ namespace eroil::evtlog {
 
     inline uint64_t measure_tsc_hz() {
         // get ticks per second
-        using clock = std::chrono::steady_clock;
-
-        auto t0 = clock::now();
+        auto t0 = std::chrono::steady_clock::now();
         uint64_t c0 = __rdtsc();
 
         std::this_thread::sleep_for(std::chrono::milliseconds(100));
 
-        auto t1 = clock::now();
+        auto t1 = std::chrono::steady_clock::now();
         uint64_t c1 = __rdtsc();
 
         auto ns = std::chrono::duration_cast<std::chrono::nanoseconds>(t1 - t0).count();

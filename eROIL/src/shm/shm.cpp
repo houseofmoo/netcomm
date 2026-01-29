@@ -39,21 +39,21 @@ namespace eroil::shm {
         return err;
     }
 
-    ShmOpErr Shm::read(void* buf, const size_t size, const size_t offset) const noexcept {
-        if (!is_valid()) return ShmOpErr::NotOpen;
-        if (size > m_total_size) return ShmOpErr::TooLarge;
-        if (offset + size > m_total_size) return ShmOpErr::InvalidOffset;
+    ShmErr Shm::read(void* buf, const size_t size, const size_t offset) const noexcept {
+        if (!is_valid()) return ShmErr::NotOpen;
+        if (size > m_total_size) return ShmErr::TooLarge;
+        if (offset + size > m_total_size) return ShmErr::InvalidOffset;
 
         std::memcpy(buf, static_cast<std::byte*>(m_view) + offset, size);
-        return ShmOpErr::None;
+        return ShmErr::None;
     }
 
-    ShmOpErr Shm::write(const void* buf, const size_t size, const size_t offset) noexcept {
-        if (!is_valid()) return ShmOpErr::NotOpen;
-        if (size > m_total_size) return ShmOpErr::TooLarge;
-        if (offset + size > m_total_size) return ShmOpErr::InvalidOffset;
+    ShmErr Shm::write(const void* buf, const size_t size, const size_t offset) noexcept {
+        if (!is_valid()) return ShmErr::NotOpen;
+        if (size > m_total_size) return ShmErr::TooLarge;
+        if (offset + size > m_total_size) return ShmErr::InvalidOffset;
 
         std::memcpy(static_cast<std::byte*>(m_view) + offset, buf, size);
-        return ShmOpErr::None;
+        return ShmErr::None;
     }
 }

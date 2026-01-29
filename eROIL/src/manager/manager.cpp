@@ -27,7 +27,7 @@ namespace eroil {
         m_valid(false) {
                 
         // confirm we know who the fuck we are
-        auto addr = addr::get_address(m_id);
+        addr::NodeAddress addr = addr::get_address(m_id);
         if (addr.kind == addr::RouteKind::None) {
             ERR_PRINT("manager has no entry in nodes info list, manager cannot initialize");
             m_valid = false;
@@ -159,7 +159,7 @@ namespace eroil {
     }
 
     bool Manager::start_broadcast() {
-        auto result = m_broadcast.open_and_join(m_cfg.mcast_cfg);
+        sock::SockResult result = m_broadcast.open_and_join(m_cfg.mcast_cfg);
         if (result.code != sock::SockErr::None) {
             ERR_PRINT("udp multicast group join failed, config dump:");
             ERR_PRINT("    group ip=   ", m_cfg.mcast_cfg.group_ip, ":", m_cfg.mcast_cfg.port);
@@ -196,7 +196,7 @@ namespace eroil {
             msg.recv_labels = m_router.get_recv_labels_snapshot();
 
             // send broadcast
-            auto err = m_broadcast.send_broadcast(&msg, sizeof(msg));
+            sock::SockResult err = m_broadcast.send_broadcast(&msg, sizeof(msg));
             if (err.code != sock::SockErr::None) {
                 evtlog::warn(elog_kind::SendFailed, elog_cat::Broadcast);
                 ERR_PRINT("broadcast send failed!");
@@ -218,7 +218,7 @@ namespace eroil {
 
             std::unordered_map<Label, uint32_t> recv{};
             recv.reserve(MAX_LABELS);
-            for (const auto& recv_label : msg.recv_labels.labels) {
+            for (const io::LabelInfo& recv_label : msg.recv_labels.labels) {
                 if (recv_label.label > INVALID_LABEL) {
                     auto [it, inserted] = recv.emplace(recv_label.label, recv_label.size);
                     if (!inserted) {
@@ -244,7 +244,7 @@ namespace eroil {
             if (m_router.is_send_subscriber(label, source_id)) continue;
 
             // add them as a subscriber of this label
-            const auto addr = addr::get_address(source_id);
+            const addr::NodeAddress addr = addr::get_address(source_id);
             switch (addr.kind) {
                 case addr::RouteKind::Self: // fallthrough
                 case addr::RouteKind::Shm: {
@@ -279,7 +279,7 @@ namespace eroil {
             if (recv_labels.find(label) != recv_labels.end()) continue;
 
             // they no longer subscribe to this label, remove them
-            const auto addr = addr::get_address(source_id);
+            const addr::NodeAddress addr = addr::get_address(source_id);
             switch (addr.kind) {
                 case addr::RouteKind::Self: // fallthrough
                 case addr::RouteKind::Shm: {

@@ -72,7 +72,7 @@ namespace eroil::shm {
     ShmErr Shm::create() {
         if (is_valid()) return ShmErr::DoubleOpen;
 
-        auto wname = to_windows_wstring(name());
+        std::wstring wname = to_windows_wstring(name());
         if (wname.empty()) {
             return ShmErr::InvalidName;
         }
@@ -108,7 +108,7 @@ namespace eroil::shm {
     ShmErr Shm::open() {
         if (is_valid()) return ShmErr::DoubleOpen;
 
-        auto wname = to_windows_wstring(name());
+        std::wstring wname = to_windows_wstring(name());
         if (wname.empty()) {
             return ShmErr::InvalidName;
         }

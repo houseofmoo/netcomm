@@ -8,8 +8,8 @@
 #include "workers/send_worker.h"
 #include "workers/socket_recv_worker.h"
 #include "workers/shm_recv_worker.h"
+#include "workers/send_plan.h"
 #include "types/const_types.h"
-#include "types/send_io_types.h"
 #include "types/macros.h"
 
 namespace eroil {
@@ -20,10 +20,10 @@ namespace eroil {
             Router& m_router;
             sock::TCPServer m_tcp_server;
 
-            worker::SendWorker<io::ShmSendPlan> m_local_sender;
-            worker::SendWorker<io::TcpSendPlan> m_remote_sender;
-            worker::ShmRecvWorker m_shm_recvr;
-            std::unordered_map<NodeId, std::unique_ptr<worker::SocketRecvWorker>> m_sock_recvrs;
+            wrk::SendWorker<wrk::ShmSendPlan> m_local_sender;
+            wrk::SendWorker<wrk::TcpSendPlan> m_remote_sender;
+            wrk::ShmRecvWorker m_shm_recvr;
+            std::unordered_map<NodeId, std::unique_ptr<wrk::SocketRecvWorker>> m_sock_recvrs;
 
         public:
             ConnectionManager(NodeId id, Router& router);

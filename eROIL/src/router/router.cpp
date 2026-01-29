@@ -22,7 +22,7 @@ namespace eroil {
         }
 
         // add handle to route
-        auto ptr = m_send_handles[uid].get();
+        hndl::SendHandle* ptr = m_send_handles[uid].get();
         if (!m_routes.add_send_publisher(label, ptr)) {
             ERR_PRINT("register_send_publisher(): failed to add handle to send route=", label);
             m_send_handles.erase(uid);
@@ -72,7 +72,7 @@ namespace eroil {
         }
 
         // update routes
-        auto ptr = m_recv_handles[uid].get();
+        hndl::RecvHandle* ptr = m_recv_handles[uid].get();
         if (!m_routes.add_recv_subscriber(label, ptr)) {
             ERR_PRINT("register_recv_subscriber(): failed to add handle to recv route=", label);
             m_recv_handles.erase(uid);
@@ -200,7 +200,7 @@ namespace eroil {
         return m_transports.get_recv_shm();
     }
 
-    std::pair<SendTargetErr, std::shared_ptr<io::SendJob>> 
+    std::pair<io::SendJobErr, std::shared_ptr<io::SendJob>> 
     Router::build_send_job(const NodeId my_id, const Label label, const handle_uid uid, io::SendBuf send_buf) {
         static uint32_t seq = 0;
         auto job = std::make_shared<io::SendJob>(std::move(send_buf));
@@ -215,25 +215,25 @@ namespace eroil {
             const SendRoute* route = m_routes.get_send_route(label);
             if (route == nullptr) {
                 ERR_PRINT("(): no route for label=", label);
-                return { SendTargetErr::RouteNotFound, job };
+                return { io::SendJobErr::RouteNotFound, job };
             }
 
             size_t expected_size = route->label_size + sizeof(io::LabelHeader);
             if (expected_size != job->send_buffer.total_size ) {
                 ERR_PRINT("(): size mismatch label=", label, " expected=", expected_size, " got=", send_buf.total_size);
-                return { SendTargetErr::SizeMismatch, job };
+                return { io::SendJobErr::SizeMismatch, job };
             }
 
             auto handle_it = m_send_handles.find(uid);
             if (handle_it == m_send_handles.end()) {
                 ERR_PRINT("(): got handle uid that does not match any known send handles, uid=", uid);
-                return { SendTargetErr::UnknownHandle, job };
+                return { io::SendJobErr::UnknownHandle, job };
             }
 
-            auto uids = m_routes.snapshot_send_publishers(label);
+            std::vector<handle_uid> uids = m_routes.snapshot_send_publishers(label);
             if (uids.empty()) {
                 ERR_PRINT("(): no send publishers for label=", label);
-                return { SendTargetErr::NoPublishers, job };
+                return { io::SendJobErr::NoPublishers, job };
             }
 
             // confirm this uid is a publisher
@@ -244,7 +244,7 @@ namespace eroil {
             );
             if (uids_it == uids.end()) {
                 ERR_PRINT("(): handle was not a member of the send publishers list, uid=", uid);
-                return { SendTargetErr::IncorrectPublisher, job };
+                return { io::SendJobErr::IncorrectPublisher, job };
             }
 
             // store publisher
@@ -253,7 +253,7 @@ namespace eroil {
             // snapshot local subs
             if (!route->local_subscribers.empty()) {
                 job->local_recvrs.reserve(route->local_subscribers.size());
-                for (const auto local : route->local_subscribers) {
+                for (const NodeId local : route->local_subscribers) {
                     job->local_recvrs.push_back(
                         m_transports.get_send_shm(local)
                     );
@@ -263,7 +263,7 @@ namespace eroil {
             // snapshot remote subs
             if (!route->remote_subscribers.empty()) {
                 job->remote_recvrs.reserve(route->remote_subscribers.size());
-                for (const auto remote : route->remote_subscribers) {
+                for (const NodeId remote : route->remote_subscribers) {
                     job->remote_recvrs.push_back(
                         m_transports.get_socket(remote)
                     );
@@ -272,7 +272,7 @@ namespace eroil {
         }
 
         job->pending_sends.store(job->local_recvrs.size() + job->remote_recvrs.size(), std::memory_order_relaxed);
-        return { SendTargetErr::None, job };
+        return { io::SendJobErr::None, job };
     }
 
     void Router::distribute_recvd_label(Label label, const std::byte* buf, const size_t size, const size_t recv_offset) const {
@@ -295,7 +295,7 @@ namespace eroil {
                 return;
             }
 
-            auto uids = m_routes.snapshot_recv_subscribers(label);
+            std::vector<handle_uid> uids = m_routes.snapshot_recv_subscribers(label);
             if (uids.empty()) {
                 ERR_PRINT("(): no recv subscribers for label=", label);
                 return;

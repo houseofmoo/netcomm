@@ -1,6 +1,5 @@
 #pragma once
 #include <atomic>
-#include <memory>
 #include <cstddef>
 #include "types/const_types.h"
 
@@ -61,29 +60,6 @@ namespace eroil::shm {
         static constexpr size_t DATA_BLOCK_SIZE = SHM_BLOCK_SIZE - DATA_BLOCK_OFFSET;
         // largest allowed position where a payload write ends (leaves enough room for wrap record header in all cases)
         static constexpr size_t DATA_USABLE_LIMIT = DATA_BLOCK_SIZE - sizeof(RecordHeader);
-    };
-
-    enum class ShmRecvErr {
-        None,               // success
-        BlockNotInitialized,// hard error, we should only be running when the block is initialized
-        NoRecords,          // wait for event
-        NotYetPublished,    // try again later
-        
-        TailCorruption,     // re-init
-        BlockCorrupted,     // re-init
-        UnknownError        // re-init
-    };
-
-    struct ShmRecvResult {
-        ShmRecvErr err = ShmRecvErr::None;
-        NodeId source_id = INVALID_NODE;
-        Label label = INVALID_LABEL;
-        uint32_t user_seq = 0;
-        size_t buf_size = 0;
-        std::unique_ptr<std::byte[]> buf = nullptr;
-
-        explicit ShmRecvResult() = default;
-        explicit ShmRecvResult(ShmRecvErr error) : err(error) {}
     };
 
     static inline size_t get_header_offset(uint64_t pos_bytes) noexcept {

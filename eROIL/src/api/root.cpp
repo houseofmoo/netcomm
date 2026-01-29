@@ -221,7 +221,7 @@ namespace eroil {
         if (handle->data->buf == nullptr) return;
         if (handle->data->aux_buf == nullptr) return;
 
-        auto buf = handle->data->buf;
+        std::byte* buf = handle->data->buf;
         handle->data->buf = handle->data->aux_buf;
         handle->data->aux_buf = buf;
         handle->data->buf_index = 0;
@@ -328,7 +328,7 @@ namespace eroil {
     }
 
     void get_current_time(iosb::RTOSTime* time) {
-        auto curr_time = eroil::RTOS_Current_Time_Raw();
+        eroil::iosb::RTOSTime curr_time = eroil::RTOS_Current_Time_Raw();
         time->uiMsb = curr_time.uiMsb;
         time->uiLsb = curr_time.uiLsb;
     }

@@ -42,5 +42,7 @@ namespace eroil::io {
         Ping = 1 << 3,
     };
 
-    inline bool has_flag(const uint16_t flags, const LabelFlag flag) { return flags & static_cast<std::uint16_t>(flag); }
+    inline bool has_flag(const uint16_t flags, const LabelFlag flag) { 
+        return flags & static_cast<std::uint16_t>(flag); 
+    }
 }

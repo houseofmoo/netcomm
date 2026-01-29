@@ -4,7 +4,7 @@
 #include "address/address.h"
 #include "log/evtlog_api.h"
 
-namespace eroil::worker {
+namespace eroil::wrk {
     SocketRecvWorker::SocketRecvWorker(Router& router, NodeId id, NodeId peer_id) : 
         m_router(router), m_id(id), m_peer_id(peer_id), m_sock(nullptr) {
             m_sock = m_router.get_socket(m_peer_id);
@@ -97,7 +97,7 @@ namespace eroil::worker {
 
     bool SocketRecvWorker::recv_exact(void* dst, size_t size) {
         if (stop_requested()) return false;
-        auto result = m_sock->recv_all(dst, size);
+        sock::SockResult result = m_sock->recv_all(dst, size);
         switch (result.code) {
             case sock::SockErr::None: {
                 if (result.bytes <= 0) return false; // should never happen

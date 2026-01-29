@@ -71,7 +71,7 @@ namespace eroil::sock {
 
             // shared implementation
             SockResult open_and_connect(const char* ip, uint16_t port) {
-                const auto open_err = open();
+                const sock::SockResult open_err = open();
                 if (open_err.code != SockErr::None) {
                     return open_err;
                 }
@@ -93,7 +93,7 @@ namespace eroil::sock {
 
             // shared implementation
             SockResult open_and_listen(uint16_t port, const char* ip = "0.0.0.0") {
-                auto err = open();
+                sock::SockResult err = open();
                 if (err.code != SockErr::None) return err;
 
                 err = bind(port, ip);

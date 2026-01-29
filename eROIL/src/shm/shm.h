@@ -16,10 +16,8 @@ namespace eroil::shm {
         LayoutMismatch,
         NotInitialized,
         UnknownError,
-    };
 
-    enum class ShmOpErr {
-        None,
+        // operations
         TooLarge,
         NotOpen,
         DuplicateSendEvent,
@@ -54,8 +52,8 @@ namespace eroil::shm {
             // shared implementation
             void memset(size_t offset, int32_t val, size_t bytes);
             size_t total_size() const noexcept;
-            ShmOpErr read(void* buf, const size_t size, const size_t offset) const noexcept;
-            ShmOpErr write(const void* buf, const size_t size, const size_t offset) noexcept;
+            ShmErr read(void* buf, const size_t size, const size_t offset) const noexcept;
+            ShmErr write(const void* buf, const size_t size, const size_t offset) noexcept;
             template <typename T>
             T* map_to_type(size_t offset) const { 
                 if (offset > m_total_size) return nullptr;

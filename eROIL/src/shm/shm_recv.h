@@ -1,4 +1,5 @@
 #pragma once
+#include <memory>
 #include "shm.h"
 #include "events/named_event.h"
 #include "types/const_types.h"
@@ -6,7 +7,28 @@
 #include "types/macros.h"
 
 namespace eroil::shm {
+    enum class ShmRecvErr {
+        None,               // success
+        BlockNotInitialized,// hard error, we should only be running when the block is initialized
+        NoRecords,          // wait for event
+        NotYetPublished,    // try again later
+        
+        TailCorruption,     // re-init
+        BlockCorrupted,     // re-init
+        UnknownError        // re-init
+    };
 
+    struct ShmRecvResult {
+        ShmRecvErr err = ShmRecvErr::None;
+        NodeId source_id = INVALID_NODE;
+        Label label = INVALID_LABEL;
+        uint32_t user_seq = 0;
+        size_t buf_size = 0;
+        std::unique_ptr<std::byte[]> buf = nullptr;
+
+        explicit ShmRecvResult() = default;
+        explicit ShmRecvResult(ShmRecvErr error) : err(error) {}
+    };
 
     class ShmRecv {
         private:

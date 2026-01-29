@@ -4,7 +4,7 @@
 #include "log/evtlog_api.h"
 #include "timer/timer.h"
 
-namespace eroil::worker {
+namespace eroil::wrk {
     ShmRecvWorker::ShmRecvWorker(Router& router, NodeId id) : 
         m_router{router}, m_id{id}, m_shm{nullptr} {
     }
@@ -36,7 +36,7 @@ namespace eroil::worker {
         try {
             uint32_t wait_err_count = 0;
             while (!stop_requested()) {
-                auto werr = m_shm->wait();
+                evt::NamedEventErr werr = m_shm->wait();
                 if (werr != evt::NamedEventErr::None) {
                     wait_err_count += 1;
                     if (wait_err_count > 10) {
@@ -98,7 +98,7 @@ namespace eroil::worker {
     std::pair<bool, shm::ShmRecvResult> ShmRecvWorker::get_next_record() {
         time::Timer timer;
         while (true) {
-            auto result = m_shm->recv();
+            shm::ShmRecvResult result = m_shm->recv();
 
             switch (result.err) {
                 case shm::ShmRecvErr::None: {
