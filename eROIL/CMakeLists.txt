@@ -62,7 +62,7 @@ target_sources(eROIL
 target_sources(eROIL 
     PRIVATE
         $<$<PLATFORM_ID:Windows>:
-            ${CMAKE_CURRENT_SOURCE_DIR}/src/events/win/win_named_event.cpp
+            ${CMAKE_CURRENT_SOURCE_DIR}/src/events/win/win_named_semaphore.cpp
             ${CMAKE_CURRENT_SOURCE_DIR}/src/events/win/win_semaphore.cpp
 
             ${CMAKE_CURRENT_SOURCE_DIR}/src/platform/win/win_platform.cpp
@@ -78,7 +78,7 @@ target_sources(eROIL
         >
 
         $<$<PLATFORM_ID:Linux>:
-            ${CMAKE_CURRENT_SOURCE_DIR}/src/events/linux/linux_named_event.cpp
+            ${CMAKE_CURRENT_SOURCE_DIR}/src/events/linux/linux_named_semaphore.cpp
             ${CMAKE_CURRENT_SOURCE_DIR}/src/events/linux/linux_semaphore.cpp
             
             ${CMAKE_CURRENT_SOURCE_DIR}/src/platform/linux/linux_platform.cpp

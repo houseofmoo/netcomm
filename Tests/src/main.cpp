@@ -42,7 +42,7 @@ int main(int argc, char** argv) {
     //generate_specific_scenario(3888, num_nodes, false);
     //generate_and_write_scenarios(20, num_nodes, false);
     
-    run_network_sim(id, 3888, num_nodes, true, true);
+    run_network_sim(id, 3888, num_nodes, false, false);
     //timed_test(id);
     //add_remove_labels_test(id);
 

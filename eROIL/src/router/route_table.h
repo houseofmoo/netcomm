@@ -6,7 +6,6 @@
 #include <variant>
 #include <atomic>
 
-#include "events/named_event.h"
 #include "types/const_types.h"
 #include "types/handles.h"
 #include "types/label_io_types.h"

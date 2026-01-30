@@ -20,7 +20,7 @@ inline void do_send(std::shared_ptr<SendLabel> label, const bool show_send) {
         count += 1;
 
         if (show_send) {
-            PRINT("SEND [", label->id, "] val: ", count);
+            LOG("SEND [", label->id, "] val: ", count);
         }
 
         std::memcpy(label->buf.get(), &count, sizeof(count));

@@ -5,7 +5,7 @@
 #include "types/macros.h"
 
 namespace eroil::evt {
-    enum class NamedEventErr {
+    enum class NamedSemErr {
         None,               // Success
         DoubleOpen,         // Called open() twice on this named event
         NotInitialized,     // Event not created / already closed
@@ -18,26 +18,27 @@ namespace eroil::evt {
         SysError,           // wait() failed (WAIT_FAILED, etc.)
     };
 
-    class NamedEvent {
+    // counting semaphores
+    class NamedSemaphore {
         private:
             NodeId m_dst_id; 
             sem_handle m_sem;
 
         public:
-            NamedEvent(NodeId id);
-            ~NamedEvent();
+            NamedSemaphore(NodeId id);
+            ~NamedSemaphore();
 
-            EROIL_NO_COPY(NamedEvent)
-            EROIL_DECL_MOVE(NamedEvent)
+            EROIL_NO_COPY(NamedSemaphore)
+            EROIL_DECL_MOVE(NamedSemaphore)
             
             std::string name() const;
             NodeId get_dst_id() const { return m_dst_id; }
-            NamedEventErr post() const;
-            NamedEventErr try_wait() const;
-            NamedEventErr wait(uint32_t milliseconds = 0) const;
+            NamedSemErr post() const;
+            NamedSemErr try_wait() const;
+            NamedSemErr wait(uint32_t milliseconds = 0) const;
             void close();
 
         private: 
-            NamedEventErr open();
+            NamedSemErr open();
     };
 }

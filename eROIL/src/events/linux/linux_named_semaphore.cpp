@@ -1,6 +1,6 @@
 #if defined(EROIL_LINUX)
 
-#include "events/named_event.h"
+#include "events/named_semaphore.h"
 #include <eROIL/print.h>
 
 #include <semaphore.h>
@@ -20,13 +20,13 @@ namespace eroil::evt {
         return static_cast<sem_handle>(h);
     }
 
-    static NamedEventErr map_wait_errno(int e) noexcept {
+    static NamedSemErr map_wait_errno(int e) noexcept {
         switch (e) {
-            case EINTR: return NamedEventErr::SysError; // normally retry on this... if we get here somethigns fooked
-            case ETIMEDOUT: return NamedEventErr::Timeout;
-            case EAGAIN: return NamedEventErr::SysError;
-            case EINVAL: return NamedEventErr::NotInitialized;
-            default: return NamedEventErr::SysError;
+            case EINTR: return NamedSemErr::SysError; // normally retry on this... if we get here somethigns fooked
+            case ETIMEDOUT: return NamedSemErr::Timeout;
+            case EAGAIN: return NamedSemErr::SysError;
+            case EINVAL: return NamedSemErr::NotInitialized;
+            default: return NamedSemErr::SysError;
         }
     }
 
@@ -46,24 +46,24 @@ namespace eroil::evt {
         return true;
     }
 
-    NamedEvent::NamedEvent(NodeId id) : m_dst_id(id), m_sem(nullptr) {
-        if (open() != NamedEventErr::None) {
+    NamedSemaphore::NamedSemaphore(NodeId id) : m_dst_id(id), m_sem(nullptr) {
+        if (open() != NamedSemErr::None) {
             ERR_PRINT("failed to open named event m_dst_id=", id);
         }
     }
 
-    NamedEvent::~NamedEvent() {
+    NamedSemaphore::~NamedSemaphore() {
         close();
     }
 
-    NamedEvent::NamedEvent(NamedEvent&& other) noexcept
+    NamedSemaphore::NamedSemaphore(NamedSemaphore&& other) noexcept
         : m_dst_id(other.m_dst_id),
           m_sem(other.m_sem) {
         other.m_dst_id = INVALID_NODE;
         other.m_sem = nullptr;
     }
 
-    NamedEvent& NamedEvent::operator=(NamedEvent&& other) noexcept {
+    NamedSemaphore& NamedSemaphore::operator=(NamedSemaphore&& other) noexcept {
         if (this != &other) {
             close();
             m_dst_id = other.m_dst_id;
@@ -75,63 +75,63 @@ namespace eroil::evt {
         return *this;
     }
 
-    std::string NamedEvent::name() const {
+    std::string NamedSemaphore::name() const {
         return "/eroil.evt." + std::to_string(m_dst_id);
     }
 
-    NamedEventErr NamedEvent::open() {
-        if (m_sem != nullptr) return NamedEventErr::DoubleOpen;
+    NamedSemErr NamedSemaphore::open() {
+        if (m_sem != nullptr) return NamedSemErr::DoubleOpen;
 
         const std::string n = name();
         if (n.empty() || n[0] != '/') {
             m_sem = nullptr;
-            return NamedEventErr::InvalidName;
+            return NamedSemErr::InvalidName;
         }
 
         constexpr mode_t perms = 0777;
         auto sem = sem_open(n.c_str(), O_CREAT, perms, 0);
         if (sem == SEM_FAILED) {
             sem = nullptr;
-            return NamedEventErr::OpenFailed;
+            return NamedSemErr::OpenFailed;
         }
 
         m_sem = from_native(sem);
-        return NamedEventErr::None;
+        return NamedSemErr::None;
     }
 
-    NamedEventErr NamedEvent::post() const {
-        if (m_sem == nullptr) return NamedEventErr::NotInitialized;
+    NamedSemErr NamedSemaphore::post() const {
+        if (m_sem == nullptr) return NamedSemErr::NotInitialized;
 
         if (sem_post(as_native(m_sem)) != 0) {
-            if (errno == EOVERFLOW) return NamedEventErr::MaxCount;
-            return NamedEventErr::SignalFailed;
+            if (errno == EOVERFLOW) return NamedSemErr::MaxCount;
+            return NamedSemErr::SignalFailed;
         }
 
-        return NamedEventErr::None;
+        return NamedSemErr::None;
     }
 
-    NamedEventErr NamedEvent::try_wait() const {
-        if (m_sem == nullptr) return NamedEventErr::NotInitialized;
+    NamedSemErr NamedSemaphore::try_wait() const {
+        if (m_sem == nullptr) return NamedSemErr::NotInitialized;
 
         for (;;) {
             if (sem_trywait(as_native(m_sem)) == 0) {
-                return NamedEventErr::None;
+                return NamedSemErr::None;
             }
             const int e = errno;
             if (e == EINTR) continue;
-            if (e == EAGAIN) return NamedEventErr::WouldBlock;
+            if (e == EAGAIN) return NamedSemErr::WouldBlock;
 
             return map_wait_errno(e);
         }
     }
 
-    NamedEventErr NamedEvent::wait(uint32_t milliseconds) const {
-        if (m_sem == nullptr) return NamedEventErr::NotInitialized;
+    NamedSemErr NamedSemaphore::wait(uint32_t milliseconds) const {
+        if (m_sem == nullptr) return NamedSemErr::NotInitialized;
 
         if (milliseconds == 0) {
             for (;;) {
                 if (sem_wait(as_native(m_sem)) == 0) {
-                    return NamedEventErr::None;
+                    return NamedSemErr::None;
                 }
                 const int e = errno;
                 if (e == EINTR) continue;
@@ -141,12 +141,12 @@ namespace eroil::evt {
 
         timespec deadline{};
         if (!make_abs_deadline_realtime(deadline, milliseconds)) {
-            return NamedEventErr::SysError;
+            return NamedSemErr::SysError;
         }
 
         for (;;) {
             if (sem_timedwait(as_native(m_sem), &deadline) == 0) {
-                return NamedEventErr::None;
+                return NamedSemErr::None;
             }
             const int e = errno;
             if (e == EINTR) continue;
@@ -154,7 +154,7 @@ namespace eroil::evt {
         }
     }
 
-    void NamedEvent::close() {
+    void NamedSemaphore::close() {
         if (m_sem != nullptr) {
             sem_close(as_native(m_sem));
             //sem_unlink(name().c_str()); // deletes sem file

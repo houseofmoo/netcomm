@@ -63,74 +63,74 @@ namespace eroil::evt {
         return *this;
     }
 
-    SemOpErr Semaphore::post() {
-        if (m_sem != nullptr) return SemOpErr::NotInitialized;
+    SemErr Semaphore::post() {
+        if (m_sem == nullptr) return SemErr::NotInitialized;
 
         if (sem_post(as_native(m_sem)) == -1) {
             int err = errno;
             switch (err) {
-                case EINVAL: return SemOpErr::NotInitialized;
-                case EOVERFLOW: return SemOpErr::MaxCountReached;
-                default: return SemOpErr::SysError; // unknown error
+                case EINVAL: return SemErr::NotInitialized;
+                case EOVERFLOW: return SemErr::MaxCountReached;
+                default: return SemErr::SysError; // unknown error
             }
         }
 
-        return SemOpErr::None;
+        return SemErr::None;
     }
 
-    SemOpErr Semaphore::try_wait() {
-        if (m_sem != nullptr) return SemOpErr::NotInitialized;
+    SemErr Semaphore::try_wait() {
+        if (m_sem == nullptr) return SemErr::NotInitialized;
 
         while (true) {
             if (sem_trywait(as_native(m_sem)) == 0) {
-                return SemOpErr::None;
+                return SemErr::None;
             }
 
             const int err = errno;
             switch (err) {
                 case EINTR: continue; // interrupted before acquiring
-                case EAGAIN: return SemOpErr::WouldBlock;
-                case EINVAL: return SemOpErr::NotInitialized;
-                default: return SemOpErr::SysError;
+                case EAGAIN: return SemErr::WouldBlock;
+                case EINVAL: return SemErr::NotInitialized;
+                default: return SemErr::SysError;
             }
         }
     }
 
-    SemOpErr Semaphore::wait(uint32_t milliseconds) {
-        if (m_sem != nullptr) return SemOpErr::NotInitialized;
+    SemErr Semaphore::wait(uint32_t milliseconds) {
+        if (m_sem == nullptr) return SemErr::NotInitialized;
 
         if (milliseconds == 0) {
             // infinite wait
             while (true) {
                 if (sem_wait(as_native(m_sem)) == 0) {
-                   return SemOpErr::None;
+                   return SemErr::None;
                 }
                 
                 const int err = errno;
                 switch (err) {
                     case EINTR: continue; // interrupted before acquiring
-                    case EINVAL: return SemOpErr::NotInitialized;
-                    default: return SemOpErr::SysError;
+                    case EINVAL: return SemErr::NotInitialized;
+                    default: return SemErr::SysError;
                 }
             }
         } else {
             // timed wait
             timespec deadline{};
             if (!make_abs_deadline_realtime(deadline, milliseconds)) {
-                return SemOpErr::SysError;
+                return SemErr::SysError;
             }
 
             while (true) {
                 if (sem_timedwait(as_native(m_sem), &deadline) == 0) {
-                    return SemOpErr::None;
+                    return SemErr::None;
                 }
 
                 const int err = errno;
                 switch (err) {
                     case EINTR: continue; // interrupted before acquiring
-                    case ETIMEDOUT: return SemOpErr::Timeout;
-                    case EINVAL: return SemOpErr::NotInitialized;
-                    default: return SemOpErr::SysError;
+                    case ETIMEDOUT: return SemErr::Timeout;
+                    case EINVAL: return SemErr::NotInitialized;
+                    default: return SemErr::SysError;
                 }
             }
 

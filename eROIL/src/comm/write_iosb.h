@@ -12,6 +12,7 @@ namespace eroil::comm {
                                 const Label label,
                                 const size_t size,
                                 const size_t recv_offset,
+                                const size_t msg_slot,
                                 std::byte* dst_buf_addr) {
         
         if (handle == nullptr) {
@@ -33,7 +34,7 @@ namespace eroil::comm {
         iosb->Reserve3 = 0;
         iosb->MsgSize = static_cast<int32_t>(size / 4); // they want it in words for some reason
         iosb->Reserve4 = 0;
-        iosb->Messaage_Slot = static_cast<int32_t>(handle->data.buf_index);
+        iosb->Messaage_Slot = static_cast<int32_t>(msg_slot);
         iosb->Reserve5 = label;
         iosb->pMsgAddr = reinterpret_cast<char*>(dst_buf_addr);
         iosb->Reserve6 = 0;

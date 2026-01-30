@@ -92,7 +92,7 @@ namespace eroil::shm {
         hdr->state.store(SHM_READY, std::memory_order_release);
     }
 
-    evt::NamedEventErr ShmRecv::wait() {
+    evt::NamedSemErr ShmRecv::wait() {
         return m_event.wait();
     }
 

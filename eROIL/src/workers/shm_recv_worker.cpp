@@ -37,8 +37,8 @@ namespace eroil::wrk {
         try {
             uint32_t wait_err_count = 0;
             while (!stop_requested()) {
-                evt::NamedEventErr werr = m_shm->wait();
-                if (werr != evt::NamedEventErr::None) {
+                evt::NamedSemErr werr = m_shm->wait();
+                if (werr != evt::NamedSemErr::None) {
                     wait_err_count += 1;
                     if (wait_err_count > 10) {
                         ERR_PRINT("recv worker wait() error 10 consecutive times, worker exits");

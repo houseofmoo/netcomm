@@ -380,7 +380,7 @@ namespace eroil::rt {
             switch (sub->data.signal_mode) {
                 // signal on error only, allowed to overwrite
                 case iosb::SignalMode::OVERWRITE: {
-                    const size_t slot = sub->data.buf_index % sub->data.buf_slots;
+                    const size_t slot = sub->data.buf_index;
                     std::byte* dst = sub->data.buf + (slot * sub->data.buf_size);
                     std::memcpy(dst + recv_offset, buf, size);
                     
@@ -389,7 +389,7 @@ namespace eroil::rt {
 
                     // TODO: do we write the IOSB every message but never signal or do we never
                     // write the IOSB also?
-                    comm::write_recv_iosb(sub.get(), source_id, label, size, recv_offset, dst);
+                    comm::write_recv_iosb(sub.get(), source_id, label, size, recv_offset, slot, dst);
                     break;
                 }
 
@@ -402,7 +402,7 @@ namespace eroil::rt {
                         plat::try_signal_sem(sub->data.sem);
                     } else {
                         // not full yet, copy data into next buffer slot
-                        const size_t slot = sub->data.buf_index % sub->data.buf_slots;
+                        const size_t slot = sub->data.buf_index;
                         std::byte* dst = sub->data.buf + (slot * sub->data.buf_size);
                         std::memcpy(dst + recv_offset, buf, size);
                         
@@ -414,7 +414,7 @@ namespace eroil::rt {
 
                         // if we are now full, signal
                         if (sub->data.recv_count == sub->data.buf_slots) {
-                            comm::write_recv_iosb(sub.get(), source_id, label, size, recv_offset, dst);
+                            comm::write_recv_iosb(sub.get(), source_id, label, size, recv_offset, slot, dst);
                             plat::try_signal_sem(sub->data.sem);
                         }
                     }
@@ -423,7 +423,8 @@ namespace eroil::rt {
                 
                 // signal every message, not allowed to overwrite
                 case iosb::SignalMode::EVERY_MESSAGE: {
-                    std::byte* dst = sub->data.buf + (sub->data.buf_index * sub->data.buf_size);
+                    const size_t slot = sub->data.buf_index;
+                    std::byte* dst = sub->data.buf + (slot * sub->data.buf_size);
                     if (sub->data.recv_count < sub->data.buf_slots) {
                         std::memcpy(dst + recv_offset, buf, size);
                     
@@ -431,20 +432,21 @@ namespace eroil::rt {
                         sub->data.buf_index = (sub->data.buf_index + 1) % sub->data.buf_slots;
                     }
 
-                    comm::write_recv_iosb(sub.get(), source_id, label, size, recv_offset, dst);
+                    comm::write_recv_iosb(sub.get(), source_id, label, size, recv_offset, slot, dst);
                     plat::try_signal_sem(sub->data.sem);
                     break;
                 }
 
                 // always write always signal - this is just for testing, actual system does not use this
                 case iosb::SignalMode::SIGNAL_ALL_WRITE_ALL: {
-                    std::byte* dst = sub->data.buf + (sub->data.buf_index * sub->data.buf_size);
+                    const size_t slot = sub->data.buf_index;
+                    std::byte* dst = sub->data.buf + (slot * sub->data.buf_size);
                     std::memcpy(dst + recv_offset, buf, size);
                 
                     sub->data.recv_count += 1;
                     sub->data.buf_index = (sub->data.buf_index + 1) % sub->data.buf_slots;
 
-                    comm::write_recv_iosb(sub.get(), source_id, label, size, recv_offset, dst);
+                    comm::write_recv_iosb(sub.get(), source_id, label, size, recv_offset, slot, dst);
                     plat::try_signal_sem(sub->data.sem);
                     break;
                 }

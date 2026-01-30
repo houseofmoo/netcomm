@@ -1,6 +1,6 @@
 #pragma once
 #include "shm.h"
-#include "events/named_event.h"
+#include "events/named_semaphore.h"
 #include "types/const_types.h"
 #include "shm_header.h"
 #include "types/macros.h"
@@ -21,7 +21,7 @@ namespace eroil::shm {
         private:
             NodeId m_dst_id;
             Shm m_shm;
-            evt::NamedEvent m_event;
+            evt::NamedSemaphore m_event;
 
         public:
             ShmSend(NodeId dst_id);

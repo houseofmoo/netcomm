@@ -1,7 +1,7 @@
 #pragma once
 #include <memory>
 #include "shm.h"
-#include "events/named_event.h"
+#include "events/named_semaphore.h"
 #include "types/const_types.h"
 #include "shm_header.h"
 #include "types/macros.h"
@@ -34,7 +34,7 @@ namespace eroil::shm {
         private:
             NodeId m_id;
             Shm m_shm;
-            evt::NamedEvent m_event;
+            evt::NamedSemaphore m_event;
 
         public:
             ShmRecv(NodeId id);
@@ -47,7 +47,7 @@ namespace eroil::shm {
             void close();
             void init_as_new();
             void reinit();
-            evt::NamedEventErr wait();
+            evt::NamedSemErr wait();
             ShmRecvResult recv();
             void flush_backlog();
     };

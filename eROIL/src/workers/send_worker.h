@@ -37,19 +37,19 @@ namespace eroil::wrk {
                     m_send_q.push(job);
                 }
 
-                evt::SemOpErr err = m_sem.post();
-                if (err != evt::SemOpErr::None) {
+                evt::SemErr err = m_sem.post();
+                if (err != evt::SemErr::None) {
                     switch (err) {
-                        case evt::SemOpErr::MaxCountReached: {
+                        case evt::SemErr::MaxCountReached: {
                             ERR_PRINT("cannot signal anymore send jobs"); 
                             break;
                         }
-                        case evt::SemOpErr::SysError: {
+                        case evt::SemErr::SysError: {
                             ERR_PRINT("semaphore post got system error");
                             break;
                         }
                         default: {
-                            ERR_PRINT("semaphore post failed to unknown error, SemOpErr: ", std::to_string((int)err));
+                            ERR_PRINT("semaphore post failed to unknown error, SemErr: ", std::to_string((int)err));
                             break;
                         }
                     }
@@ -86,8 +86,10 @@ namespace eroil::wrk {
 
             void run() {
                 while (!stop_requested()) {
-                    if (m_sem.wait() != evt::SemOpErr::None) {
-                        ERR_PRINT("send worker got sem error waiting on work");
+                    evt::SemErr err = m_sem.wait();
+                    if (err != evt::SemErr::None) {
+                        ERR_PRINT("send worker got sem error waiting on work, err=", static_cast<int>(err));
+                        std::this_thread::sleep_for(std::chrono::seconds(1));
                         continue;
                     }
 
