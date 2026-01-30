@@ -78,13 +78,6 @@ void* open_recv_label(std::int32_t label,
                       std::int32_t num_iosb,
                       std::int32_t signal_mode) {
    
-    eroil::iosb::SignalMode smode = eroil::iosb::SignalMode::OVERWRITE;
-    if (signal_mode == 1) {
-        smode = eroil::iosb::SignalMode::BUFFER_FULL;
-    } else if (signal_mode == 2) {
-        smode = eroil::iosb::SignalMode::EVERY_MESSAGE;
-    }
-
     return eroil::open_recv_label(
         static_cast<eroil::Label>(label),
         buf,
@@ -94,7 +87,7 @@ void* open_recv_label(std::int32_t label,
         static_cast<eroil::sem_handle>(sem),
         static_cast<eroil::iosb::ReceiveIosb*>(iosb),
         num_iosb,
-        smode
+        eroil::iosb::to_signal_mode(signal_mode)
     );
  
 }
@@ -112,15 +105,11 @@ void recv_dismiss(void* handle, int32_t count) {
 }
 
 void recv_idle(void* handle) {
-    if (handle == nullptr) return;
-    // TODO: implement
-    // stop recving labels
+    eroil::recv_idle(static_cast<eroil::hndl::RecvHandle*>(handle));
 }
 
 void recv_resume(void* handle) {
-    if (handle == nullptr) return;
-    // TODO: implement
-    // resume recving labels
+    eroil::recv_resume(static_cast<eroil::hndl::RecvHandle*>(handle));
 }
 
 void recv_reset(void* handle) {

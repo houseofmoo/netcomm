@@ -214,6 +214,7 @@ inline void small_test(int id) {
             recv->wait();
             std::memcpy(&count, recv->buf.get(), sizeof(count));
             LOG("recvd: ", count);
+            recv_dismiss(recv_handle, 1);
         }
         close_recv_label(recv_handle);
        //close_send_label(send_handle);

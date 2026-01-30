@@ -17,6 +17,7 @@ namespace eroil::plat {
     }
 
     void try_signal_sem(sem_handle sem) {
+        // allowed to fail silently
         if (sem == nullptr) {
             return;
         }

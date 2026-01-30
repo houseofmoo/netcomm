@@ -21,7 +21,9 @@ namespace eroil {
 
         // set up address book
         switch (config.mode) {
-            case cfg::ManagerMode::Normal: break;
+            case cfg::ManagerMode::Normal: { 
+                break; 
+            }
             case cfg::ManagerMode::TestMode_Local_ShmOnly: {
                 addr::all_shm_address_book();
                 break;
@@ -184,6 +186,7 @@ namespace eroil {
 
     uint32_t recv_count(hndl::RecvHandle* handle) {
         if (handle == nullptr) return 0;
+        std::lock_guard lock(handle->mtx);
         return handle->data.recv_count;
     }
 
@@ -195,20 +198,20 @@ namespace eroil {
         if (static_cast<uint32_t>(count) > handle->data.recv_count) {
             handle->data.recv_count = 0;
         } else {
-            handle->data.recv_count -= count;
+            handle->data.recv_count -= static_cast<uint32_t>(count);
         }
     }
 
     void recv_idle(hndl::RecvHandle* handle) {
         if (handle == nullptr) return;
-        // TODO: implement
-        // stop recving labels
+        std::lock_guard lock(handle->mtx);
+        handle->is_idle = true;
     }
 
     void recv_resume(hndl::RecvHandle* handle) {
         if (handle == nullptr) return;
-        // TODO: implement
-        // resume recving labels
+        std::lock_guard lock(handle->mtx);
+        handle->is_idle = false;
     }
 
     void recv_reset(hndl::RecvHandle* handle) {

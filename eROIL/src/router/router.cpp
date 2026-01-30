@@ -368,11 +368,31 @@ namespace eroil::rt {
                 continue;
             }
 
+            // if subscriber temporarily disabled recv
+            if (sub->is_idle) {
+                continue;
+            }
+
             // TODO: right now we always replace the oldeest buffer slot which makes sense
-            // to me, but im unclear if that is the way it works in NAE
+            // to me, but i'm unclear if that is the way it works in the real system
 
             std::lock_guard lock(sub->mtx);
             switch (sub->data.signal_mode) {
+                // signal on error only, allowed to overwrite
+                case iosb::SignalMode::OVERWRITE: {
+                    const size_t slot = sub->data.buf_index % sub->data.buf_slots;
+                    std::byte* dst = sub->data.buf + (slot * sub->data.buf_size);
+                    std::memcpy(dst + recv_offset, buf, size);
+                    
+                    sub->data.recv_count += 1;
+                    sub->data.buf_index = (sub->data.buf_index + 1) % sub->data.buf_slots;
+
+                    // TODO: do we write the IOSB every message but never signal or do we never
+                    // write the IOSB also?
+                    comm::write_recv_iosb(sub.get(), source_id, label, size, recv_offset, dst);
+                    break;
+                }
+
                 // signal on error or buffer full, not allowed to overwrite
                 case iosb::SignalMode::BUFFER_FULL: {
                     // full and not allowed to overwrite, signal again
@@ -400,21 +420,6 @@ namespace eroil::rt {
                     }
                     break;
                 }
-
-                // signal on error only, allowed to overwrite
-                case iosb::SignalMode::OVERWRITE: {
-                    const size_t slot = sub->data.buf_index % sub->data.buf_slots;
-                    std::byte* dst = sub->data.buf + (slot * sub->data.buf_size);
-                    std::memcpy(dst + recv_offset, buf, size);
-                    
-                    sub->data.recv_count += 1;
-                    sub->data.buf_index = (sub->data.buf_index + 1) % sub->data.buf_slots;
-
-                    // TODO: do we write the IOSB every message but never signal or do we never
-                    // write the IOSB also?
-                    comm::write_recv_iosb(sub.get(), source_id, label, size, recv_offset, dst);
-                    break;
-                }
                 
                 // signal every message, not allowed to overwrite
                 case iosb::SignalMode::EVERY_MESSAGE: {
@@ -425,6 +430,19 @@ namespace eroil::rt {
                         sub->data.recv_count += 1;
                         sub->data.buf_index = (sub->data.buf_index + 1) % sub->data.buf_slots;
                     }
+
+                    comm::write_recv_iosb(sub.get(), source_id, label, size, recv_offset, dst);
+                    plat::try_signal_sem(sub->data.sem);
+                    break;
+                }
+
+                // always write always signal - this is just for testing, actual system does not use this
+                case iosb::SignalMode::SIGNAL_ALL_WRITE_ALL: {
+                    std::byte* dst = sub->data.buf + (sub->data.buf_index * sub->data.buf_size);
+                    std::memcpy(dst + recv_offset, buf, size);
+                
+                    sub->data.recv_count += 1;
+                    sub->data.buf_index = (sub->data.buf_index + 1) % sub->data.buf_slots;
 
                     comm::write_recv_iosb(sub.get(), source_id, label, size, recv_offset, dst);
                     plat::try_signal_sem(sub->data.sem);

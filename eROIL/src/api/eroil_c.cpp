@@ -84,13 +84,6 @@ void* NAE_Open_Receive_Label(int iLabel,
         ERR_PRINT("expected forward label to always be -1, but got forward label=", iForwardLabel);
     }
 
-    eroil::iosb::SignalMode smode = eroil::iosb::SignalMode::OVERWRITE;
-    if (iSignalMode == 1) {
-        smode = eroil::iosb::SignalMode::BUFFER_FULL;
-    } else if (iSignalMode == 2) {
-        smode = eroil::iosb::SignalMode::EVERY_MESSAGE;
-    }
-
     eroil::hndl::RecvHandle* handle = eroil::open_recv_label(
         static_cast<int32_t>(iLabel),
         reinterpret_cast<std::byte*>(pBuffer),
@@ -100,7 +93,7 @@ void* NAE_Open_Receive_Label(int iLabel,
         static_cast<eroil::sem_handle>(iSem),
         static_cast<eroil::iosb::ReceiveIosb*>(pIosb),
         static_cast<int32_t>(iNumIosbs),
-        smode
+        eroil::iosb::to_signal_mode(static_cast<int32_t>(iSignalMode))
     );
 
     return static_cast<void*>(handle);
@@ -135,12 +128,12 @@ void NAE_Receive_Dismiss(void* iHandle, int iCount) {
     );
 }
 
-void NAE_Receive_Idle(void* /*iHandle*/) {
-    // not implemented
+void NAE_Receive_Idle(void* iHandle) {
+    eroil::recv_idle(static_cast<eroil::hndl::RecvHandle*>(iHandle));
 }
 
-void NAE_Receive_Resume(void* /*iHandle*/) {
-    // not implemented
+void NAE_Receive_Resume(void* iHandle) {
+    eroil::recv_resume(static_cast<eroil::hndl::RecvHandle*>(iHandle));
 }
 
 void NAE_Receive_Reset(void* iHandle) {

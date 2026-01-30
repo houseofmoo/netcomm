@@ -76,6 +76,7 @@ inline void do_recv(std::shared_ptr<RecvLabel> label, const bool show_recvd) {
             LOG("RECV [", label->id, "] got: ", count);
         }
         prev_count = count;
+        recv_dismiss(handle, 1);
     }
     close_recv_label(handle);
 }
@@ -107,6 +108,7 @@ inline void do_timed_recv(std::shared_ptr<RecvLabel> label) {
             LOG(ns, " RECV [", label->id, "] got: ", count);
         }
         prev_count = count;
+        recv_dismiss(handle, 1);
     }
     close_recv_label(handle);
 }

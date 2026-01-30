@@ -42,7 +42,8 @@ namespace eroil::hndl {
     struct RecvHandle {
         std::mutex mtx;
         handle_uid uid;
+        bool is_idle;
         OpenReceiveData data;
-        RecvHandle(int id, OpenReceiveData d) : uid(id), data(d) {}
+        RecvHandle(int id, OpenReceiveData d) : uid(id), is_idle(false), data(d) {}
     };
 }

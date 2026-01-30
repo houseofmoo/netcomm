@@ -8,7 +8,18 @@ namespace eroil::iosb {
         OVERWRITE = 0,
         BUFFER_FULL = 1,
         EVERY_MESSAGE = 2,
+        SIGNAL_ALL_WRITE_ALL = 3,
     };
+
+    inline SignalMode to_signal_mode(int32_t s) {
+        switch (s) {
+            case 0: return SignalMode::OVERWRITE;
+            case 1: return SignalMode::BUFFER_FULL;
+            case 2: return SignalMode::EVERY_MESSAGE;
+            case 3: return SignalMode::SIGNAL_ALL_WRITE_ALL;
+            default: return SignalMode::EVERY_MESSAGE;
+        }
+    }
 
     enum class RoilAction {
         SEND = 0x0,
@@ -21,8 +32,8 @@ namespace eroil::iosb {
     };
 
     struct RTOSTime {
-        unsigned int uiMsb;
-        unsigned int uiLsb;
+        uint32_t uiMsb;
+        uint32_t uiLsb;
     };
 
     struct FcHeader {

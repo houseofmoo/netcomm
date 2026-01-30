@@ -25,7 +25,7 @@ TODO:
             NodeId m_id;
             cfg::ManagerConfig m_cfg;
             rt::Router m_router;
-            sock::SocketContext m_context;
+            sock::SocketContext m_sock_context;
             comm::ConnectionManager m_comms;
             sock::UDPMulticastSocket m_broadcast;
             bool m_valid;

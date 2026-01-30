@@ -37,11 +37,12 @@ int main(int argc, char** argv) {
     (void)id;
 
     int num_nodes = get_node_count();
+    (void)num_nodes;
 
     //generate_specific_scenario(3888, num_nodes, false);
     //generate_and_write_scenarios(20, num_nodes, false);
     
-    run_network_sim(id, 3888, num_nodes, false, true);
+    run_network_sim(id, 3888, num_nodes, true, true);
     //timed_test(id);
     //add_remove_labels_test(id);
 

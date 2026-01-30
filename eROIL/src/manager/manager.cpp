@@ -21,7 +21,7 @@ namespace eroil {
         : m_id(cfg.id), 
         m_cfg(cfg),
         m_router{}, 
-        m_context{},
+        m_sock_context{},
         m_comms{cfg.id, m_router},
         m_broadcast{},
         m_valid(false) {
@@ -34,7 +34,8 @@ namespace eroil {
             return;
         }
 
-        if (!m_context.ok()) {
+        // confirm socket context was created successfully
+        if (!m_sock_context.ok()) {
             ERR_PRINT("manager was unable to get a valid socket context, manager cannot initialize");
             m_valid = false;
             return;
