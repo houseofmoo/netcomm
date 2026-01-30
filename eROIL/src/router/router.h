@@ -36,6 +36,8 @@ namespace eroil {
             void unregister_send_publisher(const hndl::SendHandle* handle);
             void register_recv_subscriber(std::unique_ptr<hndl::RecvHandle> handle);
             void unregister_recv_subscriber(const hndl::RecvHandle* handle);
+            hndl::SendHandle* get_send_handle(handle_uid uid); 
+            hndl::RecvHandle* get_recv_handle(handle_uid uid);
 
             // add/remove subscribers for labels we send
             void add_local_send_subscriber(Label label, size_t size, NodeId dst_id);
@@ -62,7 +64,10 @@ namespace eroil {
 
             std::pair<io::SendJobErr, std::shared_ptr<io::SendJob>> 
             build_send_job(const NodeId my_id, const Label label, const handle_uid uid, io::SendBuf send_buf);
-            void distribute_recvd_label(const Label label, const std::byte* buf, const size_t size, const size_t recv_offset) const;
-
+            void distribute_recvd_label(const NodeId source_id, 
+                                        const Label label, 
+                                        const std::byte* buf, 
+                                        const size_t size, 
+                                        const size_t recv_offset) const;
     };
 }

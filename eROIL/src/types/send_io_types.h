@@ -12,6 +12,7 @@
 #include "label_io_types.h"
 #include "assertion.h"
 #include "types/macros.h"
+#include "comm/write_iosb.h"
 
 namespace eroil::io {
     struct SendBuf {
@@ -85,41 +86,49 @@ namespace eroil::io {
         }
 
         void finalize_iosb() noexcept {
-            // write IOSB using status
-            if (publisher == nullptr) {
-                return;
-            }
+            // if (publisher == nullptr) {
+            //     return;
+            // }
 
-            if (publisher->iosb == nullptr || publisher->num_iosb == 0) {
-                return;
-            }
+            // if (publisher->iosb == nullptr || publisher->num_iosb == 0) {
+            //     return;
+            // }
 
-            int32_t status = 0;
-            if (remote_failure_count > 0 || local_failure_count > 0) {
-                status = -1;
-            }
+            // // TODO: set status appropriately
+            // // values are 0...4 i think, and 0 means ok?
+            // int32_t status = 0;
+            // if (remote_failure_count > 0 || local_failure_count > 0) {
+            //     status = -1;
+            // }
 
-            iosb::SendIosb* iosb = publisher->iosb + publisher->iosb_index;
-            iosb->Status = status;  // -1 is error, 0 is ok
-            iosb->Reserve1 = 0;
-            iosb->Header_Valid = 1;
-            iosb->Reserve2 = static_cast<int>(iosb::RoilAction::SEND);
-            iosb->Reserve3 = 0;
-            iosb->pMsgAddr = static_cast<char*>(send_buffer.data_src_addr);
-            iosb->MsgSize = send_buffer.data_size;
-            iosb->Reserve4 = 0;
-            iosb->Reserve5 = 0;
-            iosb->Reserve6 = 0;
-            iosb->Reserve7 = 0;
-            iosb->Reserve8 = 0;
-            iosb->Reserve9 = 0;
-            iosb->Reserve10 = 0;
-            iosb->TimeStamp = RTOS_Current_Time_Raw();
+            // iosb::SendIosb* iosb = publisher->iosb + publisher->iosb_index;
+            // iosb->Status = status; 
+            // iosb->Reserve1 = 0;
+            // iosb->Header_Valid = 1;
+            // iosb->Reserve2 = static_cast<int>(iosb::RoilAction::SEND);
+            // iosb->Reserve3 = 0;
+            // iosb->pMsgAddr = static_cast<char*>(send_buffer.data_src_addr);
+            // iosb->MsgSize = send_buffer.data_size;
+            // iosb->Reserve4 = 0;
+            // iosb->Reserve5 = 0;
+            // iosb->Reserve6 = 0;
+            // iosb->Reserve7 = 0;
+            // iosb->Reserve8 = 0;
+            // iosb->Reserve9 = 0;
+            // iosb->Reserve10 = 0;
+            // iosb->TimeStamp = RTOS_Current_Time_Raw();
 
-            iosb->FC_Header = { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 };
-            iosb->FC_Header.Destination_ID = label;
-            iosb->FC_Header.Source_ID = source_id;
-
+            // iosb->FC_Header = { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 };
+            // iosb->FC_Header.Source_ID = source_id;
+            // iosb->FC_Header.Destination_ID = label;
+            comm::write_send_iosb(
+                publisher, 
+                source_id, 
+                label, 
+                send_buffer.data_size,
+                local_failure_count + remote_failure_count,
+                send_buffer.data_src_addr
+            );
             publisher->iosb_index = (publisher->iosb_index + 1) % publisher->num_iosb;
 
             plat::try_signal_sem(publisher->sem);

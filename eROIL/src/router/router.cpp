@@ -3,6 +3,7 @@
 #include <cstring>
 #include <eROIL/print.h>
 #include <algorithm>
+#include "comm/write_iosb.h"
 
 namespace eroil {
     // open/close send/recv
@@ -17,14 +18,14 @@ namespace eroil {
         // store handle
         auto [_, inserted] = m_send_handles.try_emplace(uid, std::move(handle));
         if (!inserted) {
-            ERR_PRINT("register_send_publisher(): duplicate send handle uid=", uid);
+            ERR_PRINT("duplicate send handle uid=", uid);
             return;
         }
 
         // add handle to route
         hndl::SendHandle* ptr = m_send_handles[uid].get();
         if (!m_routes.add_send_publisher(label, ptr)) {
-            ERR_PRINT("register_send_publisher(): failed to add handle to send route=", label);
+            ERR_PRINT("failed to add handle to send route=", label);
             m_send_handles.erase(uid);
         }
     }
@@ -37,7 +38,7 @@ namespace eroil {
         // validate pointer still matches uid
         auto it = m_send_handles.find(handle->uid);
         if (it == m_send_handles.end() || it->second.get() != handle) {
-            ERR_PRINT("unregister_send_publisher(): invalid SendHandle*");
+            ERR_PRINT("invalid SendHandle*");
             return;
         }
 
@@ -49,7 +50,7 @@ namespace eroil {
 
         // remove from route table (removes uid from publishers; may delete route if unused)
         if (!m_routes.remove_send_publisher(label, uid)) {
-            ERR_PRINT("unregister_send_publisher(): route table did not contain publisher uid=", uid, " label=", label);
+            ERR_PRINT("route table did not contain publisher uid=", uid, " label=", label);
             // continue anyway
         }
     }
@@ -67,14 +68,14 @@ namespace eroil {
 
         auto [_, h_inserted] = m_recv_handles.try_emplace(uid, std::move(handle));
         if (!h_inserted) {
-            ERR_PRINT("register_recv_subscriber(): duplicate recv handle uid=", uid);
+            ERR_PRINT("duplicate recv handle uid=", uid);
             return;
         }
 
         // update routes
         hndl::RecvHandle* ptr = m_recv_handles[uid].get();
         if (!m_routes.add_recv_subscriber(label, ptr)) {
-            ERR_PRINT("register_recv_subscriber(): failed to add handle to recv route=", label);
+            ERR_PRINT("failed to add handle to recv route=", label);
             m_recv_handles.erase(uid);
         }
     }
@@ -86,7 +87,7 @@ namespace eroil {
 
         auto it = m_recv_handles.find(handle->uid);
         if (it == m_recv_handles.end() || it->second.get() != handle) {
-            ERR_PRINT("unregister_recv_subscriber(): invalid RecvHandle*");
+            ERR_PRINT("invalid RecvHandle*");
             return;
         }
 
@@ -96,8 +97,26 @@ namespace eroil {
         m_recv_handles.erase(uid);
 
         if (!m_routes.remove_recv_subscriber(label, uid)) {
-            ERR_PRINT("unregister_recv_subscriber(): route table did not contain subscriber uid=", uid, " label=", label);
+            ERR_PRINT("route table did not contain subscriber uid=", uid, " label=", label);
         }
+    }
+
+    hndl::SendHandle* Router::get_send_handle(handle_uid uid) {
+        std::shared_lock lock(m_router_mtx);
+        auto it = m_send_handles.find(uid);
+        if (it == m_send_handles.end()) {
+            return nullptr;
+        }
+        return it->second.get();
+    }
+
+    hndl::RecvHandle* Router::get_recv_handle(handle_uid uid) {
+        std::shared_lock lock(m_router_mtx);
+        auto it = m_recv_handles.find(uid);
+        if (it == m_recv_handles.end()) {
+            return nullptr;
+        }
+        return it->second.get();
     }
 
     // route interface
@@ -173,30 +192,37 @@ namespace eroil {
     }
 
     bool Router::upsert_socket(NodeId id, std::shared_ptr<sock::TCPClient> sock) {
+        std::unique_lock lock(m_router_mtx);
         return m_transports.upsert_socket(id, sock);
     }
 
     std::shared_ptr<sock::TCPClient> Router::get_socket(NodeId id) const noexcept {
+        std::unique_lock lock(m_router_mtx);
         return m_transports.get_socket(id);
     }
 
     bool Router::has_socket(NodeId id) const noexcept {
+        std::shared_lock lock(m_router_mtx);
         return m_transports.has_socket(id);
     }
 
     bool Router::open_send_shm(NodeId dst_id) {
+        std::unique_lock lock(m_router_mtx);
         return m_transports.open_send_shm(dst_id);
     }
 
     std::shared_ptr<shm::ShmSend> Router::get_send_shm(NodeId dst_id) const noexcept {
+        std::shared_lock lock(m_router_mtx);
         return m_transports.get_send_shm(dst_id);
     }
 
     bool Router::open_recv_shm(NodeId my_id) {
+        std::unique_lock lock(m_router_mtx);
         return m_transports.open_recv_shm(my_id);
     }
 
     std::shared_ptr<shm::ShmRecv> Router::get_recv_shm() const noexcept {
+        std::shared_lock lock(m_router_mtx);
         return m_transports.get_recv_shm();
     }
 
@@ -214,25 +240,25 @@ namespace eroil {
 
             const SendRoute* route = m_routes.get_send_route(label);
             if (route == nullptr) {
-                ERR_PRINT("(): no route for label=", label);
+                ERR_PRINT("no route for label=", label);
                 return { io::SendJobErr::RouteNotFound, job };
             }
 
             size_t expected_size = route->label_size + sizeof(io::LabelHeader);
             if (expected_size != job->send_buffer.total_size ) {
-                ERR_PRINT("(): size mismatch label=", label, " expected=", expected_size, " got=", send_buf.total_size);
+                ERR_PRINT("size mismatch label=", label, " expected=", expected_size, " got=", send_buf.total_size);
                 return { io::SendJobErr::SizeMismatch, job };
             }
 
             auto handle_it = m_send_handles.find(uid);
             if (handle_it == m_send_handles.end()) {
-                ERR_PRINT("(): got handle uid that does not match any known send handles, uid=", uid);
+                ERR_PRINT("got handle uid that does not match any known send handles, uid=", uid);
                 return { io::SendJobErr::UnknownHandle, job };
             }
 
             std::vector<handle_uid> uids = m_routes.snapshot_send_publishers(label);
             if (uids.empty()) {
-                ERR_PRINT("(): no send publishers for label=", label);
+                ERR_PRINT("no send publishers for label=", label);
                 return { io::SendJobErr::NoPublishers, job };
             }
 
@@ -243,7 +269,7 @@ namespace eroil {
                 uid
             );
             if (uids_it == uids.end()) {
-                ERR_PRINT("(): handle was not a member of the send publishers list, uid=", uid);
+                ERR_PRINT("handle was not a member of the send publishers list, uid=", uid);
                 return { io::SendJobErr::IncorrectPublisher, job };
             }
 
@@ -275,7 +301,11 @@ namespace eroil {
         return { io::SendJobErr::None, job };
     }
 
-    void Router::distribute_recvd_label(Label label, const std::byte* buf, const size_t size, const size_t recv_offset) const {
+    void Router::distribute_recvd_label(const NodeId source_id, 
+                                        const Label label, 
+                                        const std::byte* buf, 
+                                        const size_t size, 
+                                        const size_t recv_offset) const {
         if (buf == nullptr || size == 0) return;
         
         // get subscribers snapshot
@@ -285,19 +315,19 @@ namespace eroil {
             
             const RecvRoute* route = m_routes.get_recv_route(label);
             if (route == nullptr) {
-                ERR_PRINT("(): unknown label=", label);
+                ERR_PRINT("unknown label=", label);
                 return;
             }
 
             if (route->label_size != size) {
-                ERR_PRINT("(): size mismatch label=", label,
-                        " expected=", route->label_size, " got=", size);
+                ERR_PRINT("size mismatch label=", label,
+                          " expected=", route->label_size, " got=", size);
                 return;
             }
 
             std::vector<handle_uid> uids = m_routes.snapshot_recv_subscribers(label);
             if (uids.empty()) {
-                ERR_PRINT("(): no recv subscribers for label=", label);
+                ERR_PRINT("no recv subscribers for label=", label);
                 return;
             }
 
@@ -311,89 +341,132 @@ namespace eroil {
         }
 
         // write to subscribers buffers
-        for (const auto& subs : subscribers) {
+        for (const auto& sub : subscribers) {
             // TODO: we need to write filed into recv IOSB when something goes wrong
-            if (subs == nullptr) {
-                ERR_PRINT("(): got null subscriber for label=", label);
+            if (sub == nullptr) {
+                ERR_PRINT("got null subscriber for label=", label);
                 continue;
             }
 
-            if (subs->buf == nullptr) { 
-                ERR_PRINT("(): subscriber has no buffer for label=", label);
+            if (sub->buf == nullptr) { 
+                ERR_PRINT("subscriber has no buffer for label=", label);
                 continue;
             }
 
-            if (subs->buf_slots == 0) {
-                ERR_PRINT("(): subscriber has no buffer slots for label=", label);
+            if (sub->buf_slots == 0) {
+                ERR_PRINT("subscriber has no buffer slots for label=", label);
                 continue;
             }
 
-            if (subs->buf_size == 0) { 
-                ERR_PRINT("(): subscriber buffer size is 0 for label=", label);
+            if (sub->buf_size == 0) { 
+                ERR_PRINT("subscriber buffer size is 0 for label=", label);
                 continue;
             }
 
-            if (recv_offset > subs->buf_size) {
-                ERR_PRINT("(): recv offset > buf size for label=", label);
+            if (recv_offset > sub->buf_size) {
+                ERR_PRINT("recv offset > buf size for label=", label);
                 continue;
             }
-
-            const size_t slot = subs->buf_index % subs->buf_slots;
-            std::byte* dst = subs->buf + (slot * subs->buf_size);
-            std::memcpy(dst + recv_offset, buf, size);
 
             // TODO: since we have multiple threads recving
             // we could race on writing the recv IOSB
-            
-            // write recvrs IOSB 
-            if (subs->iosb != nullptr && subs->num_iosb > 0) {
-                iosb::ReceiveIosb* iosb = subs->iosb + subs->iosb_index;
 
-                iosb->Status = 0; // -1 is error, 0 is ok
-                iosb->Reserve1 = 0;
-                iosb->Header_Valid = 1;
-                iosb->Reserve2 = static_cast<int>(iosb::RoilAction::RECEIVE);
-                iosb->Reserve3 = 0;
-                iosb->MsgSize = size / 4; // they want it in words for some reason
-                iosb->Reserve4 = 0;
-                iosb->Messaage_Slot = subs->buf_index;
-                iosb->Reserve5 = label;
-                iosb->pMsgAddr = reinterpret_cast<char*>(dst);
-                iosb->Reserve6 = 0;
-                iosb->Reserve7 = 0;
-                iosb->Reserve8 = 0;
-                iosb->E_SOF = 0;
-                iosb->E_EOF = 0;
-                iosb->TimeStamp = RTOS_Current_Time_Raw();
+            // TODO: wait, recv vs slot are not related but they should be
+            // if they dismiss a message, i assume that frees a buffer slot, but which one?
 
-                iosb->FC_Header = { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 };
-
-                //iosb->FC_Header.Source_ID = m_id;
-                //iosb->FC_Header.Destination_ID = (iForwardLabel == -1) ? targets.label : iForwardLabel;
-                //iosb->FC_Header.Parameter = iOffsetInBytes; specifically the recvoffset (recv'd from a send header recvoffset)
-                
-                subs->iosb_index = (subs->iosb_index + 1) % subs->num_iosb;
-            }
-            
-            subs->buf_index = (subs->buf_index + 1) % subs->buf_slots;
-
-            // TODO: signal based on the signal mode?
-            switch (subs->signal_mode) {
+            switch (sub->signal_mode) {
+                // signal on error or buffer full, not allowed to overwrite
                 case iosb::SignalMode::BUFFER_FULL: {
+                    // they havent cleared out old messages still, re-signal
+                    if (sub->recv_count == sub->buf_slots) {
+                        plat::try_signal_sem(sub->sem);
+                    } else {
+                        // not full yet, copy data into next buffer slot
+                        const size_t slot = sub->buf_index % sub->buf_slots;
+                        std::byte* dst = sub->buf + (slot * sub->buf_size);
+                        std::memcpy(dst + recv_offset, buf, size);
+                        
+                        sub->recv_count += 1;
+                        sub->buf_index = (sub->buf_index + 1) % sub->buf_slots;
 
+                        // if we are now full, signal
+                        if (sub->recv_count == sub->buf_slots) {
+                            comm::write_recv_iosb(sub, source_id, label, size, recv_offset, dst);
+                            plat::try_signal_sem(sub->sem);
+                        }
+                    }
+                    break;
                 }
 
+                // signal on error only, allowed to overwrite
                 case iosb::SignalMode::OVERWRITE: {
-
+                    const size_t slot = sub->buf_index % sub->buf_slots;
+                    std::byte* dst = sub->buf + (slot * sub->buf_size);
+                    std::memcpy(dst + recv_offset, buf, size);
+                    
+                    sub->recv_count += 1;
+                    sub->buf_index = (sub->buf_index + 1) % sub->buf_slots;
+                    break;
                 }
                 
+                // signal every message, not allowed to overwrite
                 case iosb::SignalMode::EVERY_MESSAGE: {
+                    const size_t slot = sub->buf_index % sub->buf_slots;
+                    std::byte* dst = sub->buf + (slot * sub->buf_size);
+                    std::memcpy(dst + recv_offset, buf, size);
                     
+                    sub->recv_count += 1;
+                    sub->buf_index = (sub->buf_index + 1) % sub->buf_slots;
+
+                    comm::write_recv_iosb(sub, source_id, label, size, recv_offset, dst);
+                    plat::try_signal_sem(sub->sem);
+                    break;
+                }
+                default: {
+                    ERR_PRINT("got unknown signal mode=", static_cast<int32_t>(sub->signal_mode));
+                    break;
                 }
             }
-            int count = 0;
-            std::memcpy(&count, buf, sizeof(count));
-            plat::try_signal_sem(subs->sem);
+
+            // const size_t slot = sub->buf_index % sub->buf_slots;
+            // std::byte* dst = sub->buf + (slot * sub->buf_size);
+            // std::memcpy(dst + recv_offset, buf, size);
+
+
+
+            // write recvrs IOSB 
+            // if (sub->iosb != nullptr && sub->num_iosb > 0) {
+            //     iosb::ReceiveIosb* iosb = sub->iosb + sub->iosb_index;
+
+            //     iosb->Status = 0; // -1 is error, 0 is ok
+            //     iosb->Reserve1 = 0;
+            //     iosb->Header_Valid = 1;
+            //     iosb->Reserve2 = static_cast<int>(iosb::RoilAction::RECEIVE);
+            //     iosb->Reserve3 = 0;
+            //     iosb->MsgSize = size / 4; // they want it in words for some reason
+            //     iosb->Reserve4 = 0;
+            //     iosb->Messaage_Slot = sub->buf_index;
+            //     iosb->Reserve5 = label;
+            //     iosb->pMsgAddr = reinterpret_cast<char*>(dst);
+            //     iosb->Reserve6 = 0;
+            //     iosb->Reserve7 = 0;
+            //     iosb->Reserve8 = 0;
+            //     iosb->E_SOF = 0;
+            //     iosb->E_EOF = 0;
+            //     iosb->TimeStamp = RTOS_Current_Time_Raw();
+
+            //     iosb->FC_Header = { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 };
+            //     iosb->FC_Header.Source_ID = source_id;
+            //     iosb->FC_Header.Destination_ID = label;
+            //     iosb->FC_Header.Parameter = recv_offset;
+                
+            //     sub->iosb_index = (sub->iosb_index + 1) % sub->num_iosb;
+            // }
+            
+            // write_recv_iosb(sub, source_id, label, size, recv_offset, dst);
+            // plat::try_signal_sem(sub->sem);
+
+            // sub->buf_index = (sub->buf_index + 1) % sub->buf_slots;
         }
     }
 }

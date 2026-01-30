@@ -79,6 +79,7 @@ namespace eroil::wrk {
                 if (stop_requested()) break;
 
                 m_router.distribute_recvd_label(
+                    static_cast<NodeId>(hdr.source_id),
                     static_cast<Label>(hdr.label), 
                     payload.data(),
                     payload.size(), 

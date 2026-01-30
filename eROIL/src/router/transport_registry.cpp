@@ -68,7 +68,7 @@ namespace eroil {
 
         m_recv_shm = std::make_shared<shm::ShmRecv>(my_id);
         if (!m_recv_shm->create_or_open()) {
-            ERR_PRINT("open_recv_shm(): create_or_open failed for recv shm");
+            ERR_PRINT("create_or_open failed for recv shm");
             m_recv_shm->close();
             m_recv_shm.reset();
             return false;

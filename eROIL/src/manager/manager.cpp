@@ -70,16 +70,20 @@ namespace eroil {
             ERR_PRINT("ignored open_send for label=", data.label);
             return nullptr;
         }
-
+        
         auto handle = std::make_unique<hndl::SendHandle>(unique_id(), data);
-        hndl::SendHandle* raw_handle = handle.get();
+        handle_uid uid = handle->uid;
+        if (handle->data->iosb != nullptr) {
+            handle->data->iosb->FC_Header.Source_ID = m_id;
+        }
         m_router.register_send_publisher(std::move(handle));
-        return raw_handle;
+
+        return m_router.get_send_handle(uid);
     }
 
     void Manager::send_label(hndl::SendHandle* handle, std::byte* buf, size_t buf_size, size_t send_offset, size_t recv_offset) {
         if (handle == nullptr) {
-            ERR_PRINT("(): got null send handle");
+            ERR_PRINT("got null send handle");
             return;
         }
 
@@ -101,12 +105,12 @@ namespace eroil {
         }
 
         if (data_size <= 0 || data_size != handle->data->buf_size) {
-            ERR_PRINT("(): got data size=", data_size, " that does not match expected size=", handle->data->buf_size);
+            ERR_PRINT("got data size=", data_size, " that does not match expected size=", handle->data->buf_size);
             return;
         }
 
         if (data_buf == nullptr) {
-            ERR_PRINT("(): got null data buffer");
+            ERR_PRINT("got null data buffer");
             return;
         }
 
@@ -135,7 +139,7 @@ namespace eroil {
 
     void Manager::close_send(hndl::SendHandle* handle) {
         if (handle == nullptr) {
-            ERR_PRINT("(): got handle that was nullptr");
+            ERR_PRINT("got handle that was nullptr");
             return;
         }
         
@@ -143,15 +147,25 @@ namespace eroil {
     }
 
     hndl::RecvHandle* Manager::open_recv(hndl::OpenReceiveData data) {
+        if (data.buf_size > MAX_LABEL_SEND_SIZE) {
+            ERR_PRINT(" got label size=", data.buf_size, " which is bigger than max=", MAX_LABEL_SEND_SIZE);
+            ERR_PRINT("ignored open_recv for label=", data.label);
+            return nullptr;
+        }
+
         auto handle = std::make_unique<hndl::RecvHandle>(unique_id(), data);
-        hndl::RecvHandle* raw_handle = handle.get();
+        handle_uid uid = handle->uid;
+        if (handle->data->iosb != nullptr) {
+            handle->data->iosb->FC_Header.Source_ID = m_id;
+        }
         m_router.register_recv_subscriber(std::move(handle));
-        return raw_handle;
+
+        return m_router.get_recv_handle(uid);
     }
 
     void Manager::close_recv(hndl::RecvHandle* handle) {
         if (handle == nullptr) {
-            ERR_PRINT("(): got handle that was nullptr");
+            ERR_PRINT("got handle that was nullptr");
             return;
         }
 

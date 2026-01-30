@@ -159,7 +159,6 @@ namespace eroil {
 
         eroil::hndl::OpenReceiveData data;
         data.label = label;
-        data.forward_label = -1;
         data.buf = buf;
         data.buf_size = static_cast<size_t>(size);
         data.buf_slots = static_cast<uint32_t>(num_slots);

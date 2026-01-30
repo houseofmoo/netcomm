@@ -27,7 +27,7 @@ namespace eroil::shm {
             if (err == ShmErr::None) return err;
 
             if (err != ShmErr::AlreadyExists) {
-                ERR_PRINT("shm::create_or_open() got unexpected error from create(): ", static_cast<int>(err));
+                ERR_PRINT(" unexpected error from create() ", static_cast<int>(err));
                 return err;
             }
 

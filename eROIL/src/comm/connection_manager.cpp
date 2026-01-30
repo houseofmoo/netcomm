@@ -266,7 +266,7 @@ namespace eroil {
 
         // send them a notice of who we are
         if (!send_id(client.get())) {
-            ERR_PRINT("(): send ID failed unexpectedly during connection attempt");
+            ERR_PRINT("send ID failed unexpectedly during connection attempt");
             evtlog::warn(elog_kind::SendFailed, elog_cat::SocketMonitor, peer_info.id);
             return false;
         }
@@ -291,7 +291,7 @@ namespace eroil {
 
     void ConnectionManager::ping_remote_peer(addr::NodeAddress peer_info, std::shared_ptr<sock::TCPClient> client) {
         if (client->get_destination_id() != peer_info.id) {
-            ERR_PRINT("(): got mismatching IDs for socket and info, socket list corrupted");
+            ERR_PRINT("got mismatching IDs for socket and info, socket list corrupted");
             return;
         }
 

@@ -24,7 +24,7 @@ namespace eroil {
         size_t index = 0;
         for (const auto& [label, route] : m_send_routes) {
             if (index >= MAX_LABELS) {
-                ERR_PRINT("(): too many send labels for broadcast message to send");
+                ERR_PRINT("too many send labels for broadcast message to send");
                 break;
             }
             labels[index].label = label;
@@ -41,7 +41,7 @@ namespace eroil {
         size_t index = 0;
         for (const auto& [label, route] : m_recv_routes) {
             if (index >= MAX_LABELS) {
-                ERR_PRINT("(): too many recv labels for broadcast message to send");
+                ERR_PRINT("too many recv labels for broadcast message to send");
                 break;
             }
             labels[index].label = label;
@@ -87,14 +87,14 @@ namespace eroil {
         (void)it;
 
         if (!inserted) {
-            ERR_PRINT("(): failed to insert new send route");
+            ERR_PRINT("failed to insert new send route");
             return;
         }
     }
 
     bool RouteTable::add_send_publisher(Label label, hndl::SendHandle* handle) {
         if (handle == nullptr) {
-            ERR_PRINT("(): given a null handle");
+            ERR_PRINT("given a null handle");
             return false;
         }
         
@@ -121,7 +121,7 @@ namespace eroil {
         );
 
         if (it != route->publishers.end()) {
-            ERR_PRINT("(): publisher already exists in publishers list, uid=", handle->uid);
+            ERR_PRINT("publisher already exists in publishers list, uid=", handle->uid);
             return false;
         }
 
@@ -143,7 +143,7 @@ namespace eroil {
         );
 
         if (it == route->publishers.end()) {
-            ERR_PRINT("(): not a send publisher, label=", label, ", uid=", uid);
+            ERR_PRINT("not a send publisher, label=", label, ", uid=", uid);
             return false;
         }
         route->publishers.erase(it);
@@ -170,7 +170,7 @@ namespace eroil {
         }
 
         if (is_local_send_subscriber(label, dst_id)) {
-            ERR_PRINT("(): already a send subscriber, label=", label, ", to_id=", dst_id);
+            ERR_PRINT("already a send subscriber, label=", label, ", to_id=", dst_id);
             return false;
         }
 
@@ -192,7 +192,7 @@ namespace eroil {
         );
 
         if (it == route->local_subscribers.end()) {
-            ERR_PRINT("(): event not found, label=", label, ", to_id=", dst_id);
+            ERR_PRINT("event not found, label=", label, ", to_id=", dst_id);
             return false;
         }
 
@@ -213,7 +213,7 @@ namespace eroil {
         }
 
         if (is_remote_send_subscriber(label, dst_id)) {
-            ERR_PRINT("(): already a send subscriber, label=", label, ", to_id=", dst_id);
+            ERR_PRINT("already a send subscriber, label=", label, ", to_id=", dst_id);
             return false;
         }
 
@@ -235,7 +235,7 @@ namespace eroil {
         );
 
         if (it == route->remote_subscribers.end()) {
-            ERR_PRINT("(): not a remote send subscriber, label=", label, ", to_id=", dst_id);
+            ERR_PRINT("not a remote send subscriber, label=", label, ", to_id=", dst_id);
             return false;
         }
         route->remote_subscribers.erase(it);
@@ -306,14 +306,14 @@ namespace eroil {
         (void)it;
 
         if (!inserted) {
-            ERR_PRINT("(): failed to insert new recv route");
+            ERR_PRINT("failed to insert new recv route");
             return;
         }
     }
 
     bool RouteTable::add_recv_subscriber(Label label, hndl::RecvHandle* handle) {
         if (handle == nullptr) {
-            ERR_PRINT("(): given a null handle");
+            ERR_PRINT("given a null handle");
             return false;
         }
 
@@ -340,7 +340,7 @@ namespace eroil {
         );
 
         if (it != route->subscribers.end()) {
-            ERR_PRINT("(): subscriber already exists in subscribers list, uid=", handle->uid);
+            ERR_PRINT("subscriber already exists in subscribers list, uid=", handle->uid);
             return false;
         }
 
@@ -362,7 +362,7 @@ namespace eroil {
         );
 
         if (it == route->subscribers.end()) {
-            ERR_PRINT("(): not a recv subscriber, label=", label, ", uid=", uid);
+            ERR_PRINT("not a recv subscriber, label=", label, ", uid=", uid);
             return false;
         }
 
@@ -409,7 +409,7 @@ namespace eroil {
     RouteTable::snapshot_send_publishers(Label label) const {
         auto it = m_send_routes.find(label);
         if (it == m_send_routes.end()) {
-            ERR_PRINT("snapshot_send_publishers(): send route not found, label=", label);
+            ERR_PRINT("send route not found, label=", label);
             return {};
         }
         return it->second.publishers;
@@ -419,7 +419,7 @@ namespace eroil {
     RouteTable::snapshot_recv_subscribers(Label label) const {
         auto it = m_recv_routes.find(label);
         if (it == m_recv_routes.end()) {
-            ERR_PRINT("snapshot_recv_subscribers(): recv route not found, label=", label);
+            ERR_PRINT("recv route not found, label=", label);
             return {};
         }
         return it->second.subscribers;

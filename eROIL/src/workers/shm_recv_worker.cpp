@@ -78,6 +78,7 @@ namespace eroil::wrk {
                     }
 
                     m_router.distribute_recvd_label(
+                        static_cast<NodeId>(hdr->source_id),
                         static_cast<Label>(hdr->label),
                         record.buf.get() + sizeof(io::LabelHeader),
                         static_cast<size_t>(hdr->data_size),
