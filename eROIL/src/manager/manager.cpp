@@ -73,9 +73,6 @@ namespace eroil {
         
         auto handle = std::make_unique<hndl::SendHandle>(unique_id(), data);
         handle_uid uid = handle->uid;
-        if (handle->data->iosb != nullptr) {
-            handle->data->iosb->FC_Header.Source_ID = m_id;
-        }
         m_router.register_send_publisher(std::move(handle));
 
         return m_router.get_send_handle(uid);
@@ -155,9 +152,6 @@ namespace eroil {
 
         auto handle = std::make_unique<hndl::RecvHandle>(unique_id(), data);
         handle_uid uid = handle->uid;
-        if (handle->data->iosb != nullptr) {
-            handle->data->iosb->FC_Header.Source_ID = m_id;
-        }
         m_router.register_recv_subscriber(std::move(handle));
 
         return m_router.get_recv_handle(uid);
