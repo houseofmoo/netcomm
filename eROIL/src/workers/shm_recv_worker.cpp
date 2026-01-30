@@ -5,7 +5,7 @@
 #include "timer/timer.h"
 
 namespace eroil::wrk {
-    ShmRecvWorker::ShmRecvWorker(Router& router, NodeId id) : 
+    ShmRecvWorker::ShmRecvWorker(rt::Router& router, NodeId id) : 
         m_router{router}, m_id{id}, m_shm{nullptr} {
     }
 
@@ -22,10 +22,11 @@ namespace eroil::wrk {
     }
 
     void ShmRecvWorker::stop() {
-        // if someone external calls stop, we will wait on join() until someone wakes us up
-        // in theory this doesnt matter cause this thread should live the entire time the application does
+        // NOTE: shm recv worker stopping is not expected behavior.
+        // this thread should live for the lifetime of the application.
+        // if somewhere down the life someone changes things and decides we need to stop
+        // this worker, we will wait on join() until someone wakes us up which may be never
         
-        //bool was_stopping = m_stop.exchange(true, std::memory_order_acq_rel);
         m_stop.exchange(true, std::memory_order_acq_rel);
         if (m_thread.joinable()) {
             m_thread.join();
@@ -40,7 +41,7 @@ namespace eroil::wrk {
                 if (werr != evt::NamedEventErr::None) {
                     wait_err_count += 1;
                     if (wait_err_count > 10) {
-                        ERR_PRINT("recv worker wait() error, worker exits");
+                        ERR_PRINT("recv worker wait() error 10 consecutive times, worker exits");
                         evtlog::error(elog_kind::WaitError, elog_cat::ShmRecvWorker);
                         break;
                     }
@@ -48,7 +49,11 @@ namespace eroil::wrk {
                 }
                 wait_err_count = 0;
 
-                if (stop_requested()) break;
+                if (stop_requested()) {
+                    LOG("shm recv worker got stop request, exiting");
+                    break;
+                }
+
                 EvtMark mark(elog_cat::ShmRecvWorker);
 
                 // consume data until no records
@@ -139,7 +144,7 @@ namespace eroil::wrk {
                 }
             
                 case shm::ShmRecvErr::UnknownError: { 
-                    ERR_PRINT("shm recv worker re-initializing due to unknown error");
+                    ERR_PRINT("shm recv worker re-initializing shared memory block due to unknown error");
                     m_shm->reinit();
                     evtlog::error(elog_kind::UnknownError, elog_cat::ShmRecvWorker);
                     return { false, std::move(result) };

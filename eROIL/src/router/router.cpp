@@ -6,7 +6,7 @@
 #include <algorithm>
 #include "comm/write_iosb.h"
 
-namespace eroil {
+namespace eroil::rt {
     // open/close send/recv
     void Router::register_send_publisher(std::shared_ptr<hndl::SendHandle> handle) {
         if (!handle) return;
@@ -410,8 +410,8 @@ namespace eroil {
                     sub->data.recv_count += 1;
                     sub->data.buf_index = (sub->data.buf_index + 1) % sub->data.buf_slots;
 
-                    // TODO: actually im not sure if we write IOSB and don't signal the sem
-                    // or we dont write the IOSB at all
+                    // TODO: do we write the IOSB every message but never signal or do we never
+                    // write the IOSB also?
                     comm::write_recv_iosb(sub.get(), source_id, label, size, recv_offset, dst);
                     break;
                 }

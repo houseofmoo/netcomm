@@ -26,10 +26,16 @@ namespace eroil {
         m_broadcast{},
         m_valid(false) {
                 
-        // confirm we know who the fuck we are
+        // confirm we know who we are
         addr::NodeAddress addr = addr::get_address(m_id);
         if (addr.kind == addr::RouteKind::None) {
             ERR_PRINT("manager has no entry in nodes info list, manager cannot initialize");
+            m_valid = false;
+            return;
+        }
+
+        if (!m_context.ok()) {
+            ERR_PRINT("manager was unable to get a valid socket context, manager cannot initialize");
             m_valid = false;
             return;
         }

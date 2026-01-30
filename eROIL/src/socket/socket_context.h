@@ -15,8 +15,4 @@ namespace eroil::sock {
         private:
             bool m_ok = false;
     };
-
-    // or control it yourself
-    bool init_platform_sockets();
-    void cleanup_platform_sockets();
 }

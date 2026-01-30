@@ -12,7 +12,7 @@
 #include "types/label_io_types.h"
 #include "types/macros.h"
 
-namespace eroil {
+namespace eroil::rt {
     struct SendRoute {
         Label label;
         size_t label_size;

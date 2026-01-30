@@ -63,6 +63,10 @@ namespace eroil::wrk {
             }
 
             void stop() {
+                // NOTE: send workers (shm and socket) are expected to live for the lifetime of the
+                // application. calling stop() SHOULD cleanly stop these threads, but I don't know
+                // why anyone would want to do that
+                
                 bool was_stopping = m_stop.exchange(true, std::memory_order_acq_rel);
                 if (!was_stopping) {
                     m_sem.post();
@@ -102,7 +106,9 @@ namespace eroil::wrk {
                                 m_send_q.pop();
                             }
                         }
+
                         if (job == nullptr) break; // no jobs left
+
                         try {
                             EvtMark mark(elog_cat::SendWorker);
                             for (const auto& recvr : SendPlan::receivers(*job)) {

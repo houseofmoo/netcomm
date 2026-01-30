@@ -5,7 +5,7 @@
 #include "log/evtlog_api.h"
 
 namespace eroil::wrk {
-    SocketRecvWorker::SocketRecvWorker(Router& router, NodeId id, NodeId peer_id) : 
+    SocketRecvWorker::SocketRecvWorker(rt::Router& router, NodeId id, NodeId peer_id) : 
         m_router(router), m_id(id), m_peer_id(peer_id), m_sock(nullptr) {
             m_sock = m_router.get_socket(m_peer_id);
         }
@@ -17,7 +17,10 @@ namespace eroil::wrk {
     }
 
     void SocketRecvWorker::stop() {
-        //bool was_stopping = m_stop.exchange(true, std::memory_order_acq_rel);
+        // NOTE: socket recv workers can be stopped when we lose socket connection to a peer
+        // this is expected behaivor and the worker will be restarted when that socket
+        // connection is re-established via comm manager monitor thread
+        
         m_stop.exchange(true, std::memory_order_acq_rel);
         if (m_thread.joinable()) {
             m_thread.join();

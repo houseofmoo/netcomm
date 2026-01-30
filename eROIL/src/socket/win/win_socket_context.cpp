@@ -20,14 +20,5 @@ namespace eroil::sock {
     bool SocketContext::ok() const noexcept {
         return m_ok;
     }
-
-    bool init_platform_sockets() {
-        WSADATA wsa{};
-        return WSAStartup(MAKEWORD(2, 2), &wsa) == 0;
-    }
-
-    void cleanup_platform_sockets() {
-        WSACleanup();
-    }
 }
 #endif

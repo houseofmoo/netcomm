@@ -17,7 +17,7 @@ namespace eroil::comm {
     class ConnectionManager {
         private:
             NodeId m_id;
-            Router& m_router;
+            rt::Router& m_router;
             sock::TCPServer m_tcp_server;
 
             wrk::SendWorker<wrk::ShmSendPlan> m_local_sender;
@@ -26,7 +26,7 @@ namespace eroil::comm {
             std::unordered_map<NodeId, std::unique_ptr<wrk::SocketRecvWorker>> m_sock_recvrs;
 
         public:
-            ConnectionManager(NodeId id, Router& router);
+            ConnectionManager(NodeId id, rt::Router& router);
             ~ConnectionManager() = default;
 
             EROIL_NO_COPY(ConnectionManager)

@@ -20,8 +20,6 @@ namespace eroil::evt {
 
     class NamedEvent {
         private:
-            // which node "waits" on this event, others signal 
-            // this event that they wrote to this node
             NodeId m_dst_id; 
             sem_handle m_sem;
 

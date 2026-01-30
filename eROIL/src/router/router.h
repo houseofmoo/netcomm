@@ -12,7 +12,7 @@
 #include "transport_registry.h"
 #include "types/macros.h"
 
-namespace eroil {
+namespace eroil::rt {
 
     class Router {
         private:

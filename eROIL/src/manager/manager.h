@@ -14,10 +14,9 @@
 namespace eroil {
 
 /*
-
 TODO:
 
-1) double check IOSB and buffer index writes
+1) confirm signal mode ops for recv IOSBs
 
 */
 
@@ -25,7 +24,7 @@ TODO:
         private:
             NodeId m_id;
             cfg::ManagerConfig m_cfg;
-            Router m_router;
+            rt::Router m_router;
             sock::SocketContext m_context;
             comm::ConnectionManager m_comms;
             sock::UDPMulticastSocket m_broadcast;

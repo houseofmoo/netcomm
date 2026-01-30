@@ -3,7 +3,7 @@
 #include <eROIL/print.h>
 #include "types/label_io_types.h"
 
-namespace eroil {
+namespace eroil::rt {
     io::LabelsSnapshot RouteTable::get_send_labels_snapshot() const {
         io::LabelsSnapshot snapshot{};
         snapshot.gen = m_send_gen.load(std::memory_order_relaxed);

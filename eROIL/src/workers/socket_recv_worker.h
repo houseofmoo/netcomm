@@ -9,7 +9,7 @@
 namespace eroil::wrk {
     class SocketRecvWorker {
         private:
-            Router& m_router;
+            rt::Router& m_router;
             NodeId m_id;
             NodeId m_peer_id;
             std::shared_ptr<sock::TCPClient> m_sock;
@@ -18,7 +18,7 @@ namespace eroil::wrk {
             std::thread m_thread;
 
         public:
-            SocketRecvWorker(Router& router, NodeId id, NodeId peer_id);
+            SocketRecvWorker(rt::Router& router, NodeId id, NodeId peer_id);
             ~SocketRecvWorker() { stop(); }
             
             EROIL_NO_COPY(SocketRecvWorker)

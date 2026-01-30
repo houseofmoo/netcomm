@@ -10,6 +10,7 @@ namespace eroil::sock {
 
         // disabled this to not pollute the application as a whole,
         // same result adding MSG_NOSIGNAL to send() calls
+        // which we do for linux sockets
     }
 
     SocketContext::~SocketContext() {
@@ -19,8 +20,5 @@ namespace eroil::sock {
     bool SocketContext::ok() const noexcept {
         return m_ok;
     }
-
-    bool init_platform_sockets() { return true; }
-    void cleanup_platform_sockets() {}
 }
 #endif

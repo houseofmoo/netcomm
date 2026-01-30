@@ -10,7 +10,7 @@
 namespace eroil::wrk {
     class ShmRecvWorker {
         private:
-            Router& m_router;
+            rt::Router& m_router;
             NodeId m_id;
             std::shared_ptr<shm::ShmRecv> m_shm;
 
@@ -20,7 +20,7 @@ namespace eroil::wrk {
             const int64_t MAX_TIMEOUT_MS = 50;
 
         public:
-            ShmRecvWorker(Router& router, NodeId id);
+            ShmRecvWorker(rt::Router& router, NodeId id);
             ~ShmRecvWorker() { stop(); }
 
             EROIL_NO_COPY(ShmRecvWorker)

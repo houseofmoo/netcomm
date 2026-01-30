@@ -10,7 +10,7 @@
 #include "shm/shm_send.h"
 #include "types/macros.h"
 
-namespace eroil {
+namespace eroil::rt {
     class TransportRegistry {
         private:
             std::shared_ptr<shm::ShmRecv> m_recv_shm;

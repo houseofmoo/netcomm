@@ -17,7 +17,7 @@ namespace eroil::comm {
         }
     }
 
-    ConnectionManager::ConnectionManager(NodeId id, Router& router) : 
+    ConnectionManager::ConnectionManager(NodeId id, rt::Router& router) : 
         m_id(id),
         m_router(router), 
         m_tcp_server{},

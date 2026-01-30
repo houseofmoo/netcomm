@@ -3,7 +3,7 @@
 #include <utility>   // std::move
 #include <eROIL/print.h>
 
-namespace eroil {
+namespace eroil::rt {
     // socket
     bool TransportRegistry::upsert_socket(NodeId id, std::shared_ptr<sock::TCPClient> sock) {
         if (sock == nullptr) return false;
