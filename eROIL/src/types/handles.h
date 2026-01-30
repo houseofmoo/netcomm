@@ -1,5 +1,6 @@
 #pragma once
 #include <memory>
+#include <mutex>
 #include "iosb.h"
 #include "const_types.h"
 
@@ -17,11 +18,10 @@ namespace eroil::hndl {
     };
 
     struct SendHandle {
+        std::mutex mtx;
         handle_uid uid;
-        std::shared_ptr<OpenSendData> data;
-
-        SendHandle(int id, OpenSendData data) 
-            : uid(id), data(std::make_unique<OpenSendData>(data)) {}
+        OpenSendData data;
+        SendHandle(int id, OpenSendData d) : uid(id), data(d) {}
     };
 
     struct OpenReceiveData{
@@ -40,9 +40,9 @@ namespace eroil::hndl {
     };
 
     struct RecvHandle {
+        std::mutex mtx;
         handle_uid uid;
-        std::shared_ptr<OpenReceiveData> data;
-        RecvHandle(int id, OpenReceiveData data) 
-            : uid(id), data(std::make_shared<OpenReceiveData>(data)) {}
+        OpenReceiveData data;
+        RecvHandle(int id, OpenReceiveData d) : uid(id), data(d) {}
     };
 }

@@ -21,8 +21,8 @@ namespace eroil {
             RouteTable m_routes;
             TransportRegistry m_transports;
 
-            std::unordered_map<handle_uid, std::unique_ptr<hndl::SendHandle>> m_send_handles;
-            std::unordered_map<handle_uid, std::unique_ptr<hndl::RecvHandle>> m_recv_handles;
+            std::unordered_map<handle_uid, std::shared_ptr<hndl::SendHandle>> m_send_handles;
+            std::unordered_map<handle_uid, std::shared_ptr<hndl::RecvHandle>> m_recv_handles;
 
         public:
             Router() = default;
@@ -32,9 +32,9 @@ namespace eroil {
             EROIL_NO_MOVE(Router)
 
             // open/close send/recv
-            void register_send_publisher(std::unique_ptr<hndl::SendHandle> handle);
+            void register_send_publisher(std::shared_ptr<hndl::SendHandle> handle);
             void unregister_send_publisher(const hndl::SendHandle* handle);
-            void register_recv_subscriber(std::unique_ptr<hndl::RecvHandle> handle);
+            void register_recv_subscriber(std::shared_ptr<hndl::RecvHandle> handle);
             void unregister_recv_subscriber(const hndl::RecvHandle* handle);
             hndl::SendHandle* get_send_handle(handle_uid uid); 
             hndl::RecvHandle* get_recv_handle(handle_uid uid);

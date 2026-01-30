@@ -1,4 +1,5 @@
 #include "root.h"
+#include <mutex>
 #include "config/config.h"
 #include "address/address.h"
 #include "manager/manager.h"
@@ -16,7 +17,7 @@ namespace eroil {
         config = cfg::get_manager_cfg(id);
 
         // read etc/peer_ips.cfg
-        if (!addr::init_address_book(id))return false;
+        if (!addr::init_address_book(id)) return false;
 
         // set up address book
         switch (config.mode) {
@@ -183,17 +184,18 @@ namespace eroil {
 
     uint32_t recv_count(hndl::RecvHandle* handle) {
         if (handle == nullptr) return 0;
-        return handle->data->recv_count;
+        return handle->data.recv_count;
     }
 
     void recv_dismiss(hndl::RecvHandle* handle, int32_t count) {
         if (handle == nullptr) return;
         if (count < 0) return;
 
-        if (static_cast<uint32_t>(count) > handle->data->recv_count) {
-            handle->data->recv_count = 0;
+        std::lock_guard lock(handle->mtx);
+        if (static_cast<uint32_t>(count) > handle->data.recv_count) {
+            handle->data.recv_count = 0;
         } else {
-            handle->data->recv_count -= count;
+            handle->data.recv_count -= count;
         }
     }
 
@@ -211,20 +213,22 @@ namespace eroil {
 
     void recv_reset(hndl::RecvHandle* handle) {
         if (handle == nullptr) return;
-        handle->data->recv_count = 0;
-        handle->data->buf_index = 0;
+        std::lock_guard lock(handle->mtx);
+        handle->data.recv_count = 0;
+        handle->data.buf_index = 0;
     }
 
     void recv_redirect(hndl::RecvHandle* handle) {
         if (handle == nullptr) return;
-        if (handle->data->buf == nullptr) return;
-        if (handle->data->aux_buf == nullptr) return;
+        if (handle->data.buf == nullptr) return;
+        if (handle->data.aux_buf == nullptr) return;
 
-        std::byte* buf = handle->data->buf;
-        handle->data->buf = handle->data->aux_buf;
-        handle->data->aux_buf = buf;
-        handle->data->buf_index = 0;
-        handle->data->recv_count = 0; // i think we reset this
+        std::lock_guard lock(handle->mtx);
+        std::byte* buf = handle->data.buf;
+        handle->data.buf = handle->data.aux_buf;
+        handle->data.aux_buf = buf;
+        handle->data.buf_index = 0;
+        handle->data.recv_count = 0; // i think we reset this
     }
 
     int32_t get_msg_label(iosb::Iosb* iosb) {
@@ -293,8 +297,6 @@ namespace eroil {
             return static_cast<void*>(siosb->pMsgAddr);
         } else {
             auto riosb = reinterpret_cast<iosb::ReceiveIosb*>(iosb);
-            // TODO: they look up the currently selected buffer, we could do the same and return that
-            // or we just always assign the current buffer to primary?
             return static_cast<void*>(riosb->pMsgAddr);
         }
     }

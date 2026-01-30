@@ -5,7 +5,7 @@
 #include "types/label_io_types.h"
 #include "log/evtlog_api.h"
 
-namespace eroil {
+namespace eroil::comm {
     static bool map_sock_failures(sock::SockErr err) {
         switch (err) {
             case sock::SockErr::None: return true; // successful ping send

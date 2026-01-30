@@ -27,7 +27,7 @@ TODO:
             cfg::ManagerConfig m_cfg;
             Router m_router;
             sock::SocketContext m_context;
-            ConnectionManager m_comms;
+            comm::ConnectionManager m_comms;
             sock::UDPMulticastSocket m_broadcast;
             bool m_valid;
 

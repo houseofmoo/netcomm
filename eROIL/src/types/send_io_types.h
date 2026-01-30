@@ -2,6 +2,7 @@
 #include <memory>
 #include <vector>
 #include <atomic>
+#include <mutex>
 #include <eROIL/print.h>
 #include "rtos.h"
 #include "platform/platform.h"
@@ -52,7 +53,7 @@ namespace eroil::io {
         Label label;
         SendBuf send_buffer;
         uint32_t seq;
-        std::shared_ptr<hndl::OpenSendData> publisher;
+        std::shared_ptr<hndl::SendHandle> publisher;
         
         uint32_t local_failure_count;
         std::vector<std::shared_ptr<shm::ShmSend>> local_recvrs;
@@ -86,52 +87,16 @@ namespace eroil::io {
         }
 
         void finalize_iosb() noexcept {
-            // if (publisher == nullptr) {
-            //     return;
-            // }
-
-            // if (publisher->iosb == nullptr || publisher->num_iosb == 0) {
-            //     return;
-            // }
-
-            // // TODO: set status appropriately
-            // // values are 0...4 i think, and 0 means ok?
-            // int32_t status = 0;
-            // if (remote_failure_count > 0 || local_failure_count > 0) {
-            //     status = -1;
-            // }
-
-            // iosb::SendIosb* iosb = publisher->iosb + publisher->iosb_index;
-            // iosb->Status = status; 
-            // iosb->Reserve1 = 0;
-            // iosb->Header_Valid = 1;
-            // iosb->Reserve2 = static_cast<int>(iosb::RoilAction::SEND);
-            // iosb->Reserve3 = 0;
-            // iosb->pMsgAddr = static_cast<char*>(send_buffer.data_src_addr);
-            // iosb->MsgSize = send_buffer.data_size;
-            // iosb->Reserve4 = 0;
-            // iosb->Reserve5 = 0;
-            // iosb->Reserve6 = 0;
-            // iosb->Reserve7 = 0;
-            // iosb->Reserve8 = 0;
-            // iosb->Reserve9 = 0;
-            // iosb->Reserve10 = 0;
-            // iosb->TimeStamp = RTOS_Current_Time_Raw();
-
-            // iosb->FC_Header = { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 };
-            // iosb->FC_Header.Source_ID = source_id;
-            // iosb->FC_Header.Destination_ID = label;
+            std::lock_guard lock(publisher->mtx);
             comm::write_send_iosb(
-                publisher, 
+                publisher.get(), 
                 source_id, 
                 label, 
                 send_buffer.data_size,
                 local_failure_count + remote_failure_count,
                 send_buffer.data_src_addr
             );
-            publisher->iosb_index = (publisher->iosb_index + 1) % publisher->num_iosb;
-
-            plat::try_signal_sem(publisher->sem);
+            plat::try_signal_sem(publisher->data.sem);
         }
     };
 

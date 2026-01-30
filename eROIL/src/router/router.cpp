@@ -1,19 +1,20 @@
 #include "router.h"
 
 #include <cstring>
+#include <mutex>
 #include <eROIL/print.h>
 #include <algorithm>
 #include "comm/write_iosb.h"
 
 namespace eroil {
     // open/close send/recv
-    void Router::register_send_publisher(std::unique_ptr<hndl::SendHandle> handle) {
+    void Router::register_send_publisher(std::shared_ptr<hndl::SendHandle> handle) {
         if (!handle) return;
 
         std::unique_lock lock(m_router_mtx);
 
         const handle_uid uid = handle->uid;
-        const Label label = handle->data->label;
+        const Label label = handle->data.label;
 
         // store handle
         auto [_, inserted] = m_send_handles.try_emplace(uid, std::move(handle));
@@ -42,7 +43,7 @@ namespace eroil {
             return;
         }
 
-        const Label label = handle->data->label;
+        const Label label = handle->data.label;
         const handle_uid uid = handle->uid;
 
         // erase handle first
@@ -55,7 +56,7 @@ namespace eroil {
         }
     }
 
-    void Router::register_recv_subscriber(std::unique_ptr<hndl::RecvHandle> handle) {
+    void Router::register_recv_subscriber(std::shared_ptr<hndl::RecvHandle> handle) {
         if (handle == nullptr) {
             ERR_PRINT("invalid handle");
             return;
@@ -64,7 +65,7 @@ namespace eroil {
         std::unique_lock lock(m_router_mtx);
 
         const handle_uid uid = handle->uid;
-        const Label label = handle->data->label;
+        const Label label = handle->data.label;
 
         auto [_, h_inserted] = m_recv_handles.try_emplace(uid, std::move(handle));
         if (!h_inserted) {
@@ -92,7 +93,7 @@ namespace eroil {
         }
 
         const handle_uid uid = handle->uid;
-        const Label label = handle->data->label;
+        const Label label = handle->data.label;
 
         m_recv_handles.erase(uid);
 
@@ -274,7 +275,7 @@ namespace eroil {
             }
 
             // store publisher
-            job->publisher = handle_it->second->data;
+            job->publisher = handle_it->second;
 
             // snapshot local subs
             if (!route->local_subscribers.empty()) {
@@ -309,7 +310,7 @@ namespace eroil {
         if (buf == nullptr || size == 0) return;
         
         // get subscribers snapshot
-        std::vector<std::shared_ptr<hndl::OpenReceiveData>> subscribers;
+        std::vector<std::shared_ptr<hndl::RecvHandle>> subscribers;
         {
             std::shared_lock lock(m_router_mtx);
             
@@ -335,64 +336,66 @@ namespace eroil {
             for (handle_uid uid : uids) {
                 auto it = m_recv_handles.find(uid);
                 if (it != m_recv_handles.end() && it->second) {
-                    subscribers.push_back(it->second->data);
+                    subscribers.push_back(it->second);
                 }
             }
         }
 
         // write to subscribers buffers
         for (const auto& sub : subscribers) {
-            // TODO: we need to write filed into recv IOSB when something goes wrong
             if (sub == nullptr) {
                 ERR_PRINT("got null subscriber for label=", label);
                 continue;
             }
 
-            if (sub->buf == nullptr) { 
+            if (sub->data.buf == nullptr) { 
                 ERR_PRINT("subscriber has no buffer for label=", label);
                 continue;
             }
 
-            if (sub->buf_slots == 0) {
+            if (sub->data.buf_slots == 0) {
                 ERR_PRINT("subscriber has no buffer slots for label=", label);
                 continue;
             }
 
-            if (sub->buf_size == 0) { 
+            if (sub->data.buf_size == 0) { 
                 ERR_PRINT("subscriber buffer size is 0 for label=", label);
                 continue;
             }
 
-            if (recv_offset > sub->buf_size) {
+            if (recv_offset > sub->data.buf_size) {
                 ERR_PRINT("recv offset > buf size for label=", label);
                 continue;
             }
 
-            // TODO: since we have multiple threads recving
-            // we could race on writing the recv IOSB
+            // TODO: right now we always replace the oldeest buffer slot which makes sense
+            // to me, but im unclear if that is the way it works in NAE
 
-            // TODO: wait, recv vs slot are not related but they should be
-            // if they dismiss a message, i assume that frees a buffer slot, but which one?
-
-            switch (sub->signal_mode) {
+            std::lock_guard lock(sub->mtx);
+            switch (sub->data.signal_mode) {
                 // signal on error or buffer full, not allowed to overwrite
                 case iosb::SignalMode::BUFFER_FULL: {
-                    // they havent cleared out old messages still, re-signal
-                    if (sub->recv_count == sub->buf_slots) {
-                        plat::try_signal_sem(sub->sem);
+                    // full and not allowed to overwrite, signal again
+                    if (sub->data.recv_count == sub->data.buf_slots) {
+                        // TODO: actually this is an error, do we write an IOSB for the error?
+                        // comm::write_recv_iosb(sub.get(), source_id, label, size, recv_offset, dst);
+                        plat::try_signal_sem(sub->data.sem);
                     } else {
                         // not full yet, copy data into next buffer slot
-                        const size_t slot = sub->buf_index % sub->buf_slots;
-                        std::byte* dst = sub->buf + (slot * sub->buf_size);
+                        const size_t slot = sub->data.buf_index % sub->data.buf_slots;
+                        std::byte* dst = sub->data.buf + (slot * sub->data.buf_size);
                         std::memcpy(dst + recv_offset, buf, size);
                         
-                        sub->recv_count += 1;
-                        sub->buf_index = (sub->buf_index + 1) % sub->buf_slots;
+                        sub->data.recv_count += 1;
+                        sub->data.buf_index = (sub->data.buf_index + 1) % sub->data.buf_slots;
+
+                        // TODO: do we only write IOSB when full or do we write IOSB every message
+                        // but only signal on full?
 
                         // if we are now full, signal
-                        if (sub->recv_count == sub->buf_slots) {
-                            comm::write_recv_iosb(sub, source_id, label, size, recv_offset, dst);
-                            plat::try_signal_sem(sub->sem);
+                        if (sub->data.recv_count == sub->data.buf_slots) {
+                            comm::write_recv_iosb(sub.get(), source_id, label, size, recv_offset, dst);
+                            plat::try_signal_sem(sub->data.sem);
                         }
                     }
                     break;
@@ -400,73 +403,39 @@ namespace eroil {
 
                 // signal on error only, allowed to overwrite
                 case iosb::SignalMode::OVERWRITE: {
-                    const size_t slot = sub->buf_index % sub->buf_slots;
-                    std::byte* dst = sub->buf + (slot * sub->buf_size);
+                    const size_t slot = sub->data.buf_index % sub->data.buf_slots;
+                    std::byte* dst = sub->data.buf + (slot * sub->data.buf_size);
                     std::memcpy(dst + recv_offset, buf, size);
                     
-                    sub->recv_count += 1;
-                    sub->buf_index = (sub->buf_index + 1) % sub->buf_slots;
+                    sub->data.recv_count += 1;
+                    sub->data.buf_index = (sub->data.buf_index + 1) % sub->data.buf_slots;
+
+                    // TODO: actually im not sure if we write IOSB and don't signal the sem
+                    // or we dont write the IOSB at all
+                    comm::write_recv_iosb(sub.get(), source_id, label, size, recv_offset, dst);
                     break;
                 }
                 
                 // signal every message, not allowed to overwrite
                 case iosb::SignalMode::EVERY_MESSAGE: {
-                    const size_t slot = sub->buf_index % sub->buf_slots;
-                    std::byte* dst = sub->buf + (slot * sub->buf_size);
-                    std::memcpy(dst + recv_offset, buf, size);
+                    std::byte* dst = sub->data.buf + (sub->data.buf_index * sub->data.buf_size);
+                    if (sub->data.recv_count < sub->data.buf_slots) {
+                        std::memcpy(dst + recv_offset, buf, size);
                     
-                    sub->recv_count += 1;
-                    sub->buf_index = (sub->buf_index + 1) % sub->buf_slots;
+                        sub->data.recv_count += 1;
+                        sub->data.buf_index = (sub->data.buf_index + 1) % sub->data.buf_slots;
+                    }
 
-                    comm::write_recv_iosb(sub, source_id, label, size, recv_offset, dst);
-                    plat::try_signal_sem(sub->sem);
+                    comm::write_recv_iosb(sub.get(), source_id, label, size, recv_offset, dst);
+                    plat::try_signal_sem(sub->data.sem);
                     break;
                 }
+
                 default: {
-                    ERR_PRINT("got unknown signal mode=", static_cast<int32_t>(sub->signal_mode));
+                    ERR_PRINT("got unknown signal mode=", static_cast<int32_t>(sub->data.signal_mode));
                     break;
                 }
             }
-
-            // const size_t slot = sub->buf_index % sub->buf_slots;
-            // std::byte* dst = sub->buf + (slot * sub->buf_size);
-            // std::memcpy(dst + recv_offset, buf, size);
-
-
-
-            // write recvrs IOSB 
-            // if (sub->iosb != nullptr && sub->num_iosb > 0) {
-            //     iosb::ReceiveIosb* iosb = sub->iosb + sub->iosb_index;
-
-            //     iosb->Status = 0; // -1 is error, 0 is ok
-            //     iosb->Reserve1 = 0;
-            //     iosb->Header_Valid = 1;
-            //     iosb->Reserve2 = static_cast<int>(iosb::RoilAction::RECEIVE);
-            //     iosb->Reserve3 = 0;
-            //     iosb->MsgSize = size / 4; // they want it in words for some reason
-            //     iosb->Reserve4 = 0;
-            //     iosb->Messaage_Slot = sub->buf_index;
-            //     iosb->Reserve5 = label;
-            //     iosb->pMsgAddr = reinterpret_cast<char*>(dst);
-            //     iosb->Reserve6 = 0;
-            //     iosb->Reserve7 = 0;
-            //     iosb->Reserve8 = 0;
-            //     iosb->E_SOF = 0;
-            //     iosb->E_EOF = 0;
-            //     iosb->TimeStamp = RTOS_Current_Time_Raw();
-
-            //     iosb->FC_Header = { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 };
-            //     iosb->FC_Header.Source_ID = source_id;
-            //     iosb->FC_Header.Destination_ID = label;
-            //     iosb->FC_Header.Parameter = recv_offset;
-                
-            //     sub->iosb_index = (sub->iosb_index + 1) % sub->num_iosb;
-            // }
-            
-            // write_recv_iosb(sub, source_id, label, size, recv_offset, dst);
-            // plat::try_signal_sem(sub->sem);
-
-            // sub->buf_index = (sub->buf_index + 1) % sub->buf_slots;
         }
     }
 }

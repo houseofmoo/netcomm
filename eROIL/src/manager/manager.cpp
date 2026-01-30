@@ -71,7 +71,7 @@ namespace eroil {
             return nullptr;
         }
         
-        auto handle = std::make_unique<hndl::SendHandle>(unique_id(), data);
+        auto handle = std::make_shared<hndl::SendHandle>(unique_id(), data);
         handle_uid uid = handle->uid;
         m_router.register_send_publisher(std::move(handle));
 
@@ -85,7 +85,7 @@ namespace eroil {
         }
 
         // if this is not an offset send, 0 the offset sizes
-        if (!handle->data->is_offset) {
+        if (!handle->data.is_offset) {
             // TODO: send offset 0 here may be wrong
             send_offset = 0;
             recv_offset = 0;
@@ -94,15 +94,15 @@ namespace eroil {
         size_t data_size = 0;
         std::byte* data_buf = nullptr;
         if (buf == nullptr) {
-            data_buf = handle->data->buf;
-            data_size = handle->data->buf_size;
+            data_buf = handle->data.buf;
+            data_size = handle->data.buf_size;
         } else {
             data_buf = buf;
             data_size = buf_size;
         }
 
-        if (data_size <= 0 || data_size != handle->data->buf_size) {
-            ERR_PRINT("got data size=", data_size, " that does not match expected size=", handle->data->buf_size);
+        if (data_size <= 0 || data_size != handle->data.buf_size) {
+            ERR_PRINT("got data size=", data_size, " that does not match expected size=", handle->data.buf_size);
             return;
         }
 
@@ -120,7 +120,7 @@ namespace eroil {
         hdr.version = VERSION;
         hdr.source_id = m_id;
         hdr.flags = static_cast<uint16_t>(io::LabelFlag::Data);
-        hdr.label = handle->data->label;
+        hdr.label = handle->data.label;
         hdr.data_size = static_cast<uint32_t>(data_size);
         hdr.recv_offset = recv_offset;
 
@@ -131,7 +131,7 @@ namespace eroil {
         std::memcpy(sbuf.data.get() + sizeof(hdr), data_buf + send_offset, data_size);
         
         // hand off to sender
-        m_comms.enqueue_send(handle->uid, handle->data->label, std::move(sbuf));
+        m_comms.enqueue_send(handle->uid, handle->data.label, std::move(sbuf));
     }
 
     void Manager::close_send(hndl::SendHandle* handle) {
@@ -150,7 +150,7 @@ namespace eroil {
             return nullptr;
         }
 
-        auto handle = std::make_unique<hndl::RecvHandle>(unique_id(), data);
+        auto handle = std::make_shared<hndl::RecvHandle>(unique_id(), data);
         handle_uid uid = handle->uid;
         m_router.register_recv_subscriber(std::move(handle));
 

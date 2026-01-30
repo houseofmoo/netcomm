@@ -12,7 +12,7 @@
 #include "types/const_types.h"
 #include "types/macros.h"
 
-namespace eroil {
+namespace eroil::comm {
 
     class ConnectionManager {
         private:

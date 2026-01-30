@@ -82,7 +82,7 @@ namespace eroil {
     void RouteTable::create_send_route(Label label, hndl::SendHandle* handle) {
         auto [it, inserted] = m_send_routes.emplace(
             label,
-            SendRoute{ label, handle->data->buf_size, {}, {}, {} }
+            SendRoute{ label, handle->data.buf_size, {}, {}, {} }
         );
         (void)it;
 
@@ -109,8 +109,8 @@ namespace eroil {
             return false;
         }
 
-        if (route->label_size != handle->data->buf_size) {
-            ERR_PRINT("size mismatch, expected=", route->label_size, ", actual=", handle->data->buf_size);
+        if (route->label_size != handle->data.buf_size) {
+            ERR_PRINT("size mismatch, expected=", route->label_size, ", actual=", handle->data.buf_size);
             return false;
         }
 
@@ -301,7 +301,7 @@ namespace eroil {
     void RouteTable::create_recv_route(Label label, hndl::RecvHandle* handle) {
         auto [it, inserted] = m_recv_routes.emplace(
             label,
-            RecvRoute{ label, handle->data->buf_size, {} }
+            RecvRoute{ label, handle->data.buf_size, {} }
         );
         (void)it;
 
@@ -328,8 +328,8 @@ namespace eroil {
             return false;
         }
 
-        if (route->label_size != handle->data->buf_size) {
-            ERR_PRINT("size mismatch, expected=", route->label_size, ", actual=", handle->data->buf_size);
+        if (route->label_size != handle->data.buf_size) {
+            ERR_PRINT("size mismatch, expected=", route->label_size, ", actual=", handle->data.buf_size);
             return false;
         }
 
