@@ -74,6 +74,9 @@ namespace eroil::io {
             remote_recvrs{},
             pending_sends{0} {}
 
+        EROIL_NO_COPY(SendJob)
+        EROIL_NO_MOVE(SendJob)
+
         void complete_one() noexcept {
             const uint32_t prev = pending_sends.fetch_sub(1, std::memory_order_acq_rel);
             if (prev == 0) {
@@ -102,6 +105,10 @@ namespace eroil::io {
 
     struct JobCompleteGuard {
         std::shared_ptr<SendJob> job;
+        JobCompleteGuard() = delete;
+        explicit JobCompleteGuard(std::shared_ptr<SendJob> j) : job(j) {}
         ~JobCompleteGuard() { if (job != nullptr) job->complete_one(); }
+        EROIL_NO_COPY(JobCompleteGuard)
+        EROIL_NO_MOVE(JobCompleteGuard)
     };
 }
