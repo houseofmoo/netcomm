@@ -19,19 +19,19 @@ std::uint32_t get_roil_id();
 void* open_send_label(
     std::int32_t label, 
     std::byte* buf, 
-    std::int32_t size_in_words,
+    std::size_t size,
     std::int32_t offset_mode,
     void* sem,
     void* iosb,
-    std::int32_t num_iosb
+    std::uint32_t num_iosb
 );
 
 void send_label(
     void* handle, 
     std::byte* buf, 
-    std::int32_t buf_size, 
-    std::int32_t send_offset,
-    std::int32_t recv_offset
+    std::size_t buf_size, 
+    std::size_t send_offset,
+    std::size_t recv_offset
 );
 
 void close_send_label(void* handle);
@@ -42,17 +42,17 @@ void close_send_label(void* handle);
 void* open_recv_label(
     std::int32_t label, 
     std::byte* buf, 
-    std::int32_t size,
-    std::int32_t num_slots,
+    std::size_t size,
+    std::uint32_t num_slots,
     std::byte* aux_buf,
     void* sem,
     void* iosb,
-    std::int32_t num_iosb,
+    std::uint32_t num_iosb,
     std::int32_t signal_mode
 );
 void close_recv_label(void* handle);
 std::uint32_t recv_count(void* handle);
-void recv_dismiss(void* handle, std::int32_t count);
+void recv_dismiss(void* handle, std::uint32_t count);
 void recv_idle(void* handle);
 void recv_resume(void* handle);
 void recv_reset(void* handle);

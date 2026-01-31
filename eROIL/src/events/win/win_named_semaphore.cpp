@@ -37,7 +37,7 @@ namespace eroil::evt {
         );
         if (len <= 0) return {};
 
-        std::wstring out((size_t)len, L'\0');
+        std::wstring out(static_cast<size_t>(len), L'\0');
         int wrote = ::MultiByteToWideChar(
             CP_UTF8, 
             MB_ERR_INVALID_CHARS, 

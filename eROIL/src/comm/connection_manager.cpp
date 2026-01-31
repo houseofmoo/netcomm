@@ -60,10 +60,10 @@ namespace eroil::comm {
     void ConnectionManager::initial_remote_connection(std::vector<addr::NodeAddress> remote_peers) {
         // attempt to connect to remote peers a few times
         // if this fails and exit, monitor thread will continue trying
-        const int max_attempts = 5;
-        const int expected = remote_peers.size();
-        for (int attempts = 0; attempts < max_attempts; ++attempts) {
-            int connected = 0;
+        const int32_t max_attempts = 5;
+        const int32_t expected = static_cast<int32_t>(remote_peers.size());
+        for (int32_t attempts = 0; attempts < max_attempts; ++attempts) {
+            int32_t connected = 0;
             for (const addr::NodeAddress& info : remote_peers) {
                 if (m_router.get_socket(info.id) != nullptr) {
                     connected += 1;
@@ -91,8 +91,8 @@ namespace eroil::comm {
         // this continues trying every 5 seconds until it finds all expected local shared memory blocks
         // incase someone joins the party late
         std::thread([this, local_peers]() {
-            const int expected = local_peers.size();
-            int found = 0;
+            const int32_t expected = static_cast<int32_t>(local_peers.size());
+            int32_t found = 0;
 
             while (true) {
                 for (const addr::NodeAddress& info : local_peers) {
@@ -280,8 +280,6 @@ namespace eroil::comm {
             peer_info.id, 
             std::move(client)
         );
-        
-        // start up thread to listen to this socket
         start_remote_recv_worker(peer_info.id);
 
         LOG("established tcp connection to nodeid=", peer_info.id);

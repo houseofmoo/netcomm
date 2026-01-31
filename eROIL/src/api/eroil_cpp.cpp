@@ -25,11 +25,11 @@ std::uint32_t get_roil_id() {
 
 void* open_send_label(std::int32_t label, 
                       std::byte* buf, 
-                      std::int32_t size_in_words,
+                      std::size_t size,
                       std::int32_t offset_mode,
                       void* sem,
                       void* iosb,
-                      std::int32_t num_iosb) {
+                      std::uint32_t num_iosb) {
 
     eroil::iosb::IoType io_type = eroil::iosb::IoType::SLOT;
     if (offset_mode == static_cast<int32_t>(eroil::iosb::IoType::OFFSET)) {
@@ -39,11 +39,11 @@ void* open_send_label(std::int32_t label,
     eroil::hndl::SendHandle* handle = eroil::open_send_label(
         static_cast<eroil::Label>(label),
         buf,
-        size_in_words,
+        size,
         io_type,
         static_cast<eroil::sem_handle>(sem),
         static_cast<eroil::iosb::SendIosb*>(iosb),
-        static_cast<std::int32_t>(num_iosb)
+        num_iosb
     );
 
     return static_cast<void*>(handle);
@@ -51,9 +51,9 @@ void* open_send_label(std::int32_t label,
 
 void send_label(void* handle, 
                 std::byte* buf, 
-                std::int32_t buf_size, 
-                std::int32_t send_offset,
-                std::int32_t recv_offset) {
+                std::size_t buf_size, 
+                std::size_t send_offset,
+                std::size_t recv_offset) {
 
     eroil::send_label(
         static_cast<eroil::hndl::SendHandle*>(handle),
@@ -70,12 +70,12 @@ void close_send_label(void* handle) {
 
 void* open_recv_label(std::int32_t label, 
                       std::byte* buf, 
-                      std::int32_t size,
-                      std::int32_t num_slots,
+                      std::size_t size,
+                      std::uint32_t num_slots,
                       std::byte* aux_buf,
                       void* sem,
                       void* iosb,
-                      std::int32_t num_iosb,
+                      std::uint32_t num_iosb,
                       std::int32_t signal_mode) {
    
     return eroil::open_recv_label(
@@ -100,7 +100,7 @@ std::uint32_t recv_count(void* handle) {
     return eroil::recv_count(static_cast<eroil::hndl::RecvHandle*>(handle));
 }
 
-void recv_dismiss(void* handle, int32_t count) {
+void recv_dismiss(void* handle, uint32_t count) {
     return eroil::recv_dismiss(static_cast<eroil::hndl::RecvHandle*>(handle), count);
 }
 

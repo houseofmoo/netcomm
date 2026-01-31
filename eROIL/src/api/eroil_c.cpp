@@ -32,19 +32,32 @@ void* NAE_Open_Send_Label(int iLabel,
                           void* pIosb,
                           int iNumIosbs) {
 
-    eroil::iosb::IoType io_type = eroil::iosb::IoType::SLOT;
+    // convert to expected types
+    eroil::Label label = static_cast<eroil::Label>(iLabel);
+    std::byte* buf = static_cast<std::byte*>(pSendBuffer);
+
+    size_t buf_size = 0;
+    if (iSizeInWords > 0) { buf_size = static_cast<size_t>(iSizeInWords * 4); }
+
+    auto io_type = eroil::iosb::IoType::SLOT;
     if (iOffsetMode == static_cast<int>(eroil::iosb::IoType::OFFSET)) {
         io_type = eroil::iosb::IoType::OFFSET;
     }
 
+    auto sem = static_cast<eroil::sem_handle>(iSem);
+    auto siosb = static_cast<eroil::iosb::SendIosb*>(pIosb);
+
+    uint32_t num_iosb = 0;
+    if (iNumIosbs > 0) { num_iosb = static_cast<uint32_t>(iNumIosbs); }
+
     eroil::hndl::SendHandle* handle = eroil::open_send_label(
-        static_cast<eroil::Label>(iLabel),
-        static_cast<std::byte*>(pSendBuffer),
-        static_cast<int32_t>(iSizeInWords * 4),
+        label,
+        buf,
+        buf_size,
         io_type,
-        static_cast<eroil::sem_handle>(iSem),
-        static_cast<eroil::iosb::SendIosb*>(pIosb),
-        static_cast<int32_t>(iNumIosbs)
+        sem,
+        siosb,
+        num_iosb
     );
 
     return static_cast<void*>(handle);
@@ -55,12 +68,26 @@ void NAE_Send_Label(void* iHandle,
                     int iMsgSizeInWords,
                     int iSendOffsetInBytes,
                     int iReceiveOffsetInBytes) {
+
+    // convert to expected types
+    auto handle = static_cast<eroil::hndl::SendHandle*>(iHandle); 
+    auto buf = reinterpret_cast<std::byte*>(pBuffer);
+
+    size_t buf_size = 0;
+    if (iMsgSizeInWords > 0) { buf_size = static_cast<size_t>(iMsgSizeInWords * 4); }
+
+    size_t send_offset = 0;
+    if (iSendOffsetInBytes > 0) { send_offset = static_cast<size_t>(iSendOffsetInBytes); }
+
+    size_t recv_offset = 0;
+    if (iReceiveOffsetInBytes > 0) { recv_offset = static_cast<size_t>(iReceiveOffsetInBytes); }
+
     eroil::send_label(
-        static_cast<eroil::hndl::SendHandle*>(iHandle),
-        reinterpret_cast<std::byte*>(pBuffer),
-        static_cast<int32_t>(iMsgSizeInWords * 4),
-        static_cast<int32_t>(iSendOffsetInBytes),
-        static_cast<int32_t>(iReceiveOffsetInBytes)
+        handle,
+        buf,
+        buf_size,
+        send_offset,
+        recv_offset
     );
 }
 
@@ -84,15 +111,32 @@ void* NAE_Open_Receive_Label(int iLabel,
         ERR_PRINT("expected forward label to always be -1, but got forward label=", iForwardLabel);
     }
 
+    // convert to expected types
+    eroil::Label label = static_cast<eroil::Label>(iLabel);
+    std::byte* buf = reinterpret_cast<std::byte*>(pBuffer);
+
+    size_t buf_size = 0;
+    if (iSizeInWords > 0) { buf_size = static_cast<size_t>(iSizeInWords * 4); }
+
+    uint32_t num_slots = 0;
+    if (iNumSlots > 0) { num_slots = static_cast<uint32_t>(iNumSlots); }
+
+    std::byte* aux_buf = reinterpret_cast<std::byte*>(pAuxBuffer);
+    auto sem = static_cast<eroil::sem_handle>(iSem);
+    auto riosb = static_cast<eroil::iosb::ReceiveIosb*>(pIosb);
+
+    uint32_t num_iosb = 0;
+    if (iNumIosbs > 0) { num_iosb = static_cast<uint32_t>(iNumIosbs); }
+
     eroil::hndl::RecvHandle* handle = eroil::open_recv_label(
-        static_cast<int32_t>(iLabel),
-        reinterpret_cast<std::byte*>(pBuffer),
-        static_cast<int32_t>(iSizeInWords * 4),
-        static_cast<int32_t>(iNumSlots),
-        reinterpret_cast<std::byte*>(pAuxBuffer),
-        static_cast<eroil::sem_handle>(iSem),
-        static_cast<eroil::iosb::ReceiveIosb*>(pIosb),
-        static_cast<int32_t>(iNumIosbs),
+        label,
+        buf,
+        buf_size,
+        num_slots,
+        aux_buf,
+        sem,
+        riosb,
+        num_iosb,
         eroil::iosb::to_signal_mode(static_cast<int32_t>(iSignalMode))
     );
 
@@ -122,10 +166,11 @@ int NAE_Receive_Count(void* iHandle) {
 }
 
 void NAE_Receive_Dismiss(void* iHandle, int iCount) {
-    eroil::recv_dismiss(
-        static_cast<eroil::hndl::RecvHandle*>(iHandle),
-        static_cast<int32_t>(iCount)
-    );
+    auto handle = static_cast<eroil::hndl::RecvHandle*>(iHandle);
+    uint32_t count = 0;
+    if (iCount > 0) { count = static_cast<uint32_t>(iCount); }
+
+    eroil::recv_dismiss(handle, count);
 }
 
 void NAE_Receive_Idle(void* iHandle) {

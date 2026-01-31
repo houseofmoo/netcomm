@@ -42,7 +42,7 @@ namespace eroil::time {
                     std::chrono::steady_clock::now() - m_start
                 ).count();
 
-                time_log.insert(std::move(m_name), duration_us );
+                time_log.insert(std::move(m_name), static_cast<uint64_t>(duration_us) );
             }
     };
 }

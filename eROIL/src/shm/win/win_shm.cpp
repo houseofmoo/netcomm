@@ -17,11 +17,11 @@ namespace eroil::shm {
     static std::wstring to_windows_wstring(const std::string& s) {
         if (s.empty()) return {};
 
-        int len = ::MultiByteToWideChar(CP_UTF8, 0, s.data(), (int)s.size(), nullptr, 0);
+        int len = ::MultiByteToWideChar(CP_UTF8, 0, s.data(), static_cast<int>(s.size()), nullptr, 0);
         if (len <= 0) return {};
 
-        std::wstring out((size_t)len, L'\0');
-        ::MultiByteToWideChar(CP_UTF8, 0, s.data(), (int)s.size(), out.data(), len);
+        std::wstring out(static_cast<size_t>(len), L'\0');
+        ::MultiByteToWideChar(CP_UTF8, 0, s.data(), static_cast<int>(s.size()), out.data(), len);
         return out;
     }
 

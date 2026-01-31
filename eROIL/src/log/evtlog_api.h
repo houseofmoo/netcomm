@@ -14,72 +14,74 @@ namespace eroil {
         // used for time measurements in logs
         uint64_t estimate_tsc_hz() noexcept;
 
+        namespace detail {
+            struct slot32 {
+                std::int32_t value;
+
+                constexpr slot32() noexcept : value(0) {}
+                constexpr slot32(std::int32_t x) noexcept : value(x) {}
+                constexpr slot32(std::uint32_t x) noexcept : value(static_cast<std::int32_t>(x)) {}
+
+                template <class E, std::enable_if_t<std::is_enum<E>::value, int> = 0>
+                constexpr slot32(E e) noexcept
+                : value(static_cast<slot32>(static_cast<std::underlying_type_t<E>>(e))) {}
+            };
+        }
+
         //
         // ACCESS LOGGING FUNCTIONS THROUGH THESE WRAPPERS
         // DO NOT CALL evtlog::g_event_log METHODS DIRECTLY
         //
 
-        // full logs with payload copy
-        inline void debug_pl(elog_kind kind, elog_cat cat, std::uint32_t a=0, std::uint32_t b=0, std::uint32_t c=0, const void* payload=nullptr, std::uint32_t payload_size=0) noexcept {
-            evtlog::detail::log_payload<elog_sev::Debug>(kind, cat, a, b, c, payload, payload_size); 
+        // log that includes timestamp + payload copy (payload copy is slow, do not use in hot paths)
+        inline void info_pl(elog_kind kind, elog_cat cat, detail::slot32 a={}, detail::slot32 b={}, detail::slot32 c={}, const void* payload=nullptr, std::uint32_t payload_size=0) noexcept {
+            evtlog::detail::log_payload<elog_sev::Info>(kind, cat, a.value, b.value, c.value, payload, payload_size); 
         }
 
-        inline void info_pl(elog_kind kind, elog_cat cat, std::uint32_t a=0, std::uint32_t b=0, std::uint32_t c=0, const void* payload=nullptr, std::uint32_t payload_size=0) noexcept {
-            evtlog::detail::log_payload<elog_sev::Info>(kind, cat, a, b, c, payload, payload_size); 
+        inline void warn_pl(elog_kind kind, elog_cat cat, detail::slot32 a={}, detail::slot32 b={}, detail::slot32 c={}, const void* payload=nullptr, std::uint32_t payload_size=0) noexcept {
+            evtlog::detail::log_payload<elog_sev::Warning>(kind, cat, a.value, b.value, c.value, payload, payload_size); 
         }
 
-        inline void warn_pl(elog_kind kind, elog_cat cat, std::uint32_t a=0, std::uint32_t b=0, std::uint32_t c=0, const void* payload=nullptr, std::uint32_t payload_size=0) noexcept {
-            evtlog::detail::log_payload<elog_sev::Warning>(kind, cat, a, b, c, payload, payload_size); 
+        inline void error_pl(elog_kind kind, elog_cat cat, detail::slot32 a={}, detail::slot32 b={}, detail::slot32 c={}, const void* payload=nullptr, std::uint32_t payload_size=0) noexcept {
+            evtlog::detail::log_payload<elog_sev::Error>(kind, cat, a.value, b.value, c.value, payload, payload_size); 
         }
 
-        inline void error_pl(elog_kind kind, elog_cat cat, std::uint32_t a=0, std::uint32_t b=0, std::uint32_t c=0, const void* payload=nullptr, std::uint32_t payload_size=0) noexcept {
-            evtlog::detail::log_payload<elog_sev::Error>(kind, cat, a, b, c, payload, payload_size); 
+        inline void crit_pl(elog_kind kind, elog_cat cat, detail::slot32 a={}, detail::slot32 b={}, detail::slot32 c={}, const void* payload=nullptr, std::uint32_t payload_size=0) noexcept {
+            evtlog::detail::log_payload<elog_sev::Critical>(kind, cat, a.value, b.value, c.value, payload, payload_size); 
         }
 
-        inline void crit_pl(elog_kind kind, elog_cat cat, std::uint32_t a=0, std::uint32_t b=0, std::uint32_t c=0, const void* payload=nullptr, std::uint32_t payload_size=0) noexcept {
-            evtlog::detail::log_payload<elog_sev::Critical>(kind, cat, a, b, c, payload, payload_size); 
+        // logs that include a timestamp and no payload (in general this is the default case)
+        inline void info(elog_kind kind, elog_cat cat, detail::slot32 a={}, detail::slot32 b={}, detail::slot32 c={}) noexcept {
+            evtlog::detail::log_hot<elog_sev::Info>(kind, cat, a.value, b.value, c.value); 
         }
 
-        // logs without payload copy
-        inline void debug(elog_kind kind, elog_cat cat, std::uint32_t a=0, std::uint32_t b=0, std::uint32_t c=0) noexcept {
-            evtlog::detail::log_hot<elog_sev::Debug>(kind, cat, a, b, c); 
+        inline void warn(elog_kind kind, elog_cat cat, detail::slot32 a={}, detail::slot32 b={}, detail::slot32 c={}) noexcept {
+            evtlog::detail::log_hot<elog_sev::Warning>(kind, cat, a.value, b.value, c.value); 
         }
 
-        inline void info(elog_kind kind, elog_cat cat, std::uint32_t a=0, std::uint32_t b=0, std::uint32_t c=0) noexcept {
-            evtlog::detail::log_hot<elog_sev::Info>(kind, cat, a, b, c); 
+        inline void error(elog_kind kind, elog_cat cat, detail::slot32 a={}, detail::slot32 b={}, detail::slot32 c={}) noexcept {
+            evtlog::detail::log_hot<elog_sev::Error>(kind, cat, a.value, b.value, c.value); 
         }
 
-        inline void warn(elog_kind kind, elog_cat cat, std::uint32_t a=0, std::uint32_t b=0, std::uint32_t c=0) noexcept {
-            evtlog::detail::log_hot<elog_sev::Warning>(kind, cat, a, b, c); 
+        inline void crit(elog_kind kind, elog_cat cat, detail::slot32 a={}, detail::slot32 b={}, detail::slot32 c={}) noexcept {
+            evtlog::detail::log_hot<elog_sev::Critical>(kind, cat, a.value, b.value, c.value); 
         }
 
-        inline void error(elog_kind kind, elog_cat cat, std::uint32_t a=0, std::uint32_t b=0, std::uint32_t c=0) noexcept {
-            evtlog::detail::log_hot<elog_sev::Error>(kind, cat, a, b, c); 
+        // logs that have no timestamp or payload (for use in very hot paths if timestamps are not required)
+        inline void info_bare(elog_kind kind, elog_cat cat, detail::slot32 a={}, detail::slot32 b={}, detail::slot32 c={}) noexcept {
+            evtlog::detail::log_hot_no_time<elog_sev::Info>(kind, cat, a.value, b.value, c.value); 
         }
 
-        inline void crit(elog_kind kind, elog_cat cat, std::uint32_t a=0, std::uint32_t b=0, std::uint32_t c=0) noexcept {
-            evtlog::detail::log_hot<elog_sev::Critical>(kind, cat, a, b, c); 
+        inline void warn_bare(elog_kind kind, elog_cat cat, detail::slot32 a={}, detail::slot32 b={}, detail::slot32 c={}) noexcept {
+            evtlog::detail::log_hot_no_time<elog_sev::Warning>(kind, cat, a.value, b.value, c.value); 
         }
 
-        // logs without payload copy or time stamp
-        inline void debug_bare(elog_kind kind, elog_cat cat, std::uint32_t a=0, std::uint32_t b=0, std::uint32_t c=0) noexcept {
-            evtlog::detail::log_hot_no_time<elog_sev::Debug>(kind, cat, a, b, c); 
+        inline void error_bare(elog_kind kind, elog_cat cat, detail::slot32 a={}, detail::slot32 b={}, detail::slot32 c={}) noexcept {
+            evtlog::detail::log_hot_no_time<elog_sev::Error>(kind, cat, a.value, b.value, c.value); 
         }
 
-        inline void info_bare(elog_kind kind, elog_cat cat, std::uint32_t a=0, std::uint32_t b=0, std::uint32_t c=0) noexcept {
-            evtlog::detail::log_hot_no_time<elog_sev::Info>(kind, cat, a, b, c); 
-        }
-
-        inline void warn_bare(elog_kind kind, elog_cat cat, std::uint32_t a=0, std::uint32_t b=0, std::uint32_t c=0) noexcept {
-            evtlog::detail::log_hot_no_time<elog_sev::Warning>(kind, cat, a, b, c); 
-        }
-
-        inline void error_bare(elog_kind kind, elog_cat cat, std::uint32_t a=0, std::uint32_t b=0, std::uint32_t c=0) noexcept {
-            evtlog::detail::log_hot_no_time<elog_sev::Error>(kind, cat, a, b, c); 
-        }
-
-        inline void crit_bare(elog_kind kind, elog_cat cat, std::uint32_t a=0, std::uint32_t b=0, std::uint32_t c=0) noexcept {
-            evtlog::detail::log_hot_no_time<elog_sev::Critical>(kind, cat, a, b, c); 
+        inline void crit_bare(elog_kind kind, elog_cat cat, detail::slot32 a={}, detail::slot32 b={}, detail::slot32 c={}) noexcept {
+            evtlog::detail::log_hot_no_time<elog_sev::Critical>(kind, cat, a.value, b.value, c.value); 
         }
     }
 

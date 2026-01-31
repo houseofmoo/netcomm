@@ -6,6 +6,12 @@ namespace eroil::evtlog {
     enum class EventKind : std::uint16_t {
         None = 0,
 
+        // manager
+        NoSelfId,
+        NoSockContext,
+        NoComms,
+        NoBroadcast,
+
         // generic
         Start,
         Failed,
@@ -50,10 +56,11 @@ namespace eroil::evtlog {
         DeadSocketFound,
     };
 
-    enum class Severity : std::uint8_t { Debug, Info, Warning, Error, Critical };
+    enum class Severity : std::uint8_t { Info, Warning, Error, Critical };
     
     enum class Category : std::uint8_t { 
         General, 
+        Manager,
         Router, 
         Shm, 
         Socket, 
@@ -72,9 +79,9 @@ namespace eroil::evtlog {
     struct EventRecord {
         std::uint64_t tick = 0;
         //std::uint32_t thread_id;
-        std::uint32_t a = 0;
-        std::uint32_t b = 0;
-        std::uint32_t c = 0;
+        std::int32_t a = 0;
+        std::int32_t b = 0;
+        std::int32_t c = 0;
         std::uint16_t kind = 0;
         std::uint8_t severity = 0;
         std::uint8_t category = 0;

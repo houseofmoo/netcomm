@@ -47,7 +47,8 @@ namespace eroil::evtlog {
         uint64_t c1 = __rdtsc();
 
         auto ns = std::chrono::duration_cast<std::chrono::nanoseconds>(t1 - t0).count();
-        return (c1 - c0) * 1'000'000'000ull / ns;
+        uint64_t result = static_cast<uint64_t>((c1 - c0) * 1'000'000'000ull / static_cast<uint64_t>(ns));
+        return result;
     }
 
     uint64_t estimate_tsc_hz() noexcept {
@@ -70,9 +71,9 @@ namespace eroil::evtlog {
     void EventLog::log_payload(EventKind kind,
                                Severity sev,
                                Category cat,
-                               std::uint32_t a,
-                               std::uint32_t b,
-                               std::uint32_t c,
+                               std::int32_t a,
+                               std::int32_t b,
+                               std::int32_t c,
                                const void* payload,
                                std::uint32_t payload_size) noexcept {
 
@@ -109,9 +110,9 @@ namespace eroil::evtlog {
         void EventLog::log_hot(EventKind kind, 
                                Severity sev, 
                                Category cat,
-                               std::uint32_t a,
-                               std::uint32_t b,
-                               std::uint32_t c) noexcept {
+                               std::int32_t a,
+                               std::int32_t b,
+                               std::int32_t c) noexcept {
             const std::uint32_t seq = m_seq.fetch_add(1, std::memory_order_relaxed);
             const std::size_t idx = m_idx.fetch_add(1, std::memory_order_relaxed) & (EVENT_LOG_CAPACITY - 1);
             EventRecord& r = m_evt_logs[idx];
@@ -133,9 +134,9 @@ namespace eroil::evtlog {
         void EventLog::log_hot_no_time(EventKind kind, 
                                        Severity sev, 
                                        Category cat,
-                                       std::uint32_t a,
-                                       std::uint32_t b,
-                                       std::uint32_t c) noexcept {
+                                       std::int32_t a,
+                                       std::int32_t b,
+                                       std::int32_t c) noexcept {
             const std::uint32_t seq = m_seq.fetch_add(1, std::memory_order_relaxed);
             const std::size_t idx = m_idx.fetch_add(1, std::memory_order_relaxed) & (EVENT_LOG_CAPACITY - 1);
             EventRecord& r = m_evt_logs[idx];

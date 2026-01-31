@@ -1,6 +1,23 @@
 cmake_minimum_required(VERSION 3.15)
 project(eROIL LANGUAGES C CXX)
 
+# what compiler we using
+message(STATUS "")
+message(STATUS "==== Compiler Information ====")
+message(STATUS "  C++ compiler      : ${CMAKE_CXX_COMPILER}")
+message(STATUS "  C++ standard      : ${CMAKE_CXX_STANDARD}")
+message(STATUS "  Compiler ID       : ${CMAKE_CXX_COMPILER_ID}")
+message(STATUS "  Compiler version  : ${CMAKE_CXX_COMPILER_VERSION}")
+#message(STATUS "  Compile features  : ${CMAKE_CXX_COMPILE_FEATURES}")
+message(STATUS "")
+message(STATUS "  C compiler        : ${CMAKE_C_COMPILER}")
+message(STATUS "  C standard        : ${CMAKE_C_STANDARD}")
+message(STATUS "  Compiler ID       : ${CMAKE_C_COMPILER_ID}")
+message(STATUS "  Compiler version  : ${CMAKE_C_COMPILER_VERSION}")
+#message(STATUS "  Compile features  : ${CMAKE_C_COMPILE_FEATURES}")
+message(STATUS "==============================")
+message(STATUS "")
+
 # build as static lib
 add_library(eROIL STATIC)
 
@@ -114,12 +131,62 @@ target_include_directories(eROIL
         #${CMAKE_CURRENT_SOURCE_DIR}/include/eROIL
 )
 
-# strict warnings only for non-system code
-target_compile_options(eROIL 
-    PRIVATE
-        $<$<CXX_COMPILER_ID:MSVC>:/W4 /WX>
-        $<$<NOT:$<CXX_COMPILER_ID:MSVC>>:-Wall -Wextra -Wpedantic -Werror>
-        $<$<NOT:$<CXX_COMPILER_ID:MSVC>>:-Wunused-parameter -Wunused-variable>
+# the bare minimum for warnings
+# target_compile_options(eROIL PRIVATE
+#     $<$<CXX_COMPILER_ID:MSVC>:/W4 /WX>
+#     $<$<NOT:$<CXX_COMPILER_ID:MSVC>>:-Wall -Wextra -Wpedantic -Werror>
+#     $<$<NOT:$<CXX_COMPILER_ID:MSVC>>:-Wunused-parameter -Wunused-variable>
+# )
+
+# extensive but reasonable warnings
+target_compile_options(eROIL PRIVATE
+  $<$<COMPILE_LANGUAGE:CXX>:
+    $<$<CXX_COMPILER_ID:MSVC>:
+      /W4 /WX /permissive-
+      /w14242 /w14254 /w14263 /w14265 /w14287
+      /w14545 /w14546 /w14547 /w14549
+    >
+    $<$<CXX_COMPILER_ID:Clang>:
+      -Wall -Wextra -Wpedantic -Werror
+      -Wsign-conversion 
+      -Wfloat-conversion
+      -Wold-style-cast
+      -Wdouble-promotion
+      -Wshadow
+      -Wformat=2
+      -Wundef
+      -Wnon-virtual-dtor
+      -Woverloaded-virtual
+      -Wnull-dereference
+      -Wimplicit-fallthrough
+      -Wsign-conversion
+      -Wcast-align
+      #-Wconversion # this one breaks any and all narrowing which 
+                    # is used alot cause the old guard loved odd shaped ints
+    >
+    $<$<CXX_COMPILER_ID:GNU>:
+      -Wall -Wextra -Wpedantic -Werror
+      -Wsign-conversion 
+      -Wfloat-conversion
+      -Wold-style-cast
+      -Wdouble-promotion
+      -Wshadow
+      -Wformat=2
+      -Wundef
+      -Wnon-virtual-dtor
+      -Woverloaded-virtual
+      -Wnull-dereference
+      -Wimplicit-fallthrough
+      -Wsign-conversion
+      -Wcast-align
+      -Wduplicated-cond
+      -Wduplicated-branches
+      -Wlogical-op
+      -Wmisleading-indentation
+      #-Wconversion # this one breaks any and all narrowing which 
+                    # is used alot cause the old guard loved odd shaped ints
+    >
+  >
 )
 
 # external system libs

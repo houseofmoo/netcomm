@@ -25,14 +25,14 @@ namespace eroil::plat {
         ::sem_post(static_cast<sem_t*>(sem)); 
     }
 
-    void affinitize_thread(std::thread& t, int cpu) {
+    void affinitize_thread(std::thread& t, uint32_t cpu) {
         cpu_set_t set;
         CPU_ZERO(&set);
         CPU_SET(cpu, &set);
         ::pthread_setaffinity_np(t.native_handle(), sizeof(set), &set);
     }
 
-    void affinitize_current_thread(int cpu) {
+    void affinitize_current_thread(uint32_t cpu) {
         cpu_set_t set;
         CPU_ZERO(&set);
         CPU_SET(cpu, &set);
@@ -42,7 +42,7 @@ namespace eroil::plat {
     void affinitize_current_thread_to_current_cpu() {
         int cpu = sched_getcpu();
         if (cpu >= 0) {
-            plat::affinitize_current_thread(cpu);
+            plat::affinitize_current_thread(static_cast<uint32_t>(cpu));
         }
     }
 }

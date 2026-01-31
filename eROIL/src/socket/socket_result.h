@@ -59,8 +59,8 @@ namespace eroil::sock {
 
     inline void print_socket_result(const SockResult& result) {
         PRINT("SOCKET RESULT:");
-        PRINT("    code=", (int)result.code);
-        PRINT("    op=", (int)result.op);
+        PRINT("    code=", static_cast<int>(result.code));
+        PRINT("    op=", static_cast<int>(result.op));
         PRINT("    sys_error=", result.sys_error);
         PRINT("    bytes=", result.bytes);
         (void)result; // in release build this function is empty, gotta appease the warning gods

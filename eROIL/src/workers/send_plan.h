@@ -19,7 +19,7 @@ namespace eroil::wrk {
             
             if (err != shm::ShmSendErr::None) {
                 // TODO: is there something to handle here?
-                ERR_PRINT("shm send for label=", job.label, ", errorcode=", (int)err);
+                ERR_PRINT("shm send for label=", job.label, ", errorcode=", static_cast<int>(err));
             }
 
             return err == shm::ShmSendErr::None;
@@ -41,7 +41,7 @@ namespace eroil::wrk {
             
             if (result.code != sock::SockErr::None) {
                 // TODO: is there something to handle here?
-                ERR_PRINT("sokcet send for label=", job.label, ", errorcode=", (int)result.code);
+                ERR_PRINT("sokcet send for label=", job.label, ", errorcode=", static_cast<int>(result.code));
             }
 
             return result.code == sock::SockErr::None;

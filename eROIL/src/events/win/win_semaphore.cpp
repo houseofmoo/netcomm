@@ -29,7 +29,8 @@ namespace eroil::evt {
 
     Semaphore::Semaphore(uint32_t max_count) : m_sem(nullptr), m_max_count(max_count) {
         if (m_max_count == 0) m_max_count = std::numeric_limits<long>::max();
-        m_sem = from_native(::CreateSemaphoreW(nullptr, 0, m_max_count, nullptr));
+        LONG max = static_cast<LONG>(m_max_count);
+        m_sem = from_native(::CreateSemaphoreW(nullptr, 0, max, nullptr));
     }
 
     Semaphore::~Semaphore() {

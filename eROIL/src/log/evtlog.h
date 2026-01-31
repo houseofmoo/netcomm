@@ -35,9 +35,9 @@ namespace eroil::evtlog {
             void log_payload(EventKind kind,
                              Severity sev,
                              Category cat,
-                             std::uint32_t a=0,
-                             std::uint32_t b=0,
-                             std::uint32_t c=0,
+                             std::int32_t a=0,
+                             std::int32_t b=0,
+                             std::int32_t c=0,
                              const void* payload=nullptr,
                              std::uint32_t payload_size=0) noexcept;
 
@@ -45,17 +45,17 @@ namespace eroil::evtlog {
             void log_hot(EventKind kind, 
                          Severity sev, 
                          Category cat,
-                         std::uint32_t a=0,
-                         std::uint32_t b=0,
-                         std::uint32_t c=0) noexcept;
+                         std::int32_t a=0,
+                         std::int32_t b=0,
+                         std::int32_t c=0) noexcept;
 
             // does no memcset/memcpy of payload, and does not set tick, for extremely hot paths
             void log_hot_no_time(EventKind kind, 
                                  Severity sev, 
                                  Category cat,
-                                 std::uint32_t a=0,
-                                 std::uint32_t b=0,
-                                 std::uint32_t c=0) noexcept;
+                                 std::int32_t a=0,
+                                 std::int32_t b=0,
+                                 std::int32_t c=0) noexcept;
 
             void write_evtlog() noexcept;
     };
@@ -69,9 +69,9 @@ namespace eroil::evtlog {
         // DO NOT CALL THESE DIRECTLY
         //
         // these exist to allow the compiler to remove logging calls at compile time
-        // that do not meet the min severity level or if logging is disabled entirely
+        // that do not meet the min severity level or when logging is disabled entirely.
         // set event logging enabled via compiler flags (DEROIL_ELOG_ENABLED=1)
-        // change min servity via EventLogBuildConfig
+        // change min servity via EventLogBuildConfig (above in this file)
         //
 
         // black magic to make our constexpr evaluation work on linux
@@ -79,7 +79,7 @@ namespace eroil::evtlog {
         inline constexpr bool dependent_false_v = false;
 
         template <Severity Sev>
-        inline void log_payload(EventKind kind, Category cat, std::uint32_t a=0, std::uint32_t b=0, std::uint32_t c=0, const void* payload=nullptr, std::uint32_t payload_size=0) noexcept {
+        inline void log_payload(EventKind kind, Category cat, std::int32_t a=0, std::int32_t b=0, std::int32_t c=0, const void* payload=nullptr, std::uint32_t payload_size=0) noexcept {
             if constexpr (EventLogBuildConfig::enabled && 
                           Sev >= EventLogBuildConfig::min_severity) {
                 // double check this code is removed if EventLogBuildConfig::enabled = false
@@ -89,7 +89,7 @@ namespace eroil::evtlog {
         }
 
         template <Severity Sev>
-        inline void log_hot(EventKind kind, Category cat, std::uint32_t a=0, std::uint32_t b=0, std::uint32_t c=0) noexcept {
+        inline void log_hot(EventKind kind, Category cat, std::int32_t a=0, std::int32_t b=0, std::int32_t c=0) noexcept {
             if constexpr (EventLogBuildConfig::enabled && 
                           Sev >= EventLogBuildConfig::min_severity) {
                 // double check this code is removed if EventLogBuildConfig::enabled = false
@@ -99,7 +99,7 @@ namespace eroil::evtlog {
         }
 
         template <Severity Sev>
-        inline void log_hot_no_time(EventKind kind, Category cat, std::uint32_t a=0, std::uint32_t b=0, std::uint32_t c=0) noexcept {
+        inline void log_hot_no_time(EventKind kind, Category cat, std::int32_t a=0, std::int32_t b=0, std::int32_t c=0) noexcept {
             if constexpr (EventLogBuildConfig::enabled && 
                           Sev >= EventLogBuildConfig::min_severity) {
                 // double check this code is removed if EventLogBuildConfig::enabled = false

@@ -90,26 +90,22 @@ namespace eroil {
 
     hndl::SendHandle* open_send_label(Label label, 
                                       std::byte* buf, 
-                                      int32_t size,
+                                      size_t size,
                                       iosb::IoType io_type,
                                       sem_handle sem,
                                       iosb::SendIosb* iosb,
-                                      int32_t num_iosb) {
+                                      uint32_t num_iosb) {
 
         if (!is_ready()) return nullptr;
-        if (label <= INVALID_LABEL) return nullptr;
-        if (buf == nullptr) return nullptr;
-        if (size <= 0) return nullptr;
-        if (num_iosb < 0) num_iosb = 0;
         
         hndl::OpenSendData data;
         data.label = label;
         data.buf = buf;
-        data.buf_size = static_cast<size_t>(size);
+        data.buf_size = size;
         data.is_offset = io_type == iosb::IoType::OFFSET; 
         data.sem = sem;
         data.iosb = iosb;
-        data.num_iosb = static_cast<uint32_t>(num_iosb);
+        data.num_iosb = num_iosb;
         data.iosb_index = 0;
 
         return manager->open_send(data);
@@ -117,22 +113,18 @@ namespace eroil {
 
     void send_label(hndl::SendHandle* handle, 
                     std::byte* buf, 
-                    int32_t buf_size, 
-                    int32_t send_offset,
-                    int32_t recv_offset) {
+                    size_t buf_size, 
+                    size_t send_offset,
+                    size_t recv_offset) {
         
         if (!is_ready()) return;
-        if (handle == nullptr) return;
-        if (buf_size < 0) buf_size = 0;
-        if (send_offset < 0) send_offset = 0;
-        if (recv_offset < 0) recv_offset = 0;
 
         manager->send_label(
             handle, 
             buf, 
-            static_cast<size_t>(buf_size), 
-            static_cast<size_t>(send_offset), 
-            static_cast<size_t>(recv_offset)
+            buf_size, 
+            send_offset, 
+            recv_offset
         );
     }
 
@@ -145,20 +137,15 @@ namespace eroil {
 
     hndl::RecvHandle* open_recv_label(Label label, 
                                       std::byte* buf, 
-                                      int32_t size,
-                                      int32_t num_slots,
+                                      size_t size,
+                                      uint32_t num_slots,
                                       std::byte* aux_buf,
                                       sem_handle sem,
                                       iosb::ReceiveIosb* iosb,
-                                      int32_t num_iosb,
+                                      uint32_t num_iosb,
                                       iosb::SignalMode signal_mode) {
 
         if (!is_ready()) return nullptr;
-        if (label <= INVALID_LABEL) return nullptr;
-        if (buf == nullptr) return nullptr;
-        if (size <= 0) return nullptr;
-        if (num_slots <= 0) return nullptr;
-        if (num_iosb < 0) num_iosb = 0;
 
         eroil::hndl::OpenReceiveData data;
         data.label = label;
@@ -179,7 +166,6 @@ namespace eroil {
 
     void close_recv_label(hndl::RecvHandle* handle) {
         if (!is_ready()) return;
-        if (handle == nullptr) return;
 
         manager->close_recv(handle);
     }
@@ -190,15 +176,14 @@ namespace eroil {
         return handle->data.recv_count;
     }
 
-    void recv_dismiss(hndl::RecvHandle* handle, int32_t count) {
+    void recv_dismiss(hndl::RecvHandle* handle, uint32_t count) {
         if (handle == nullptr) return;
-        if (count < 0) return;
 
         std::lock_guard lock(handle->mtx);
-        if (static_cast<uint32_t>(count) > handle->data.recv_count) {
+        if (count > handle->data.recv_count) {
             handle->data.recv_count = 0;
         } else {
-            handle->data.recv_count -= static_cast<uint32_t>(count);
+            handle->data.recv_count -= count;
         }
     }
 

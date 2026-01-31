@@ -12,8 +12,8 @@
 #include "types/label_io_types.h"
 
 namespace eroil {
-    static int32_t unique_id() {
-        static std::atomic<int> next_id{0};
+    static uint64_t unique_id() {
+        static std::atomic<uint64_t> next_id{1};
         return next_id.fetch_add(1, std::memory_order_relaxed);
     }
 
@@ -30,6 +30,7 @@ namespace eroil {
         addr::NodeAddress addr = addr::get_address(m_id);
         if (addr.kind == addr::RouteKind::None) {
             ERR_PRINT("manager has no entry in nodes info list, manager cannot initialize");
+            evtlog::crit(elog_kind::NoSelfId, elog_cat::Manager);
             m_valid = false;
             return;
         }
@@ -37,6 +38,7 @@ namespace eroil {
         // confirm socket context was created successfully
         if (!m_sock_context.ok()) {
             ERR_PRINT("manager was unable to get a valid socket context, manager cannot initialize");
+            evtlog::crit(elog_kind::NoSockContext, elog_cat::Manager);
             m_valid = false;
             return;
         }
@@ -58,23 +60,37 @@ namespace eroil {
         }).join();
 
         if (!m_comms.start()) {
+            evtlog::crit(elog_kind::NoComms, elog_cat::Manager);
             return false;
         }
 
         if (!start_broadcast()) {
+            evtlog::crit(elog_kind::NoBroadcast, elog_cat::Manager);
             return false;
         }
-
-        // wait about 1 minute then dump time info
-        //time::time_log.timed_run(m_id, 60 * 1000);
 
         return true;
     }
 
     hndl::SendHandle* Manager::open_send(hndl::OpenSendData data) {
+        if (data.label <= INVALID_LABEL) {
+            ERR_PRINT("got invalid label=", data.label, ", open send request ignored");
+            return nullptr;
+        }
+
+        if (data.buf == nullptr) {
+            ERR_PRINT("got invalid data buf for label=", data.label, ", open send request ignored");
+            return nullptr;
+        }
+
+        if (data.buf_size <= 0) {
+            ERR_PRINT("got invalid data buf size=", data.buf_size, " for label=", data.label, ", open send request ignored");
+            return nullptr;
+        }
+
         if (data.buf_size > MAX_LABEL_SEND_SIZE) {
-            ERR_PRINT(" got label size=", data.buf_size, " which is bigger than max=", MAX_LABEL_SEND_SIZE);
-            ERR_PRINT("ignored open_send for label=", data.label);
+            ERR_PRINT("got label size=", data.buf_size, " which is bigger than max=", MAX_LABEL_SEND_SIZE);
+            ERR_PRINT("open send request for label=", data.label, " ignored");
             return nullptr;
         }
         
@@ -91,9 +107,9 @@ namespace eroil {
             return;
         }
 
-        // if this is not an offset send, 0 the offset sizes
+        // TODO: i am not sure if we should alawys zero out both offsets
+        // in this case or only the recv offset
         if (!handle->data.is_offset) {
-            // TODO: send offset 0 here may be wrong
             send_offset = 0;
             recv_offset = 0;
         }
@@ -129,7 +145,7 @@ namespace eroil {
         hdr.flags = static_cast<uint16_t>(io::LabelFlag::Data);
         hdr.label = handle->data.label;
         hdr.data_size = static_cast<uint32_t>(data_size);
-        hdr.recv_offset = recv_offset;
+        hdr.recv_offset = static_cast<uint32_t>(recv_offset);
 
         // copy header
         std::memcpy(sbuf.data.get(), &hdr, sizeof(hdr));
@@ -151,9 +167,29 @@ namespace eroil {
     }
 
     hndl::RecvHandle* Manager::open_recv(hndl::OpenReceiveData data) {
+        if (data.label <= INVALID_LABEL) {
+            ERR_PRINT("got invalid label=", data.label, ", open recv request ignored");
+            return nullptr;
+        }
+
+        if (data.buf == nullptr) {
+            ERR_PRINT("got invalid data buf for label=", data.label, ", open recv request ignored");
+            return nullptr;
+        }
+
+        if (data.buf_size <= 0) {
+            ERR_PRINT("got invalid data buf size=", data.buf_size, " for label=", data.label, ", open recv request ignored");
+            return nullptr;
+        }
+
+        if (data.buf_slots <= 0) {
+            ERR_PRINT("got invalid data buf slot count=", data.buf_slots, " for label=", data.label, ", open recv request ignored");
+            return nullptr;
+        }
+
         if (data.buf_size > MAX_LABEL_SEND_SIZE) {
-            ERR_PRINT(" got label size=", data.buf_size, " which is bigger than max=", MAX_LABEL_SEND_SIZE);
-            ERR_PRINT("ignored open_recv for label=", data.label);
+            ERR_PRINT("got label size=", data.buf_size, " which is bigger than max=", MAX_LABEL_SEND_SIZE);
+            ERR_PRINT("open recv request for label=", data.label, " ignored");
             return nullptr;
         }
 
@@ -186,17 +222,17 @@ namespace eroil {
             print_socket_result(result);
             return false;
         }
+        LOG("udp multicast group joined");
 
-        std::thread([this]() {
-            send_broadcast();
-        }).detach();
+        std::thread([this]() { send_broadcast(); }).detach();
+        LOG("udp multicast send thread started");
 
         std::thread([this]() {
             //plat::affinitize_current_thread(2);
             recv_broadcast();
         }).detach();
         
-        LOG("udp multicast group joined, broadcast send/recv threads started");
+        LOG("udp multicast grecv thread started");
         return true;
     }
 
@@ -205,17 +241,18 @@ namespace eroil {
         msg.id = m_id;
 
         while (true) {
-            EvtMark mark(elog_cat::Broadcast);
-            
-            msg.send_labels = m_router.get_send_labels_snapshot();
-            msg.recv_labels = m_router.get_recv_labels_snapshot();
+            {
+                EvtMark mark(elog_cat::Broadcast);
+                msg.send_labels = m_router.get_send_labels_snapshot();
+                msg.recv_labels = m_router.get_recv_labels_snapshot();
 
-            // send broadcast
-            sock::SockResult err = m_broadcast.send_broadcast(&msg, sizeof(msg));
-            if (err.code != sock::SockErr::None) {
-                evtlog::warn(elog_kind::SendFailed, elog_cat::Broadcast);
-                ERR_PRINT("broadcast send failed!");
-                print_socket_result(err);
+                // send broadcast
+                sock::SockResult err = m_broadcast.send_broadcast(&msg, sizeof(msg));
+                if (err.code != sock::SockErr::None) {
+                    evtlog::warn(elog_kind::SendFailed, elog_cat::Broadcast);
+                    ERR_PRINT("broadcast send failed!");
+                    print_socket_result(err);
+                }
             }
 
             std::this_thread::sleep_for(std::chrono::milliseconds(3 * 1000));
@@ -228,8 +265,6 @@ namespace eroil {
         while (true) {
             m_broadcast.recv_broadcast(&msg, sizeof(msg));
             EvtMark mark(elog_cat::Broadcast);
-            // time how long this takes
-            //time::Timer t("recv_broadcast()");
 
             std::unordered_map<Label, uint32_t> recv{};
             recv.reserve(MAX_LABELS);
@@ -275,7 +310,7 @@ namespace eroil {
                     break;
                 }
                 default: {
-                    ERR_PRINT("tried to add send subscriber but did not know routekind, ", (int)addr.kind);
+                    ERR_PRINT("tried to add send subscriber but did not know routekind, ", static_cast<int>(addr.kind));
                     break;
                 }
             }
@@ -310,7 +345,7 @@ namespace eroil {
                     break;
                 }
                 default: {
-                    ERR_PRINT("tried to remove send subscriber but did not know routekind, ", (int)addr.kind);
+                    ERR_PRINT("tried to remove send subscriber but did not know routekind, ", static_cast<int>(addr.kind));
                     break;
                 }
             }

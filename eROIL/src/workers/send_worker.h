@@ -49,7 +49,7 @@ namespace eroil::wrk {
                             break;
                         }
                         default: {
-                            ERR_PRINT("semaphore post failed to unknown error, SemErr: ", std::to_string((int)err));
+                            ERR_PRINT("semaphore post failed to unknown error, SemErr: ", std::to_string(static_cast<int>(err)));
                             break;
                         }
                     }
@@ -100,6 +100,7 @@ namespace eroil::wrk {
 
                     // drain queue of all jobs
                     while (true) {
+                        EvtMark mark(elog_cat::SendWorker);
                         std::shared_ptr<io::SendJob> job = nullptr;
                         {
                             std::lock_guard lock(m_mtx);
@@ -112,21 +113,20 @@ namespace eroil::wrk {
                         if (job == nullptr) break; // no jobs left
 
                         try {
-                            EvtMark mark(elog_cat::SendWorker);
                             for (const auto& recvr : SendPlan::receivers(*job)) {
                                 io::JobCompleteGuard guard{job};
                                 if (recvr == nullptr) continue;
                                 if (!SendPlan::send_one(*recvr, *job)) {
-                                    evtlog::warn(elog_kind::SendFailed, elog_cat::SendWorker);
+                                    evtlog::warn(elog_kind::SendFailed, elog_cat::SendWorker, job->label);
                                     ++SendPlan::fail_count(*job);
                                 }
                             }
-                            // IOSB is written by which ever sender completes last, occurs when
+                            // send IOSB is written by which ever sender completes last, occurs when
                             // job->pending_sends == 0
                         } catch (const std::exception& e) {
-                            ERR_PRINT("send worker exception, label: ", job->label, ", exception: ", e.what());
+                            ERR_PRINT("send worker exception, label=", job->label, ", exception=", e.what());
                         } catch (...) {
-                            ERR_PRINT("send worker unknown exception, label: ", job->label);
+                            ERR_PRINT("send worker unknown exception, label=", job->label);
                         }
                     }
                 }

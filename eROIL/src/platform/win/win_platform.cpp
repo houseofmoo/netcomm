@@ -35,19 +35,19 @@ namespace eroil::plat {
 
         // single cpu
         //const DWORD_PTR mask = (DWORD_PTR(1) << cpu);
-        //SetThreadAffinityMask(t.native_handle(), mask);
+        //::SetThreadAffinityMask(t.native_handle(), mask);
 
         // multiple cpus
-        //SetThreadAffinityMask(handle.thread, 1ull << 1 | 1ull << 2);
+        //::SetThreadAffinityMask(handle.thread, 1ull << 1 | 1ull << 2);
     }
 
-    void affinitize_current_thread(int cpu) {
+    void affinitize_current_thread(uint32_t cpu) {
         ::SetThreadAffinityMask(::GetCurrentThread(), 1ull << cpu);
     }
 
     void affinitize_current_thread_to_current_cpu() {
         DWORD cpu = ::GetCurrentProcessorNumber();
-        affinitize_current_thread(cpu);
+        affinitize_current_thread(static_cast<uint32_t>(cpu));
     }
 }
 #endif

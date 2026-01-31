@@ -18,19 +18,19 @@ namespace eroil {
     hndl::SendHandle* open_send_label(
         Label label, 
         std::byte* buf, 
-        int32_t size,
+        size_t size,
         iosb::IoType io_type,
         sem_handle sem,
         iosb::SendIosb* iosb,
-        int32_t num_iosb
+        uint32_t num_iosb
     );
 
     void send_label(
         hndl::SendHandle* handle, 
         std::byte* buf, 
-        int32_t buf_size, 
-        int32_t send_offset,
-        int32_t recv_offset
+        size_t buf_size, 
+        size_t send_offset,
+        size_t recv_offset
     );
 
     void close_send_label(hndl::SendHandle* handle);
@@ -41,17 +41,17 @@ namespace eroil {
     hndl::RecvHandle* open_recv_label(
         Label label, 
         std::byte* buf, 
-        int32_t size,
-        int32_t num_slots,
+        size_t size,
+        uint32_t num_slots,
         std::byte* aux_buf,
         sem_handle sem,
         iosb::ReceiveIosb* iosb,
-        int32_t num_iosb,
+        uint32_t num_iosb,
         iosb::SignalMode signal_mode
     );
     void close_recv_label(hndl::RecvHandle* handle);
     uint32_t recv_count(hndl::RecvHandle* handle);
-    void recv_dismiss(hndl::RecvHandle* handle, int32_t count);
+    void recv_dismiss(hndl::RecvHandle* handle, uint32_t count);
     void recv_idle(hndl::RecvHandle* handle);
     void recv_resume(hndl::RecvHandle* handle);
     void recv_reset(hndl::RecvHandle* handle);
