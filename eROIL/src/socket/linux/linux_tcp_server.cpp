@@ -27,9 +27,9 @@ namespace eroil::sock {
         }
 
         int reuse = 1;
-        (void)::setsockopt(m_handle, SOL_SOCKET, SO_REUSEADDR, &reuse, (socklen_t)sizeof(reuse));
+        (void)::setsockopt(m_handle, SOL_SOCKET, SO_REUSEADDR, &reuse, static_cast<socklen_t>(sizeof(reuse)));
 
-        if (::bind(m_handle, reinterpret_cast<sockaddr*>(&addr), (socklen_t)sizeof(addr)) != 0) {
+        if (::bind(m_handle, reinterpret_cast<sockaddr*>(&addr), static_cast<socklen_t>(sizeof(addr))) != 0) {
             const int err = errno;
             return SockResult{ map_err(err), SockOp::Bind, err, 0 };
         }
@@ -61,7 +61,7 @@ namespace eroil::sock {
         }
 
         sockaddr_in conn{};
-        socklen_t conn_size = (socklen_t)sizeof(conn);
+        socklen_t conn_size = static_cast<socklen_t>(sizeof(conn));
 
         int fd = ::accept(m_handle, reinterpret_cast<sockaddr*>(&conn), &conn_size);
         if (fd < 0) {

@@ -64,8 +64,8 @@ namespace eroil::sock {
 
         if (cfg.reuse_addr) {
             int reuse = 1;
-            ::setsockopt(m_handle, SOL_SOCKET, SO_REUSEADDR, &reuse, (socklen_t)sizeof(reuse));
-            ::setsockopt(m_handle, SOL_SOCKET, SO_REUSEPORT, &reuse, (socklen_t)sizeof(reuse));
+            ::setsockopt(m_handle, SOL_SOCKET, SO_REUSEADDR, &reuse, static_cast<socklen_t>(sizeof(reuse)));
+            ::setsockopt(m_handle, SOL_SOCKET, SO_REUSEPORT, &reuse, static_cast<socklen_t>(sizeof(reuse)));
         }
 
         // bind
@@ -81,7 +81,7 @@ namespace eroil::sock {
             return result;
         }
 
-        if (::bind(m_handle, reinterpret_cast<sockaddr*>(&local), (socklen_t)sizeof(local)) != 0) {
+        if (::bind(m_handle, reinterpret_cast<sockaddr*>(&local), static_cast<socklen_t>(sizeof(local))) != 0) {
             ERR_PRINT("err ::bind()");
             result.sys_error = errno;
             result.code = map_err(result.sys_error);
@@ -92,7 +92,7 @@ namespace eroil::sock {
         // TTL
         result.op = SockOp::Send;
         int ttl = cfg.ttl;
-        if (::setsockopt(m_handle, IPPROTO_IP, IP_MULTICAST_TTL, &ttl, (socklen_t)sizeof(ttl)) != 0) {
+        if (::setsockopt(m_handle, IPPROTO_IP, IP_MULTICAST_TTL, &ttl, static_cast<socklen_t>(sizeof(ttl))) != 0) {
             result.sys_error = errno;
             result.code = map_err(result.sys_error);
             close();
@@ -101,7 +101,7 @@ namespace eroil::sock {
 
         // loopback
         unsigned char loop = cfg.loopback ? 1 : 0;
-        (void)::setsockopt(m_handle, IPPROTO_IP, IP_MULTICAST_LOOP, &loop, (socklen_t)sizeof(loop));
+        (void)::setsockopt(m_handle, IPPROTO_IP, IP_MULTICAST_LOOP, &loop, static_cast<socklen_t>(sizeof(loop)));
 
         // join group
         result.op = SockOp::Join;
@@ -115,7 +115,7 @@ namespace eroil::sock {
 
         mreq.imr_interface.s_addr = htonl(INADDR_ANY);
 
-        if (::setsockopt(m_handle, IPPROTO_IP, IP_ADD_MEMBERSHIP, &mreq, (socklen_t)sizeof(mreq)) != 0) {
+        if (::setsockopt(m_handle, IPPROTO_IP, IP_ADD_MEMBERSHIP, &mreq, static_cast<socklen_t>(sizeof(mreq))) != 0) {
             result.sys_error = errno;
             result.code = map_err(result.sys_error);
             close();
@@ -152,7 +152,7 @@ namespace eroil::sock {
             size,
             0,
             reinterpret_cast<sockaddr*>(&dst),
-            (socklen_t)sizeof(dst)
+            static_cast<socklen_t>(sizeof(dst))
         );
 
         if (sent < 0) {
@@ -176,7 +176,7 @@ namespace eroil::sock {
         if (size > static_cast<size_t>(INT32_MAX)) { result.code = SockErr::SizeTooLarge; return result; }
 
         sockaddr_in src{};
-        socklen_t srclen = (socklen_t)sizeof(src);
+        socklen_t srclen = static_cast<socklen_t>(sizeof(src));
 
         const ssize_t recvd = ::recvfrom(
             m_handle,
