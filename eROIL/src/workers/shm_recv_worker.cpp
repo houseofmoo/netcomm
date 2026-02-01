@@ -16,7 +16,10 @@ namespace eroil::wrk {
             return;
         }
 
-        if (m_thread.joinable()) return;
+        if (m_thread.joinable()){
+            ERR_PRINT("attempted to start a joinable thread (double start or start after stop but before join() called)");
+            return;
+        }
         m_stop.store(false, std::memory_order_release);
         m_thread = std::thread([this] { run(); });
     }
@@ -29,7 +32,10 @@ namespace eroil::wrk {
         
         m_stop.exchange(true, std::memory_order_acq_rel);
         if (m_thread.joinable()) {
-            m_thread.join();
+            // do not allow this thread to call join on itself
+            if (std::this_thread::get_id() != m_thread.get_id()) {
+                m_thread.join();
+            }
         }
     }
 

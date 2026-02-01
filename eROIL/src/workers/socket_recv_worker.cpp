@@ -11,19 +11,26 @@ namespace eroil::wrk {
         }
 
     void SocketRecvWorker::start() {
-        if (m_thread.joinable()) return;
+        if (m_thread.joinable()) {
+            ERR_PRINT("attempted to start a joinable thread (double start or start after stop but before join() called)");
+            return;
+        }
         m_stop.store(false, std::memory_order_release);
         m_thread = std::thread([this] { run(); });
     }
 
     void SocketRecvWorker::stop() {
-        // NOTE: socket recv workers can be stopped when we lose socket connection to a peer
-        // this is expected behaivor and the worker will be restarted when that socket
-        // connection is re-established via comm manager monitor thread
-        
+        // NOTE: socket recv workers can be stopped in two cases:
+        //  1) monitor thread sees a dead socket, it will stop the socket recv worker
+        //  2) socket recv worker sees incoherent header, will kill the socket and exit
+        // in either case the monitor thread will see the dead socket and attempt reconnection.
+        // upon reconnection the socket recv worker thread will be re-launched
         m_stop.exchange(true, std::memory_order_acq_rel);
         if (m_thread.joinable()) {
-            m_thread.join();
+            // do not allow this thread to call join on itself
+            if (std::this_thread::get_id() != m_thread.get_id()) {
+                m_thread.join();
+            }
         }
     }
 
@@ -33,7 +40,10 @@ namespace eroil::wrk {
             while (!stop_requested()) {
                 io::LabelHeader hdr{};
 
-                if (!m_sock->is_connected()) break;
+                if (!m_sock->is_connected()) {
+                    ERR_PRINT("socket recv worker socket disconnected");
+                    break;
+                }
                 
                 if (!recv_exact(&hdr, sizeof(hdr))) {
                     ERR_PRINT("socket recv failed to get expected header size");
@@ -44,32 +54,42 @@ namespace eroil::wrk {
                 EvtMark mark(elog_cat::SocketRecvWorker);
 
                 if (hdr.magic != MAGIC_NUM || hdr.version != VERSION) {
-                    ERR_PRINT("socket recv got a header that did not have the correct magic and/or version");
+                    // we cannot figure out how to drain this socket, disconnect it and monitor thread will re-establish comms'/
                     evtlog::error(elog_kind::InvalidHeader, elog_cat::SocketRecvWorker);
-                    continue;
+                    ERR_PRINT("socket recv got a header that did not have the correct magic and/or version");
+                    disconnect_and_stop();
+                    break;
                 }
                 
                 if (hdr.data_size > MAX_LABEL_SEND_SIZE) {
                     ERR_PRINT("socket recv got header that indicates data size is > ", MAX_LABEL_SEND_SIZE);
                     ERR_PRINT("    label=", hdr.label, ", sourceid=", hdr.source_id);
                     evtlog::error(elog_kind::InvalidDataSize, elog_cat::SocketRecvWorker, hdr.label, hdr.data_size);
-                    continue;
+                    disconnect_and_stop();
+                    break;
                 }
                 
                 if (hdr.data_size <= 0 && io::has_flag(hdr.flags, io::LabelFlag::Data)) {
                     ERR_PRINT("socket recv got header that indicates data size is 0");
                     ERR_PRINT("    label=", hdr.label, ", sourceid=", hdr.source_id);
                     evtlog::error(elog_kind::InvalidDataSize, elog_cat::SocketRecvWorker, hdr.label, hdr.data_size);
-                    continue;
+                    disconnect_and_stop();
+                    break;
                 }
 
+                // not data, check if ping
                 if (!io::has_flag(hdr.flags, io::LabelFlag::Data)) {
-                    if (!io::has_flag(hdr.flags, io::LabelFlag::Ping)) {
-                        ERR_PRINT("socket recv got header that indicates neither ping or data");
-                        ERR_PRINT("    label=", hdr.label, ", sourceid=", hdr.source_id, " flags=", hdr.flags);
+                    // was a ping, continue normally -> pings do not contain data
+                    if (io::has_flag(hdr.flags, io::LabelFlag::Ping)) {
+                        continue;
                     }
+
+                    // not a ping, something is wrong
+                    ERR_PRINT("socket recv got header that indicates neither ping or data");
+                    ERR_PRINT("    label=", hdr.label, ", sourceid=", hdr.source_id, " flags=", hdr.flags);
                     evtlog::error(elog_kind::InvalidFlags, elog_cat::Worker, hdr.label, hdr.flags);
-                    continue;
+                    disconnect_and_stop();
+                    break;
                 }
 
                 payload.resize(hdr.data_size);
@@ -119,6 +139,12 @@ namespace eroil::wrk {
             default: return false;
         }
         return true;
+    }
+
+    void SocketRecvWorker::disconnect_and_stop() {
+        if (!m_stop.exchange(true, std::memory_order_acq_rel)) {
+            if (m_sock != nullptr) { m_sock->disconnect(); }
+        }
     }
 }
 

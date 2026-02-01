@@ -78,18 +78,32 @@ namespace eroil::io {
         EROIL_NO_MOVE(SendJob)
 
         void complete_one() noexcept {
-            const uint32_t prev = pending_sends.fetch_sub(1, std::memory_order_acq_rel);
-            if (prev == 0) {
-                ERR_PRINT("pending sends underflowed");
-                return;
-            }
+            uint32_t pending = pending_sends.load(std::memory_order_relaxed);
 
-            if (prev == 1) { // we were the last sender, write the iosb
-                finalize_iosb();
+            while (true) {
+                if (pending == 0) {
+                    // a sender thread completed a send after all sends were supposedly already completed.
+                    // pending_sends starting vlaue must have been incorrect or logic for what counts
+                    // as a completed job is incorrect
+                    ERR_PRINT("unexpected completion of send job after all send jobs were already completed");
+                    return;
+                }
+
+                const uint32_t reduced = pending - 1;
+                if (pending_sends.compare_exchange_weak(pending, reduced,
+                                                        std::memory_order_acq_rel,
+                                                        std::memory_order_relaxed)) {
+                    // we were the last sender, write the iosb
+                    if (reduced == 0) {
+                        finalize_send_iosb();
+                    }
+                    return;
+                }
+                // if failed, pending has the latest value, try again 
             }
         }
 
-        void finalize_iosb() noexcept {
+        void finalize_send_iosb() noexcept {
             std::lock_guard lock(publisher->mtx);
             comm::write_send_iosb(
                 publisher.get(), 

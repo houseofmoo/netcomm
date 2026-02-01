@@ -1,5 +1,6 @@
 #include "router.h"
 
+#include <atomic>
 #include <cstring>
 #include <mutex>
 #include <eROIL/print.h>
@@ -229,11 +230,11 @@ namespace eroil::rt {
 
     std::pair<io::SendJobErr, std::shared_ptr<io::SendJob>> 
     Router::build_send_job(const NodeId my_id, const Label label, const handle_uid uid, io::SendBuf send_buf) {
-        static uint32_t seq = 0;
+        static std::atomic<uint32_t> seq{0};
         auto job = std::make_shared<io::SendJob>(std::move(send_buf));
         job->source_id = my_id;
         job->label = label;
-        job->seq = seq++;
+        job->seq = seq.fetch_add(1, std::memory_order_relaxed);
 
         {
             std::shared_lock lock(m_router_mtx);
@@ -247,7 +248,7 @@ namespace eroil::rt {
 
             size_t expected_size = route->label_size + sizeof(io::LabelHeader);
             if (expected_size != job->send_buffer.total_size ) {
-                ERR_PRINT("size mismatch label=", label, " expected=", expected_size, " got=", send_buf.total_size);
+                ERR_PRINT("size mismatch label=", label, " expected=", expected_size, " got=", job->send_buffer.total_size);
                 return { io::SendJobErr::SizeMismatch, job };
             }
 

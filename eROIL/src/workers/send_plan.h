@@ -41,7 +41,7 @@ namespace eroil::wrk {
             
             if (result.code != sock::SockErr::None) {
                 // TODO: is there something to handle here?
-                ERR_PRINT("sokcet send for label=", job.label, ", errorcode=", static_cast<int>(result.code));
+                ERR_PRINT("socket send for label=", job.label, ", errorcode=", static_cast<int>(result.code));
             }
 
             return result.code == sock::SockErr::None;

@@ -122,7 +122,7 @@ namespace eroil::comm {
         }
 
         if (job->local_recvrs.empty() && job->remote_recvrs.empty()) {
-            job->finalize_iosb();
+            job->finalize_send_iosb();
             return;
         }
 

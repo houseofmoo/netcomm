@@ -72,8 +72,12 @@ namespace eroil::wrk {
                     m_sem.post();
                 }
 
+               
                 if (m_thread.joinable()) {
-                    m_thread.join();
+                    // do not allow this thread to call join on itself
+                    if (std::this_thread::get_id() != m_thread.get_id()) {
+                        m_thread.join();
+                    }
                 }
 
                 // pop all remaining data entries
@@ -114,7 +118,7 @@ namespace eroil::wrk {
 
                         try {
                             for (const auto& recvr : SendPlan::receivers(*job)) {
-                                io::JobCompleteGuard guard{job};
+                                io::JobCompleteGuard job_complete_guard{job};
                                 if (recvr == nullptr) continue;
                                 if (!SendPlan::send_one(*recvr, *job)) {
                                     evtlog::warn(elog_kind::SendFailed, elog_cat::SendWorker, job->label);

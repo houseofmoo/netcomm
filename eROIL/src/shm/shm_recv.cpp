@@ -210,6 +210,7 @@ namespace eroil::shm {
         auto* meta = m_shm.map_to_type<ShmMetaData>(ShmLayout::META_DATA_OFFSET);
         const uint64_t head = meta->head_bytes.load(std::memory_order_acquire);
         meta->tail_bytes.store(head, std::memory_order_release);
+        meta->published_count.store(0, std::memory_order_relaxed);
         LOG("flushed shm recv backlog");
     }
 }
