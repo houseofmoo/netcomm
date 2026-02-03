@@ -2,6 +2,7 @@
 #include <array>
 #include <atomic>
 #include <cstdint>
+#include <string>
 #include "evtrecord.h"
 
 namespace eroil::evtlog {
@@ -26,8 +27,8 @@ namespace eroil::evtlog {
 
     class EventLog {
         private:
-            alignas(64) std::atomic<uint32_t> m_seq{};
-            alignas(64) std::atomic<std::size_t> m_idx{};
+            alignas(64) std::atomic<uint32_t> m_seq{1};
+            alignas(64) std::atomic<std::size_t> m_idx{0};
             alignas(64) std::array<EventRecord, EVENT_LOG_CAPACITY> m_evt_logs{};
 
         public:
@@ -58,6 +59,7 @@ namespace eroil::evtlog {
                                  std::int32_t c=0) noexcept;
 
             void write_evtlog() noexcept;
+            void write_evtlog(const std::string& directory) noexcept;
     };
 
     // do not access this directly, use evtlog_api.h wrappers

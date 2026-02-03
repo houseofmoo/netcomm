@@ -33,12 +33,12 @@ namespace eroil::time {
     void Timelog::write_log(const std::string& filename) {
         std::lock_guard lock(m_mtx);
         std::string dir = "timelog";
-        std::string filepath = dir + "/" + filename;
-
+        
         if (!std::filesystem::exists(dir)) {
             std::filesystem::create_directory(dir);
         }
-
+        
+        std::filesystem::path filepath = dir + "/" + filename;
         std::ofstream file(filepath, std::ios::out);
         if (!file.is_open()) {
             ERR_PRINT("failed to open timelog file for writing: ", filepath);

@@ -1,5 +1,8 @@
 #if defined(EROIL_WIN32)
 #include "platform/platform.h"
+#include <chrono>
+#include <sstream>
+#include <iomanip>
 #include "windows_hdr.h"
 #include <eROIL/print.h>
 
@@ -48,6 +51,18 @@ namespace eroil::plat {
     void affinitize_current_thread_to_current_cpu() {
         DWORD cpu = ::GetCurrentProcessorNumber();
         affinitize_current_thread(static_cast<uint32_t>(cpu));
+    }
+
+    std::string timestamp_str() {
+        auto now = std::chrono::system_clock::now();
+        std::time_t time = std::chrono::system_clock::to_time_t(now);
+
+        std::tm tm{};
+        localtime_s(&tm, &time);
+
+        std::ostringstream oss;
+        oss << std::put_time(&tm, "%Y%m%d_%H%M%S");
+        return oss.str();
     }
 }
 #endif

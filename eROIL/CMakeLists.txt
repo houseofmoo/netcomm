@@ -52,9 +52,10 @@ target_compile_definitions(eROIL
         $<$<PLATFORM_ID:Linux>:EROIL_LINUX>
 )
 
-# platform independent sources
+# source files
 target_sources(eROIL 
     PRIVATE
+        #platform independent sources
         ${CMAKE_CURRENT_SOURCE_DIR}/src/api/root.cpp
         ${CMAKE_CURRENT_SOURCE_DIR}/src/api/eroil_c.cpp
         ${CMAKE_CURRENT_SOURCE_DIR}/src/api/eroil_cpp.cpp
@@ -73,11 +74,7 @@ target_sources(eROIL
         ${CMAKE_CURRENT_SOURCE_DIR}/src/workers/shm_recv_worker.cpp
         ${CMAKE_CURRENT_SOURCE_DIR}/src/workers/socket_recv_worker.cpp
 
-)
-
-# platform dependent sources
-target_sources(eROIL 
-    PRIVATE
+        # windows only
         $<$<PLATFORM_ID:Windows>:
             ${CMAKE_CURRENT_SOURCE_DIR}/src/events/win/win_named_semaphore.cpp
             ${CMAKE_CURRENT_SOURCE_DIR}/src/events/win/win_semaphore.cpp
@@ -94,6 +91,7 @@ target_sources(eROIL
             ${CMAKE_CURRENT_SOURCE_DIR}/src/socket/win/win_udp_multicast.cpp
         >
 
+        # linux only
         $<$<PLATFORM_ID:Linux>:
             ${CMAKE_CURRENT_SOURCE_DIR}/src/events/linux/linux_named_semaphore.cpp
             ${CMAKE_CURRENT_SOURCE_DIR}/src/events/linux/linux_semaphore.cpp
@@ -115,20 +113,8 @@ target_sources(eROIL
 target_include_directories(eROIL 
     PRIVATE
         ${CMAKE_CURRENT_SOURCE_DIR}/src
-        # ${CMAKE_CURRENT_SOURCE_DIR}/src/address
-        # ${CMAKE_CURRENT_SOURCE_DIR}/src/config
-        # ${CMAKE_CURRENT_SOURCE_DIR}/src/comm
-        # ${CMAKE_CURRENT_SOURCE_DIR}/src/events
-        # ${CMAKE_CURRENT_SOURCE_DIR}/src/manager
-        # ${CMAKE_CURRENT_SOURCE_DIR}/src/router
-        # ${CMAKE_CURRENT_SOURCE_DIR}/src/shm
-        # ${CMAKE_CURRENT_SOURCE_DIR}/src/socket
-        # ${CMAKE_CURRENT_SOURCE_DIR}/src/types
-        # ${CMAKE_CURRENT_SOURCE_DIR}/src/workers
-
     PUBLIC
         ${CMAKE_CURRENT_SOURCE_DIR}/include
-        #${CMAKE_CURRENT_SOURCE_DIR}/include/eROIL
 )
 
 # the bare minimum for warnings
@@ -162,7 +148,7 @@ target_compile_options(eROIL PRIVATE
       -Wsign-conversion
       -Wcast-align
       #-Wconversion # this one breaks any and all narrowing which 
-                    # is used alot cause the old guard loved odd shaped ints
+                    # is used alot cause legacy code loved odd shaped ints
     >
     $<$<CXX_COMPILER_ID:GNU>:
       -Wall -Wextra -Wpedantic -Werror
@@ -184,7 +170,7 @@ target_compile_options(eROIL PRIVATE
       -Wlogical-op
       -Wmisleading-indentation
       #-Wconversion # this one breaks any and all narrowing which 
-                    # is used alot cause the old guard loved odd shaped ints
+                    # is used alot cause legacy code loved odd shaped ints
     >
   >
 )

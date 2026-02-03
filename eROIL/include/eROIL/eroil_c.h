@@ -71,6 +71,11 @@ void* NAE_Get_Message_Buffer(void* pIosb);
 int NAE_Get_Message_Slot(void* pIosb);
 void NAE_Get_Message_Timestamp(void* pIosb, double* pTimeStamp);
 void NAE_Current_Time(void* pTime);
+
+
+void NAE_Write_Event_Log();
+void NAE_Write_Event_Log_Dir(const char* directory);
+
 #endif
 
 #ifdef __cplusplus

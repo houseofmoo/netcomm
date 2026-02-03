@@ -1,4 +1,5 @@
 #pragma once
+#include <string>
 #include "types/const_types.h"
 #include "types/handles.h"
 #include "types/iosb.h"
@@ -73,4 +74,10 @@ namespace eroil {
     //
     void get_msg_timestamp(iosb::Iosb* iosb, double* raw_time);
     void get_current_time(iosb::RTOSTime* time);
+
+    //
+    // logs
+    //
+    void write_event_log() noexcept;
+    void write_event_log(const std::string& directory) noexcept;
 }

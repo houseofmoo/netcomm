@@ -1,3 +1,4 @@
+#include <string>
 #include <eROIL/eroil_c.h>
 #include <eROIL/print.h>
 #include "types/handles.h"
@@ -249,4 +250,13 @@ void NAE_Current_Time(void* pTime) {
     eroil::get_current_time(
         static_cast<eroil::iosb::RTOSTime*>(pTime)
     );
+}
+
+void NAE_Write_Event_Log() {
+    eroil::write_event_log();
+}
+
+void NAE_Write_Event_Log_Dir(const char* directory) {
+    std::string dir = std::string(directory);
+    eroil::write_event_log(dir);
 }

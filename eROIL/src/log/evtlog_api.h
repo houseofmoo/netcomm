@@ -29,6 +29,17 @@ namespace eroil {
         }
 
         //
+        // EXPOSED WRITE FUNCTIONS
+        //
+        inline void write_evtlog() noexcept {
+            g_event_log.write_evtlog();
+        }
+        
+        inline void write_evtlog(const std::string& directory) noexcept {
+            g_event_log.write_evtlog(directory);
+        }
+
+        //
         // ACCESS LOGGING FUNCTIONS THROUGH THESE WRAPPERS
         // DO NOT CALL evtlog::g_event_log METHODS DIRECTLY
         //

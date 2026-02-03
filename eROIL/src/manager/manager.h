@@ -1,5 +1,6 @@
 #pragma once
 #include <vector>
+#include <string>
 #include <unordered_map>
 
 #include "types/const_types.h"
@@ -10,6 +11,7 @@
 #include "socket/socket_context.h"
 #include "comm/connection_manager.h"
 #include "types/macros.h"
+#include "log/evtlog_api.h"
 
 namespace eroil {
 
@@ -43,7 +45,9 @@ TODO:
             void close_send(hndl::SendHandle* handle);
             hndl::RecvHandle* open_recv(hndl::OpenReceiveData data);
             void close_recv(hndl::RecvHandle* handle);
-        
+            void write_event_log() noexcept { evtlog::write_evtlog(); }
+            void write_event_log(const std::string& directory) noexcept { evtlog::write_evtlog(directory); }
+
         private:
             bool start_broadcast();
             void send_broadcast();

@@ -74,3 +74,10 @@ std::int32_t get_msg_slot(void* iosb);
 //
 void get_msg_timestamp(void* iosb, double* raw_time);
 void get_current_time(void* time);
+
+//
+// logs
+//
+void write_event_log();
+void write_event_log(const char* directory);
+

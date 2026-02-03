@@ -1,3 +1,4 @@
+#include <string>
 #include <eROIL/eroil_cpp.h>
 #include <eROIL/print.h>
 #include "types/handles.h"
@@ -154,4 +155,13 @@ void get_msg_timestamp(void* iosb, double* raw_time) {
 
 void get_current_time(void* time) {
     eroil::get_current_time(static_cast<eroil::iosb::RTOSTime*>(time));
+}
+
+void write_event_log() {
+    eroil::write_event_log();
+}
+
+void write_event_log(const char* directory) {
+    std::string dir = std::string(directory);
+    eroil::write_event_log(dir);
 }

@@ -321,4 +321,14 @@ namespace eroil {
         time->uiMsb = curr_time.uiMsb;
         time->uiLsb = curr_time.uiLsb;
     }
+
+    void write_event_log() noexcept {
+        if (!is_ready()) return;
+        manager->write_event_log();
+    }
+
+    void write_event_log(const std::string& directory) noexcept {
+        if (!is_ready()) return;
+        manager->write_event_log(directory);
+    }
 }

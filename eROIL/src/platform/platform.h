@@ -1,5 +1,6 @@
 #pragma once
 #include <thread>
+#include <string>
 #include "types/const_types.h"
 
 namespace eroil::plat {
@@ -9,4 +10,5 @@ namespace eroil::plat {
     void affinitize_thread(std::thread& t, uint32_t cpu);
     void affinitize_current_thread(uint32_t cpu);
     void affinitize_current_thread_to_current_cpu();
+    std::string timestamp_str();
 }
