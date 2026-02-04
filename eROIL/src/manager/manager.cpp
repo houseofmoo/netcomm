@@ -69,10 +69,6 @@ namespace eroil {
             return false;
         }
 
-        DB_SCOPED_TIMER("whee");
-        time::clear();
-        time::timed_run(m_id, 60*1000);
-        time::write_log("whee");
         return true;
     }
 
