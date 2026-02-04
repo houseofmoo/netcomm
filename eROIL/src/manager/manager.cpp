@@ -8,7 +8,6 @@
 #include "types/const_types.h"
 #include "timer/timer.h"
 #include "platform/platform.h"
-#include "log/evtlog_api.h"
 #include "types/label_io_types.h"
 
 namespace eroil {

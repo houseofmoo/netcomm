@@ -14,14 +14,6 @@
 #include "log/evtlog_api.h"
 
 namespace eroil {
-
-/*
-TODO:
-
-1) confirm signal mode ops for recv IOSBs
-
-*/
-
     class Manager {
         private:
             NodeId m_id;

@@ -203,7 +203,7 @@ namespace eroil::evtlog {
                 }
        
                 oss << seq << "\n";
-                //LOG(oss);
+                LOG(oss.str());
             }
         }
 
