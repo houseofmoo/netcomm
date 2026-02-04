@@ -5,7 +5,6 @@
 #include "types/const_types.h"
 #include "shm_header.h"
 #include "types/macros.h"
-#include "assertion.h"
 
 namespace eroil::shm {
     enum class ShmRecvErr {
