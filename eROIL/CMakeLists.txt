@@ -70,7 +70,7 @@ target_sources(eROIL
         ${CMAKE_CURRENT_SOURCE_DIR}/src/shm/shm_recv.cpp
         ${CMAKE_CURRENT_SOURCE_DIR}/src/shm/shm_send.cpp
         ${CMAKE_CURRENT_SOURCE_DIR}/src/shm/shm.cpp
-        ${CMAKE_CURRENT_SOURCE_DIR}/src/timer/time_log.cpp
+        ${CMAKE_CURRENT_SOURCE_DIR}/src/time/time_store.cpp
         ${CMAKE_CURRENT_SOURCE_DIR}/src/workers/shm_recv_worker.cpp
         ${CMAKE_CURRENT_SOURCE_DIR}/src/workers/socket_recv_worker.cpp
 

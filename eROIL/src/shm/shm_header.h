@@ -61,6 +61,11 @@ namespace eroil::shm {
         // largest allowed position where a payload write ends (leaves enough room for wrap record header in all cases)
         static constexpr size_t DATA_USABLE_LIMIT = DATA_BLOCK_SIZE - sizeof(RecordHeader);
     };
+    static_assert(ShmLayout::META_DATA_OFFSET >= sizeof(shm::ShmHeader), "meta overlaps header");
+    static_assert(ShmLayout::DATA_BLOCK_OFFSET >= ShmLayout::META_DATA_OFFSET + sizeof(ShmMetaData), "data overlaps meta");
+    static_assert(ShmLayout::DATA_BLOCK_OFFSET <= SHM_BLOCK_SIZE, "data offset exceeds block size");
+    static_assert(ShmLayout::DATA_BLOCK_SIZE > 0, "no space for data");
+    static_assert(ShmLayout::DATA_USABLE_LIMIT <= ShmLayout::DATA_BLOCK_SIZE, "usable limit invalid");
 
     static inline size_t get_header_offset(uint64_t pos_bytes) noexcept {
         return ShmLayout::DATA_BLOCK_OFFSET + (pos_bytes % ShmLayout::DATA_BLOCK_SIZE);
@@ -68,5 +73,11 @@ namespace eroil::shm {
 
     static inline size_t get_data_offset(uint64_t pos_bytes) noexcept {
         return get_header_offset(pos_bytes) + sizeof(RecordHeader);
+    }
+
+    static inline bool validate_layout(size_t block_size) noexcept {
+        // this should ALWAYS return true due to static_asserts above
+        // but a sanity at runtime check incase someone changes something 
+        return block_size == SHM_BLOCK_SIZE;
     }
 }

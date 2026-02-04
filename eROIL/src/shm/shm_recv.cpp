@@ -4,10 +4,17 @@
 #include <eROIL/print.h>
 
 namespace eroil::shm {
-    ShmRecv::ShmRecv(NodeId id) : m_id(id), m_shm(id, SHM_BLOCK_SIZE), m_event(id) {}
+    ShmRecv::ShmRecv(NodeId id) : 
+        m_id(id), m_shm(id, SHM_BLOCK_SIZE), m_event(id) {}
     ShmRecv::~ShmRecv() = default;
 
     bool ShmRecv::create_or_open() {
+        if (!validate_layout(m_shm.total_size())) {
+            ERR_PRINT("shm recv block size does not match expected size");
+            ERR_PRINT("    expected=", SHM_BLOCK_SIZE, ", actual=", m_shm.total_size());
+            return false;
+        }
+
         // everyone opens their own recv shared memory block
         // 3 possibilities:
         //      block doesnt exist -> create it and set it up
@@ -15,14 +22,12 @@ namespace eroil::shm {
         //      block exists but valid -> reset it
         shm::ShmErr cerr = m_shm.create();
         if (cerr == shm::ShmErr::None) {
-            init_as_new();
-            return true;
+            return init_as_new();
         }
 
         shm::ShmErr oerr = m_shm.open();
         if (oerr == shm::ShmErr::None) {
-            reinit();
-            return true;
+            return reinit();
         }
 
         // failed to open
@@ -34,9 +39,14 @@ namespace eroil::shm {
         m_event.close();
     }
 
-    void ShmRecv::init_as_new() {
+    bool ShmRecv::init_as_new() {
         // announce this block is being initialized
         auto* hdr = m_shm.map_to_type<ShmHeader>(ShmLayout::HDR_OFFSET);
+        if (hdr == nullptr) {
+            ERR_PRINT("shm header offset was invalid, unable to init new recv shm block");
+            ERR_PRINT("    offset=", ShmLayout::META_DATA_OFFSET);
+            return false;
+        }
         hdr->state.store(SHM_INITING, std::memory_order_relaxed);
         hdr->magic = MAGIC_NUM;
         hdr->version = VERSION;
@@ -46,6 +56,12 @@ namespace eroil::shm {
         m_shm.memset(sizeof(ShmHeader), 0, SHM_BLOCK_SIZE - sizeof(ShmHeader));
         
         auto* meta = m_shm.map_to_type<ShmMetaData>(ShmLayout::META_DATA_OFFSET);
+        if (meta == nullptr) {
+            ERR_PRINT("shm meta offset was invalid, unable to init new recv shm block");
+            ERR_PRINT("    offset=", ShmLayout::META_DATA_OFFSET);
+            return false;
+        }
+
         meta->node_id = m_id;
         meta->data_block_size = ShmLayout::DATA_BLOCK_SIZE;
         meta->generation.store(1, std::memory_order_relaxed);
@@ -55,14 +71,21 @@ namespace eroil::shm {
         
         // announce this is ready for use
         hdr->state.store(SHM_READY, std::memory_order_release);
+        return true;
     }
 
-    void ShmRecv::reinit() {
+    bool ShmRecv::reinit() {
+        auto* hdr = m_shm.map_to_type<ShmHeader>(ShmLayout::HDR_OFFSET);
+        if (hdr == nullptr) {
+            ERR_PRINT("shm header offset was invalid, unable to re-init recv shm block");
+            ERR_PRINT("    offset=", ShmLayout::META_DATA_OFFSET);
+            return false;
+        }
+        
         // if we see "SHM_INITING" in our own recv block, something weird happend
         // since we should be the only ones that set that to SHM_INITING.
         // likely we crashed and are restarting, but in any case that is an error 
         // but not a show stopper, note it and continue
-        auto* hdr = m_shm.map_to_type<ShmHeader>(ShmLayout::HDR_OFFSET);
         if (hdr->state.load(std::memory_order_acquire) != SHM_READY) {
             ERR_PRINT("found existing shm recv block that was in INIT state, weird but continuing");
         }
@@ -72,12 +95,17 @@ namespace eroil::shm {
         if (hdr->magic != MAGIC_NUM ||
             hdr->version != VERSION ||
             hdr->total_size != SHM_BLOCK_SIZE) {
-            init_as_new();
-            return;
+            return init_as_new();
         }
 
         // reset meta data and bump generation
         auto* meta = m_shm.map_to_type<ShmMetaData>(ShmLayout::META_DATA_OFFSET);
+        if (meta == nullptr) { // if this happens someone changed something and broke everything
+            ERR_PRINT("shm meta offset was invalid, unable to re-init recv shm block");
+            ERR_PRINT("    offset=", ShmLayout::META_DATA_OFFSET);
+            return false;
+        }
+
         meta->node_id = m_id;
         meta->data_block_size = ShmLayout::DATA_BLOCK_SIZE;
         meta->generation.fetch_add(1, std::memory_order_relaxed);
@@ -90,6 +118,7 @@ namespace eroil::shm {
         
         // announce this is ready for use
         hdr->state.store(SHM_READY, std::memory_order_release);
+        return true;
     }
 
     evt::NamedSemErr ShmRecv::wait() {
@@ -98,18 +127,30 @@ namespace eroil::shm {
 
     ShmRecvResult ShmRecv::recv() {
         auto* hdr  = m_shm.map_to_type<ShmHeader>(ShmLayout::HDR_OFFSET);
+        if (hdr == nullptr) {
+            ERR_PRINT("shm recv header pointer offset invalid");
+            ERR_PRINT("    offset=", ShmLayout::HDR_OFFSET);
+            return ShmRecvResult{ShmRecvErr::BlockCorrupted};
+        }
+
         if (hdr->state.load(std::memory_order_acquire) != SHM_READY) {
             return ShmRecvResult{ShmRecvErr::BlockNotInitialized};
         }
 
         auto* meta = m_shm.map_to_type<ShmMetaData>(ShmLayout::META_DATA_OFFSET);
+        if (meta == nullptr) {
+            ERR_PRINT("shm recv meta pointer offset invalid");
+            ERR_PRINT("    offset=", ShmLayout::META_DATA_OFFSET);
+            return ShmRecvResult{ShmRecvErr::BlockCorrupted};
+        }
+
         uint64_t gen = meta->generation.load(std::memory_order_acquire);
         uint64_t tail = meta->tail_bytes.load(std::memory_order_acquire);
         uint64_t head = meta->head_bytes.load(std::memory_order_acquire);
 
         if (head == tail) return ShmRecvResult{ShmRecvErr::NoRecords};
         if (head < tail) {
-            ERR_PRINT(" tail advanced passed head, requires re-init");
+            ERR_PRINT("tail advanced passed head, requires re-init");
             return ShmRecvResult{ShmRecvErr::TailCorruption};
         }
 
@@ -169,6 +210,10 @@ namespace eroil::shm {
         
         // read header and data
         auto* rec_hdr = m_shm.map_to_type<RecordHeader>(get_header_offset(tail));
+        if (rec_hdr == nullptr) {
+            ERR_PRINT("rec_hdr was null, tail offset invalid, offset=", get_header_offset(tail));
+            return ShmRecvResult{ShmRecvErr::BlockCorrupted};
+        }
 
         // validate best we can
         const size_t total_size = rec_hdr->total_size;
@@ -208,6 +253,12 @@ namespace eroil::shm {
         //
 
         auto* meta = m_shm.map_to_type<ShmMetaData>(ShmLayout::META_DATA_OFFSET);
+        if (meta == nullptr) {
+            ERR_PRINT("shm recv meta pointer offset invalid");
+            ERR_PRINT("    offset=", ShmLayout::META_DATA_OFFSET);
+            return;
+        }
+        
         const uint64_t head = meta->head_bytes.load(std::memory_order_acquire);
         meta->tail_bytes.store(head, std::memory_order_release);
         meta->published_count.store(0, std::memory_order_relaxed);

@@ -5,6 +5,7 @@
 #include "types/const_types.h"
 #include "shm_header.h"
 #include "types/macros.h"
+#include "assertion.h"
 
 namespace eroil::shm {
     enum class ShmRecvErr {
@@ -35,6 +36,8 @@ namespace eroil::shm {
             NodeId m_id;
             Shm m_shm;
             evt::NamedSemaphore m_event;
+            ShmHeader* m_shm_hdr = nullptr;
+            ShmMetaData* m_shm_meta = nullptr;
 
         public:
             ShmRecv(NodeId id);
@@ -45,8 +48,8 @@ namespace eroil::shm {
 
             bool create_or_open();
             void close();
-            void init_as_new();
-            void reinit();
+            bool init_as_new();
+            bool reinit();
             evt::NamedSemErr wait();
             ShmRecvResult recv();
             void flush_backlog();

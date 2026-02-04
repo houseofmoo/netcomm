@@ -37,6 +37,20 @@ namespace eroil {
         #define EROIL_NODISCARD
     #endif
 
+    // for things that should always be true otherwise the system will explode
+    // this is for VERY clearly "can never happen" cases. not assumed, but able to be
+    // proven at compile time
+    // [[noreturn]] inline void fatal_invariant(const char* msg) noexcept {
+    //     std::abort();
+    // }
+    // #if defined(_MSC_VER)
+    //     #define EROIL_ASSUME(x) do { if (!(x)) fatal_invariant(#x); __assume(x); } while(0)
+    // #elif defined(__clang__) || defined(__GNUC__)
+    //     #define EROIL_ASSUME(x) do { if (!(x)) fatal_invariant(#x); __builtin_unreachable(); } while(0)
+    // #else
+    //     #define EROIL_ASSUME(x) do { if (!(x)) fatal_invariant(#x); } while(0)
+    // #endif
+
     // warning conversion surpression (DONT ABUSE!)
     #if defined(__clang__)
         #define DIAG_PUSH _Pragma("clang diagnostic push")

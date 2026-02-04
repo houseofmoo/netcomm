@@ -42,7 +42,7 @@ namespace eroil::comm {
         iosb->Reserve8 = 0;
         iosb->E_SOF = 0;
         iosb->E_EOF = 0;
-        iosb->TimeStamp = RTOS_Current_Time_Raw();
+        iosb->TimeStamp = rtos::RTOS_Current_Time_Raw();
 
         iosb->FC_Header = { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 };
         iosb->FC_Header.Source_ID = source_id;
@@ -89,7 +89,7 @@ namespace eroil::comm {
             iosb->Reserve8 = 0;
             iosb->Reserve9 = 0;
             iosb->Reserve10 = 0;
-            iosb->TimeStamp = RTOS_Current_Time_Raw();
+            iosb->TimeStamp = rtos::RTOS_Current_Time_Raw();
 
             iosb->FC_Header = { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 };
             iosb->FC_Header.Source_ID = source_id;

@@ -1,8 +1,6 @@
 #pragma once
 #include <cstdint>
-#include <string>
 #include <chrono>
-#include "time_log.h"
 
 namespace eroil::time {
     class Timer {

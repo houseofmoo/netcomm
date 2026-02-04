@@ -8,6 +8,7 @@
 namespace eroil::shm {
     enum class ShmSendErr {
         None,               // success
+        InvalidOffset,      // offset into header or meta invalid
         BlockNotInitialized,// try again or drop
         BlockReinitialized, // try again or drop
         NotEnoughSpace,     // try again or drop

@@ -6,9 +6,10 @@
 #include <algorithm>
 #include <eROIL/print.h>
 #include "types/const_types.h"
-#include "timer/timer.h"
+#include "time/timer.h"
 #include "platform/platform.h"
 #include "types/label_io_types.h"
+#include "time/timing.h"
 
 namespace eroil {
     static uint64_t unique_id() {
@@ -55,7 +56,7 @@ namespace eroil {
         std::thread([]{
             plat::affinitize_current_thread_to_current_cpu();
             uint64_t tsc_hz = evtlog::estimate_tsc_hz();
-            PRINT("tsc frequency estimated: ", tsc_hz, " Hz");
+            LOG("tsc frequency estimated: ", tsc_hz, " Hz");
         }).join();
 
         if (!m_comms.start()) {
@@ -68,6 +69,10 @@ namespace eroil {
             return false;
         }
 
+        DB_SCOPED_TIMER("whee");
+        time::clear();
+        time::timed_run(m_id, 60*1000);
+        time::write_log("whee");
         return true;
     }
 

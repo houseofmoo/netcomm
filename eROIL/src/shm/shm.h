@@ -57,6 +57,7 @@ namespace eroil::shm {
             template <typename T>
             T* map_to_type(size_t offset) const { 
                 if (offset > m_total_size) return nullptr;
+                if (sizeof(T) > (m_total_size - offset)) return nullptr;
 
                 return reinterpret_cast<T*>(
                     static_cast<std::byte*>(m_view) + offset

@@ -6,7 +6,7 @@
 #include "rtos.h"
 
 namespace eroil {
-    static std::unique_ptr<eroil::Manager> manager;
+    static std::unique_ptr<Manager> manager;
     static cfg::ManagerConfig config{};
     static bool initialized = false;
 
@@ -19,9 +19,9 @@ namespace eroil {
         // read etc/peer_ips.cfg
         if (!addr::init_address_book(id)) return false;
 
-        // set up address book
+        // set up address book based on manager mode
         switch (config.mode) {
-            case cfg::ManagerMode::Normal: { 
+            case cfg::ManagerMode::Normal: {
                 break; 
             }
             case cfg::ManagerMode::TestMode_Local_ShmOnly: {
@@ -53,39 +53,7 @@ namespace eroil {
     }
 
     uint32_t get_roil_id() {
-        // this is a dedicated list of ID's provided by roil
-        struct NAE_Node {
-            int32_t iNodeId;
-            int32_t iModuleId;
-            int32_t iCoreId;
-            uint32_t iRoilNodeId; 
-        };
-
-        static const NAE_Node nodes[20] = {
-                        // iNodeId, iModuleId, iCoreId, iRoilNodeId
-            /* sp00 */ {   0,       0,         0,       0x73703030 },
-            /* sp01 */ {   1,       0,         1,       0x73703031 },
-            /* sp02 */ {   2,       0,         2,       0x73703032 },
-            /* sp03 */ {   3,       0,         3,       0x73703033 },
-            /* sp04 */ {   4,       1,         0,       0x73703034 },
-            /* sp05 */ {   5,       1,         1,       0x73703035 },
-            /* sp06 */ {   6,       1,         2,       0x73703036 },
-            /* sp07 */ {   7,       1,         3,       0x73703037 },
-            /* sp08 */ {   8,       2,         0,       0x73703038 },
-            /* sp09 */ {   9,       2,         1,       0x73703039 },
-            /* sp10 */ {   10,      2,         2,       0x73703130 },
-            /* sp11 */ {   11,      2,         3,       0x73703131 },
-            /* sp12 */ {   12,      3,         0,       0x73703132 },
-            /* sp13 */ {   13,      3,         1,       0x73703133 },
-            /* sp14 */ {   14,      3,         2,       0x73703134 },
-            /* sp15 */ {   15,      3,         3,       0x73703135 },
-            /* bp00 */ {   16,      4,         0,       0x62703030 },
-            /* bp01 */ {   17,      4,         1,       0x62703031 },
-            /* bp02 */ {   18,      4,         2,       0x62703032 },
-            /* dp01 */ {   19,      4,         3,       0x64703031 },
-        };
-
-        return nodes[config.id].iRoilNodeId;
+        return rtos::get_roil_id(config.id);
     }
 
     hndl::SendHandle* open_send_label(Label label, 
@@ -147,7 +115,7 @@ namespace eroil {
 
         if (!is_ready()) return nullptr;
 
-        eroil::hndl::OpenReceiveData data;
+        hndl::OpenReceiveData data;
         data.label = label;
         data.buf = buf;
         data.buf_size = static_cast<size_t>(size);
@@ -300,7 +268,10 @@ namespace eroil {
     }
  
     void get_msg_timestamp(iosb::Iosb* iosb, double* raw_time) {
-        if (iosb == nullptr) return;
+        if (iosb == nullptr) {
+            *raw_time = 0.0f;
+            return;
+        }
 
         constexpr uint32_t USEC_PER_SEC = 1000000;
         constexpr uint32_t NSEC_PER_USEC = 1000;
@@ -317,7 +288,7 @@ namespace eroil {
     }
 
     void get_current_time(iosb::RTOSTime* time) {
-        eroil::iosb::RTOSTime curr_time = eroil::RTOS_Current_Time_Raw();
+        iosb::RTOSTime curr_time = rtos::RTOS_Current_Time_Raw();
         time->uiMsb = curr_time.uiMsb;
         time->uiLsb = curr_time.uiLsb;
     }

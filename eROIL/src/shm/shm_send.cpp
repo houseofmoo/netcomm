@@ -9,6 +9,12 @@ namespace eroil::shm {
     ShmSend::~ShmSend() = default;
 
     bool ShmSend::open() {
+        if (!validate_layout(m_shm.total_size())) {
+            ERR_PRINT("shm send block size does not match expected size");
+            ERR_PRINT("    expected=", SHM_BLOCK_SIZE, ", actual=", m_shm.total_size());
+            return false;
+        }
+
         // senders only ever open a destination nodes shared memory block
         // never create it. try a few times before giving up
         for (int i = 0; i < 50; ++i) {
@@ -33,14 +39,26 @@ namespace eroil::shm {
                              const size_t buf_size, 
                              const std::byte* buf) {
 
-        // if not initialized, this message is lost (consumer is re-initing)
         auto* hdr = m_shm.map_to_type<ShmHeader>(ShmLayout::HDR_OFFSET);
+        if (hdr == nullptr) {
+            ERR_PRINT("shm send header pointer offset invalid");
+            ERR_PRINT("    offset=", ShmLayout::HDR_OFFSET);
+            return ShmSendErr::InvalidOffset;
+        }
+        
+        // if not initialized, this message is lost (consumer is re-initing)
         if (hdr->state.load(std::memory_order_acquire) != SHM_READY) {
             ERR_PRINT("shm block not initialized for nodeid=", m_dst_id);
             return ShmSendErr::BlockNotInitialized;
         }
 
         auto* meta = m_shm.map_to_type<ShmMetaData>(ShmLayout::META_DATA_OFFSET);
+        if (meta == nullptr) {
+            ERR_PRINT("shm send meta pointer offset invalid");
+            ERR_PRINT("    offset=", ShmLayout::META_DATA_OFFSET);
+            return ShmSendErr::InvalidOffset;
+        }
+
         uint64_t gen = meta->generation.load(std::memory_order_acquire);
 
         // how much space will we need for this data send
@@ -55,7 +73,6 @@ namespace eroil::shm {
 
         bool reserved_success = false;
         uint64_t head = meta->head_bytes.load(std::memory_order_acquire);
-        //LOG("START: head=", head);
         
         for (int tries = 0; tries < 100; ++tries) {
             const uint64_t tail = meta->tail_bytes.load(std::memory_order_acquire);
@@ -92,6 +109,12 @@ namespace eroil::shm {
                                                            std::memory_order_acq_rel,
                                                            std::memory_order_relaxed)) {
                     auto* rec_hdr = m_shm.map_to_type<RecordHeader>(get_header_offset(head));
+                    if (rec_hdr == nullptr) { // if this happens someone changed something and broke everything
+                        ERR_PRINT("rec_hdr ptr null and could not allocate memory, head offset was invalid");
+                        ERR_PRINT("    offset=", get_header_offset(head));
+                        continue;
+                    }
+
                     rec_hdr->state.store(WRITING, std::memory_order_relaxed);
                     rec_hdr->magic = MAGIC_NUM;
                     rec_hdr->total_size = space_til_wrap;
@@ -132,6 +155,12 @@ namespace eroil::shm {
         
         // set writing and fill in header
         auto* rec_hdr = m_shm.map_to_type<RecordHeader>(get_header_offset(head));
+        if (rec_hdr == nullptr) { // if this happens someone changed something and broke everything
+            ERR_PRINT("rec_hdr ptr null, head offset was invalid");
+            ERR_PRINT("    offset=", get_header_offset(head));
+            return ShmSendErr::InvalidOffset;
+        }
+
         rec_hdr->state.store(WRITING, std::memory_order_relaxed);
         rec_hdr->magic = MAGIC_NUM;
         rec_hdr->total_size = reserved;

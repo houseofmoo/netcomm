@@ -1,36 +1,39 @@
-#include "time_log.h"
+#include "time_store.h"
 #include <fstream>
 #include <filesystem>
 #include <thread>
-#include <chrono>
 #include <string>
 #include <eROIL/print.h>
 
 namespace eroil::time {
-    Timelog time_log;
+    TimeStore time_store;
 
-    Timelog::Timelog() : m_log({}) {
+    TimeStore::TimeStore() : m_store({}) {
         // reserve 30 slots a head of time to prevent rehashes unless we go over
-        m_log.reserve(30); 
+        m_store.reserve(30); 
     }
 
-    void Timelog::insert(std::string name, uint64_t duration_us) {
+    void TimeStore::insert(std::string name, uint64_t duration_us) {
         std::lock_guard lock(m_mtx);
-        // creates index if it doesnt exist
-        m_log[name].emplace_back(TimeInfo{ duration_us});
+        auto& vec = m_store.try_emplace(std::move(name)).first->second;
+        vec.push_back(Sample{ duration_us });
+    }
+
+    void TimeStore::clear() {
+        std::lock_guard lock(m_mtx);
+        m_store.clear();
     }
     
-    void Timelog::timed_run(const NodeId id, const uint64_t collection_time_ms) {
+    void TimeStore::timed_run(const NodeId id, const uint64_t duration_ms) {
         // waits for collection_time_ms milliseconds then writes log to file
-        std::thread t([this, id, collection_time_ms]() {
-            std::this_thread::sleep_for(std::chrono::milliseconds(collection_time_ms));
+        std::thread([this, id, duration_ms]() {
+            std::this_thread::sleep_for(std::chrono::milliseconds(duration_ms));
             std::string filename = "timelog_node_" + std::to_string(id) + ".txt";
             write_log(filename);
-        });
-        t.detach();
+        }).detach();
     }
 
-    void Timelog::write_log(const std::string& filename) {
+    void TimeStore::write_log(const std::string& filename) {
         std::lock_guard lock(m_mtx);
         std::string dir = "timelog";
         
@@ -45,14 +48,12 @@ namespace eroil::time {
             return;
         }
 
-        for (const auto& [name, times] : m_log) {
+        for (const auto& [name, times] : m_store) {
             file << name << " timings (us):\n";
-            for (const auto& time_info : times) {
-                file << time_info.duration_us << "\n";
+            for (const auto& duration : times) {
+                file << duration.us << "\n";
             }
             file << "\n";
         }
-
-        file.close();
     }
 }
