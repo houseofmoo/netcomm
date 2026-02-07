@@ -2,7 +2,7 @@
 
 #include <string>
 #include "types/const_types.h"
-#include "types/macros.h"
+#include "macros.h"
 
 namespace eroil::evt {
     enum class NamedSemErr {

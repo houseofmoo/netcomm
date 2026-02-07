@@ -5,7 +5,7 @@
 #include "types/const_types.h"
 #include "config/config.h"
 #include "socket_result.h"
-#include "types/macros.h"
+#include "macros.h"
 
 namespace eroil::sock {
     class UDPMulticastSocket final {

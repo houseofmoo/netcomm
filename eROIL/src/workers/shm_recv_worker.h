@@ -5,7 +5,7 @@
 #include "router/router.h"
 #include "shm/shm_recv.h"
 #include "types/const_types.h"
-#include "types/macros.h"
+#include "macros.h"
 
 namespace eroil::wrk {
     class ShmRecvWorker {

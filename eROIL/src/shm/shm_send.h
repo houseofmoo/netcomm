@@ -3,7 +3,7 @@
 #include "events/named_semaphore.h"
 #include "types/const_types.h"
 #include "shm_header.h"
-#include "types/macros.h"
+#include "macros.h"
 
 namespace eroil::shm {
     enum class ShmSendErr {

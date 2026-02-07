@@ -8,7 +8,7 @@
 #include "socket/tcp_socket.h"
 #include "shm/shm_recv.h"
 #include "shm/shm_send.h"
-#include "types/macros.h"
+#include "macros.h"
 
 namespace eroil::rt {
     class TransportRegistry {

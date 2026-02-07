@@ -1,5 +1,5 @@
 #pragma once
-#include "types/macros.h"
+#include "macros.h"
 namespace eroil::sock {
     // use RAII to control lifetime of socket initialization
     class SocketContext {

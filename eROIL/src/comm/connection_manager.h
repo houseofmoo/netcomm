@@ -10,7 +10,7 @@
 #include "workers/shm_recv_worker.h"
 #include "workers/send_plan.h"
 #include "types/const_types.h"
-#include "types/macros.h"
+#include "macros.h"
 
 namespace eroil::comm {
 

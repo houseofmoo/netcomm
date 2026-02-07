@@ -1,5 +1,7 @@
 #pragma once
 #include <cassert>
+#include <cstdint>
+#include <string_view>
 
 #if !defined(NDEBUG) // debug
 // if expr is true, terminate    

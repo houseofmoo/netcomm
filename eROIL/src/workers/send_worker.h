@@ -8,7 +8,7 @@
 
 #include "types/const_types.h"
 #include "events/semaphore.h"
-#include "types/macros.h"
+#include "macros.h"
 #include "log/evtlog_api.h"
 
 namespace eroil::wrk {
@@ -37,7 +37,7 @@ namespace eroil::wrk {
                     m_send_q.push(job);
                 }
 
-                evt::SemErr err = m_sem.post();
+                auto err = m_sem.post();
                 if (err != evt::SemErr::None) {
                     switch (err) {
                         case evt::SemErr::MaxCountReached: {
@@ -90,7 +90,7 @@ namespace eroil::wrk {
 
             void run() {
                 while (!stop_requested()) {
-                    evt::SemErr err = m_sem.wait();
+                    auto err = m_sem.wait();
                     if (err != evt::SemErr::None) {
                         ERR_PRINT("send worker got sem error waiting on work, err=", static_cast<int>(err));
                         std::this_thread::sleep_for(std::chrono::seconds(1));

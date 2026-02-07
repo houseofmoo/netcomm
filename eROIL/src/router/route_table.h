@@ -9,7 +9,7 @@
 #include "types/const_types.h"
 #include "types/handles.h"
 #include "types/label_io_types.h"
-#include "types/macros.h"
+#include "macros.h"
 
 namespace eroil::rt {
     struct SendRoute {

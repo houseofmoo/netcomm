@@ -2,7 +2,7 @@
 
 #include "evtlog.h"
 #include "evtrecord.h"
-#include "types/macros.h"
+#include "macros.h"
 
 namespace eroil {
     using elog_kind = eroil::evtlog::EventKind;

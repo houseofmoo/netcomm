@@ -10,10 +10,17 @@
 #include "socket/udp_multicast.h"
 #include "socket/socket_context.h"
 #include "comm/connection_manager.h"
-#include "types/macros.h"
+#include "macros.h"
 #include "log/evtlog_api.h"
 
 namespace eroil {
+    /*
+    TODO:
+        1) i want error prints to not be some arbitrary number that you have to look up what it means
+        but adding somet kind of "to string" function is a royal pain in the ass
+        wouldnt be an issue if there was a std function that converted enums to strings but there isnt!
+        
+    */
     class Manager {
         private:
             NodeId m_id;

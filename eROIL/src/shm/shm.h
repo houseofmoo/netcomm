@@ -3,7 +3,7 @@
 #include <vector>
 #include <atomic>
 #include "types/const_types.h"
-#include "types/macros.h"
+#include "macros.h"
 
 namespace eroil::shm {
     enum class ShmErr {

@@ -4,7 +4,7 @@
 #include <memory>
 #include "types/const_types.h"
 #include "socket_result.h"
-#include "types/macros.h"
+#include "macros.h"
 
 namespace eroil::sock {
     class TCPSocket {
