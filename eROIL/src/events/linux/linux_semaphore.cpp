@@ -63,77 +63,76 @@ namespace eroil::evt {
         return *this;
     }
 
-    SemResult::Code Semaphore::post() {
-        if (m_sem == nullptr) return SemResult::Code::NotInitialized;
+    SemResult Semaphore::post() {
+        if (m_sem == nullptr) return { SemErr::NotInitialized, SemOp::Post };
 
         if (sem_post(as_native(m_sem)) == -1) {
             int err = errno;
             switch (err) {
-                case EINVAL: return SemResult::Code::NotInitialized;
-                case EOVERFLOW: return SemResult::Code::MaxCountReached;
-                default: return SemResult::Code::SysError; // unknown error
+                case EINVAL: return { SemErr::NotInitialized, SemOp::Post };
+                case EOVERFLOW: return { SemErr::MaxCountReached, SemOp::Post };
+                default: return { SemErr::SysError, SemOp::Post }; // unknown error
             }
         }
 
-        return SemResult::Code::None;
+        return { SemErr::None, SemOp::Post };
     }
 
-    SemResult::Code Semaphore::try_wait() {
-        if (m_sem == nullptr) return SemResult::Code::NotInitialized;
+    SemResult Semaphore::try_wait() {
+        if (m_sem == nullptr) return { SemErr::NotInitialized, SemOp::TryWait };
 
         while (true) {
             if (sem_trywait(as_native(m_sem)) == 0) {
-                return SemResult::Code::None;
+                return { SemErr::None, SemOp::TryWait };
             }
 
             const int err = errno;
             switch (err) {
                 case EINTR: continue; // interrupted before acquiring
-                case EAGAIN: return SemResult::Code::WouldBlock;
-                case EINVAL: return SemResult::Code::NotInitialized;
-                default: return SemResult::Code::SysError;
+                case EAGAIN: return { SemErr::WouldBlock, SemOp::TryWait };
+                case EINVAL: return { SemErr::NotInitialized, SemOp::TryWait };
+                default: return { SemErr::SysError, SemOp::TryWait };
             }
         }
     }
 
-    SemResult::Code Semaphore::wait(uint32_t milliseconds) {
-        if (m_sem == nullptr) return SemResult::Code::NotInitialized;
+    SemResult Semaphore::wait(uint32_t milliseconds) {
+        if (m_sem == nullptr) return { SemErr::NotInitialized, SemOp::Wait };
 
         if (milliseconds == 0) {
             // infinite wait
             while (true) {
                 if (sem_wait(as_native(m_sem)) == 0) {
-                   return SemResult::Code::None;
+                   return { SemErr::None, SemOp::Wait };
                 }
                 
                 const int err = errno;
                 switch (err) {
                     case EINTR: continue; // interrupted before acquiring
-                    case EINVAL: return SemResult::Code::NotInitialized;
-                    default: return SemResult::Code::SysError;
+                    case EINVAL: return { SemErr::NotInitialized, SemOp::Wait };
+                    default: return { SemErr::SysError, SemOp::Wait };
                 }
             }
         } else {
             // timed wait
             timespec deadline{};
             if (!make_abs_deadline_realtime(deadline, milliseconds)) {
-                return SemErr::SysError;
+                return { SemErr::SysError, SemOp::Wait };
             }
 
             while (true) {
                 if (sem_timedwait(as_native(m_sem), &deadline) == 0) {
-                    return SemErr::None;
+                    return { SemErr::None, SemOp::Wait };
                 }
 
                 const int err = errno;
                 switch (err) {
                     case EINTR: continue; // interrupted before acquiring
-                    case ETIMEDOUT: return SemResult::Code::Timeout;
-                    case EINVAL: return SemResult::Code::NotInitialized;
-                    default: return SemResult::Code::SysError;
+                    case ETIMEDOUT: return { SemErr::Timeout, SemOp::Wait };
+                    case EINVAL: return { SemErr::NotInitialized, SemOp::Wait };
+                    default: return { SemErr::SysError, SemOp::Wait };
                 }
             }
-
         }
     }
 

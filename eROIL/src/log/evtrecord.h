@@ -1,5 +1,6 @@
 #pragma once
 #include <cstdint>
+#include <cstddef>
 #include <atomic>
 
 namespace eroil::evtlog {
@@ -96,6 +97,7 @@ namespace eroil::evtlog {
         std::atomic<std::uint32_t> commit_seq{0};
     };
     static_assert(sizeof(EventRecord) == 56, "check packing/size for EventRecord, expected 56 bytes");
+    static_assert(std::is_standard_layout_v<EventRecord>);
 
     struct EventRecordSnapshot {
         std::uint64_t tick;
@@ -110,6 +112,7 @@ namespace eroil::evtlog {
         std::uint16_t payload_len;
         std::uint8_t payload[PAYLOAD_BYTES];
     };
-    static_assert(offsetof(EventRecord, commit_seq) == sizeof(EventRecordSnapshot), "Snapshot must match EventRecord up to commit_seq");
     static_assert(std::is_trivially_copyable_v<EventRecordSnapshot>, "Snapshot must be trivially copyable");
+    static_assert(std::is_standard_layout_v<EventRecordSnapshot>);
+    static_assert(offsetof(EventRecord, commit_seq) == sizeof(EventRecordSnapshot), "Snapshot must match EventRecord up to commit_seq");
 }

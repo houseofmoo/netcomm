@@ -20,13 +20,13 @@ namespace eroil::evt {
         return static_cast<sem_handle>(h);
     }
 
-    static NamedSemResult::Code map_wait_errno(int e) noexcept {
+    static NamedSemErr map_wait_errno(int e) noexcept {
         switch (e) {
-            case EINTR: return NamedSemResult::Code::SysError; // normally retry on this... if we get here somethigns fooked
-            case ETIMEDOUT: return NamedSemResult::Code::Timeout;
-            case EAGAIN: return NamedSemResult::Code::SysError;
-            case EINVAL: return NamedSemResult::Code::NotInitialized;
-            default: return NamedSemResult::Code::SysError;
+            case EINTR: return NamedSemErr::SysError; // normally retry on this... if we get here somethigns fooked
+            case ETIMEDOUT: return NamedSemErr::Timeout;
+            case EAGAIN: return NamedSemErr::SysError;
+            case EINVAL: return NamedSemErr::NotInitialized;
+            default: return NamedSemErr::SysError;
         }
     }
 
@@ -47,8 +47,10 @@ namespace eroil::evt {
     }
 
     NamedSemaphore::NamedSemaphore(NodeId id) : m_dst_id(id), m_sem(nullptr) {
-        if (open() != NamedSemResult::Code::None) {
+        NamedSemResult result = open();
+        if (!result.ok()) {
             ERR_PRINT("failed to open named event m_dst_id=", id);
+
         }
     }
 
@@ -79,78 +81,78 @@ namespace eroil::evt {
         return "/eroil.evt." + std::to_string(m_dst_id);
     }
 
-    NamedSemResult::Code NamedSemaphore::open() {
-        if (m_sem != nullptr) return NamedSemResult::Code::DoubleOpen;
+    NamedSemResult NamedSemaphore::open() {
+        if (m_sem != nullptr) return { NamedSemErr::DoubleOpen, NamedSemOp::Open };
 
         const std::string n = name();
         if (n.empty() || n[0] != '/') {
             m_sem = nullptr;
-            return NamedSemResult::Code::InvalidName;
+            return { NamedSemErr::InvalidName, NamedSemOp::Open };
         }
 
         constexpr mode_t perms = 0777;
         auto sem = sem_open(n.c_str(), O_CREAT, perms, 0);
         if (sem == SEM_FAILED) {
             sem = nullptr;
-            return NamedSemResult::Code::OpenFailed;
+            return { NamedSemErr::OpenFailed, NamedSemOp::Open };
         }
 
         m_sem = from_native(sem);
-        return NamedSemResult::Code::None;
+        return { NamedSemErr::None, NamedSemOp::Open };
     }
 
-    NamedSemResult::Code NamedSemaphore::post() const {
-        if (m_sem == nullptr) return NamedSemResult::Code::NotInitialized;
+    NamedSemResult NamedSemaphore::post() const {
+        if (m_sem == nullptr) return { NamedSemErr::NotInitialized, NamedSemOp::Post };
 
         if (sem_post(as_native(m_sem)) != 0) {
-            if (errno == EOVERFLOW) return NamedSemResult::Code::MaxCount;
-            return NamedSemResult::Code::SignalFailed;
+            if (errno == EOVERFLOW) return { NamedSemErr::MaxCount, NamedSemOp::Post };
+            return { NamedSemErr::SignalFailed, NamedSemOp::Post };
         }
 
-        return NamedSemResult::Code::None;
+        return { NamedSemErr::None, NamedSemOp::Post };
     }
 
-    NamedSemResult::Code NamedSemaphore::try_wait() const {
-        if (m_sem == nullptr) return NamedSemResult::Code::NotInitialized;
+    NamedSemResult NamedSemaphore::try_wait() const {
+        if (m_sem == nullptr) return { NamedSemErr::NotInitialized, NamedSemOp::TryWait };
 
         for (;;) {
             if (sem_trywait(as_native(m_sem)) == 0) {
-                return NamedSemResult::Code::None;
+                return { NamedSemErr::None, NamedSemOp::TryWait };
             }
             const int e = errno;
             if (e == EINTR) continue;
-            if (e == EAGAIN) return NamedSemResult::Code::WouldBlock;
+            if (e == EAGAIN) return { NamedSemErr::WouldBlock, NamedSemOp::TryWait };;
 
-            return map_wait_errno(e);
+            return { map_wait_errno(e), NamedSemOp::TryWait };
         }
     }
 
-    NamedSemResult::Code NamedSemaphore::wait(uint32_t milliseconds) const {
-        if (m_sem == nullptr) return NamedSemResult::Code::NotInitialized;
+    NamedSemResult NamedSemaphore::wait(uint32_t milliseconds) const {
+        if (m_sem == nullptr) return { NamedSemErr::NotInitialized, NamedSemOp::Wait };
 
         if (milliseconds == 0) {
             for (;;) {
                 if (sem_wait(as_native(m_sem)) == 0) {
-                    return NamedSemResult::Code::None;
+                    return { NamedSemErr::None, NamedSemOp::Wait };
                 }
                 const int e = errno;
                 if (e == EINTR) continue;
-                return map_wait_errno(e);
+                return { map_wait_errno(e), NamedSemOp::Wait };
             }
         }
 
         timespec deadline{};
         if (!make_abs_deadline_realtime(deadline, milliseconds)) {
-            return NamedSemResult::Code::SysError;
+            return { NamedSemErr::SysError, NamedSemOp::Wait };
         }
 
         for (;;) {
             if (sem_timedwait(as_native(m_sem), &deadline) == 0) {
-                return NamedSemResult::Code::None;
+                return { NamedSemErr::None, NamedSemOp::Wait };
             }
             const int e = errno;
             if (e == EINTR) continue;
-            return map_wait_errno(e);
+            return { map_wait_errno(e), NamedSemOp::Wait };
         }
     }
 

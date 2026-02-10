@@ -59,50 +59,50 @@ namespace eroil::shm {
         return "/eroil.node." + std::to_string(m_id);
     }
 
-    ShmResult::Code Shm::create() {
-        if (is_valid()) return ShmResult::Code::DoubleOpen;
+    ShmResult Shm::create() {
+        if (is_valid()) return { ShmErr::DoubleOpen, ShmOp::Create };
 
         const std::string n = name();
         if (n.empty() || n[0] != '/') {
-            return ShmResult::Code::InvalidName;
+            return { ShmErr::InvalidName, ShmOp::Create };
         }
 
         // O_EXCL makes create fail if it already exists
         m_handle = ::shm_open(n.c_str(), O_RDWR | O_CREAT | O_EXCL, 0777);
         if (m_handle < 0) {
-            if (errno == EEXIST) return ShmResult::Code::AlreadyExists;
-            return ShmResult::Code::UnknownError;
+            if (errno == EEXIST) return { ShmErr::AlreadyExists, ShmOp::Create };
+            return { ShmErr::UnknownError, ShmOp::Create };
         }
 
         const size_t total = total_size();
         if (::ftruncate(m_handle, static_cast<off_t>(total)) != 0) {
             ::close(m_handle);
             ::shm_unlink(n.c_str()); // delete the partially created file
-            return ShmResult::Code::UnknownError;
+            return { ShmErr::UnknownError, ShmOp::Create };
         }
 
         m_view = ::mmap(nullptr, total, PROT_READ | PROT_WRITE, MAP_SHARED, m_handle, 0);
         if (m_view == MAP_FAILED) {
             ::close(m_handle);
             ::shm_unlink(n.c_str()); // delete the partially created file
-            return ShmResult::Code::FileMapFailed;
+            return { ShmErr::FileMapFailed, ShmOp::Create };
         }
        
-        return ShmResult::Code::None;
+        return { ShmErr::None, ShmOp::Create };
     }
 
-    ShmResult::Code Shm::open() {
-        if (is_valid()) return ShmResult::Code::DoubleOpen;
+    ShmResult Shm::open() {
+        if (is_valid()) return { ShmErr::DoubleOpen, ShmOp::Open };
 
         const std::string n = name();
         if (n.empty() || n[0] != '/') {
-            return ShmResult::Code::InvalidName;
+            return { ShmErr::InvalidName, ShmOp::Open };
         }
 
         m_handle = ::shm_open(n.c_str(), O_RDWR, 0777);
         if (m_handle < 0) {
-            if (errno == ENOENT) return ShmResult::Code::DoesNotExist;
-            return ShmResult::Code::UnknownError;
+            if (errno == ENOENT) return { ShmErr::DoesNotExist, ShmOp::Open };
+            return { ShmErr::UnknownError, ShmOp::Open };
         }
 
         const size_t total = total_size();
@@ -110,10 +110,10 @@ namespace eroil::shm {
         m_view = ::mmap(nullptr, total, PROT_READ | PROT_WRITE, MAP_SHARED, m_handle, 0);
         if (m_view == MAP_FAILED) {
             ::close(m_handle);
-            return ShmResult::Code::FileMapFailed;
+            return { ShmErr::FileMapFailed, ShmOp::Open };
         }
 
-        return ShmResult::Code::None;
+        return { ShmErr::None, ShmOp::Open };
     }
 
     void Shm::close() noexcept {

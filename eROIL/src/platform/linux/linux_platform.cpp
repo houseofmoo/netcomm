@@ -5,6 +5,7 @@
 #include <sched.h>
 #include <chrono>
 #include <sstream>
+#include <iomanip>
 #include <eROIL/print.h>
 
 namespace eroil::plat {
