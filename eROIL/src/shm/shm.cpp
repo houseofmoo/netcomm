@@ -18,27 +18,6 @@ namespace eroil::shm {
         return m_total_size; 
     }
 
-    ShmResult Shm::create_or_open(const uint32_t attempts, const uint32_t wait_ms) {
-        if (is_valid()) return { ShmErr::DoubleOpen, ShmOp::Open };
-
-        ShmResult result;
-        for (uint32_t i = 0; i < attempts; ++i) {
-            result = create();
-            if (result.ok()) return result;
-
-            if (result.code != ShmErr::AlreadyExists) {
-                ERR_PRINT(" unexpected error from shm create, err= ", result.code_to_string());
-                return result;
-            }
-
-            result = open();
-            if (result.ok()) return result;
-
-            std::this_thread::sleep_for(std::chrono::milliseconds(wait_ms));
-        }
-        return result;
-    }
-
     ShmResult Shm::read(void* buf, const size_t size, const size_t offset) const noexcept {
         if (!is_valid()) return { ShmErr::NotOpen, ShmOp::Read };
         if (size > m_total_size) return { ShmErr::TooLarge, ShmOp::Read };

@@ -4,8 +4,7 @@
 #include <eROIL/print.h>
 
 namespace eroil::shm {
-    ShmRecv::ShmRecv(NodeId id) : 
-        m_id(id), m_shm(id, SHM_BLOCK_SIZE), m_event(id) {}
+    ShmRecv::ShmRecv(NodeId id) : m_id(id), m_shm(id, SHM_BLOCK_SIZE), m_event(id) {}
     ShmRecv::~ShmRecv() = default;
 
     bool ShmRecv::create_or_open() {
@@ -83,9 +82,9 @@ namespace eroil::shm {
         }
         
         // if we see "SHM_INITING" in our own recv block, something weird happend
-        // since we should be the only ones that set that to SHM_INITING.
-        // likely we crashed and are restarting, but in any case that is an error 
-        // but not a show stopper, note it and continue
+        // either we died mid init/re-init or the shared memory block was zero'd out
+        // either when opening the block (windows can do this) or something we did ourselves. 
+        // not a show stopper since we're going to re-write all data to the block
         // if (hdr->state.load(std::memory_order_acquire) != SHM_READY) {
         //     ERR_PRINT("found existing shm recv block that was in INIT state, weird but continuing");
         //     ERR_PRINT("   state=", shm_state);
@@ -113,9 +112,6 @@ namespace eroil::shm {
         meta->head_bytes.store(0, std::memory_order_relaxed);
         meta->tail_bytes.store(0, std::memory_order_relaxed);
         meta->published_count.store(0, std::memory_order_relaxed);
-
-        // zero out block
-        //m_shm.memset(ShmLayout::DATA_BLOCK_OFFSET, 0, ShmLayout::DATA_BLOCK_SIZE);
         
         // announce this is ready for use
         hdr->state.store(SHM_READY, std::memory_order_release);

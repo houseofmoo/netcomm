@@ -79,7 +79,7 @@ namespace eroil::shm {
     };
 
     class Shm {
-        protected:
+        private:
             int32_t m_id;
             size_t m_total_size;
             shm_handle m_handle;
@@ -113,8 +113,5 @@ namespace eroil::shm {
                     static_cast<std::byte*>(m_view) + offset
                 ); 
             }
-            
-        private:
-            NO_DISCARD ShmResult create_or_open(const uint32_t attempts = 10, const uint32_t wait_ms = 100);
     };
 }
