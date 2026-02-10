@@ -20,13 +20,13 @@ namespace eroil::evt {
         return static_cast<sem_handle>(h);
     }
 
-    static NamedSemErr map_wait_errno(int e) noexcept {
+    static NamedSemResult::Code map_wait_errno(int e) noexcept {
         switch (e) {
-            case EINTR: return NamedSemErr::SysError; // normally retry on this... if we get here somethigns fooked
-            case ETIMEDOUT: return NamedSemErr::Timeout;
-            case EAGAIN: return NamedSemErr::SysError;
-            case EINVAL: return NamedSemErr::NotInitialized;
-            default: return NamedSemErr::SysError;
+            case EINTR: return NamedSemResult::Code::SysError; // normally retry on this... if we get here somethigns fooked
+            case ETIMEDOUT: return NamedSemResult::Code::Timeout;
+            case EAGAIN: return NamedSemResult::Code::SysError;
+            case EINVAL: return NamedSemResult::Code::NotInitialized;
+            default: return NamedSemResult::Code::SysError;
         }
     }
 
@@ -47,7 +47,7 @@ namespace eroil::evt {
     }
 
     NamedSemaphore::NamedSemaphore(NodeId id) : m_dst_id(id), m_sem(nullptr) {
-        if (open() != NamedSemErr::None) {
+        if (open() != NamedSemResult::Code::None) {
             ERR_PRINT("failed to open named event m_dst_id=", id);
         }
     }
@@ -79,59 +79,59 @@ namespace eroil::evt {
         return "/eroil.evt." + std::to_string(m_dst_id);
     }
 
-    NamedSemErr NamedSemaphore::open() {
-        if (m_sem != nullptr) return NamedSemErr::DoubleOpen;
+    NamedSemResult::Code NamedSemaphore::open() {
+        if (m_sem != nullptr) return NamedSemResult::Code::DoubleOpen;
 
         const std::string n = name();
         if (n.empty() || n[0] != '/') {
             m_sem = nullptr;
-            return NamedSemErr::InvalidName;
+            return NamedSemResult::Code::InvalidName;
         }
 
         constexpr mode_t perms = 0777;
         auto sem = sem_open(n.c_str(), O_CREAT, perms, 0);
         if (sem == SEM_FAILED) {
             sem = nullptr;
-            return NamedSemErr::OpenFailed;
+            return NamedSemResult::Code::OpenFailed;
         }
 
         m_sem = from_native(sem);
-        return NamedSemErr::None;
+        return NamedSemResult::Code::None;
     }
 
-    NamedSemErr NamedSemaphore::post() const {
-        if (m_sem == nullptr) return NamedSemErr::NotInitialized;
+    NamedSemResult::Code NamedSemaphore::post() const {
+        if (m_sem == nullptr) return NamedSemResult::Code::NotInitialized;
 
         if (sem_post(as_native(m_sem)) != 0) {
-            if (errno == EOVERFLOW) return NamedSemErr::MaxCount;
-            return NamedSemErr::SignalFailed;
+            if (errno == EOVERFLOW) return NamedSemResult::Code::MaxCount;
+            return NamedSemResult::Code::SignalFailed;
         }
 
-        return NamedSemErr::None;
+        return NamedSemResult::Code::None;
     }
 
-    NamedSemErr NamedSemaphore::try_wait() const {
-        if (m_sem == nullptr) return NamedSemErr::NotInitialized;
+    NamedSemResult::Code NamedSemaphore::try_wait() const {
+        if (m_sem == nullptr) return NamedSemResult::Code::NotInitialized;
 
         for (;;) {
             if (sem_trywait(as_native(m_sem)) == 0) {
-                return NamedSemErr::None;
+                return NamedSemResult::Code::None;
             }
             const int e = errno;
             if (e == EINTR) continue;
-            if (e == EAGAIN) return NamedSemErr::WouldBlock;
+            if (e == EAGAIN) return NamedSemResult::Code::WouldBlock;
 
             return map_wait_errno(e);
         }
     }
 
-    NamedSemErr NamedSemaphore::wait(uint32_t milliseconds) const {
-        if (m_sem == nullptr) return NamedSemErr::NotInitialized;
+    NamedSemResult::Code NamedSemaphore::wait(uint32_t milliseconds) const {
+        if (m_sem == nullptr) return NamedSemResult::Code::NotInitialized;
 
         if (milliseconds == 0) {
             for (;;) {
                 if (sem_wait(as_native(m_sem)) == 0) {
-                    return NamedSemErr::None;
+                    return NamedSemResult::Code::None;
                 }
                 const int e = errno;
                 if (e == EINTR) continue;
@@ -141,12 +141,12 @@ namespace eroil::evt {
 
         timespec deadline{};
         if (!make_abs_deadline_realtime(deadline, milliseconds)) {
-            return NamedSemErr::SysError;
+            return NamedSemResult::Code::SysError;
         }
 
         for (;;) {
             if (sem_timedwait(as_native(m_sem), &deadline) == 0) {
-                return NamedSemErr::None;
+                return NamedSemResult::Code::None;
             }
             const int e = errno;
             if (e == EINTR) continue;

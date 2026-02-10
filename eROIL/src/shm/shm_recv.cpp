@@ -20,13 +20,13 @@ namespace eroil::shm {
         //      block doesnt exist -> create it and set it up
         //      block exists but invalid -> reset it
         //      block exists but valid -> reset it
-        shm::ShmErr cerr = m_shm.create();
-        if (cerr == shm::ShmErr::None) {
+        shm::ShmResult create_result = m_shm.create();
+        if (!create_result.ok()) {
             return init_as_new();
         }
 
-        shm::ShmErr oerr = m_shm.open();
-        if (oerr == shm::ShmErr::None) {
+        shm::ShmResult open_result = m_shm.open();
+        if (!open_result.ok()) {
             return reinit();
         }
 
@@ -86,9 +86,10 @@ namespace eroil::shm {
         // since we should be the only ones that set that to SHM_INITING.
         // likely we crashed and are restarting, but in any case that is an error 
         // but not a show stopper, note it and continue
-        if (hdr->state.load(std::memory_order_acquire) != SHM_READY) {
-            ERR_PRINT("found existing shm recv block that was in INIT state, weird but continuing");
-        }
+        // if (hdr->state.load(std::memory_order_acquire) != SHM_READY) {
+        //     ERR_PRINT("found existing shm recv block that was in INIT state, weird but continuing");
+        //     ERR_PRINT("   state=", shm_state);
+        // }
  
         // if header is mangled, assume block needs to be treated as new
         hdr->state.store(SHM_INITING, std::memory_order_release);
@@ -121,37 +122,37 @@ namespace eroil::shm {
         return true;
     }
 
-    evt::NamedSemErr ShmRecv::wait() {
+    evt::NamedSemResult ShmRecv::wait() {
         return m_event.wait();
     }
 
-    ShmRecvResult ShmRecv::recv() {
+    ShmRecvData ShmRecv::recv() {
         auto* hdr  = m_shm.map_to_type<ShmHeader>(ShmLayout::HDR_OFFSET);
         if (hdr == nullptr) {
             ERR_PRINT("shm recv header pointer offset invalid");
             ERR_PRINT("    offset=", ShmLayout::HDR_OFFSET);
-            return ShmRecvResult{ShmRecvErr::BlockCorrupted};
+            return ShmRecvData{ShmRecvErr::BlockCorrupted};
         }
 
         if (hdr->state.load(std::memory_order_acquire) != SHM_READY) {
-            return ShmRecvResult{ShmRecvErr::BlockNotInitialized};
+            return ShmRecvData{ShmRecvErr::BlockNotInitialized};
         }
 
         auto* meta = m_shm.map_to_type<ShmMetaData>(ShmLayout::META_DATA_OFFSET);
         if (meta == nullptr) {
             ERR_PRINT("shm recv meta pointer offset invalid");
             ERR_PRINT("    offset=", ShmLayout::META_DATA_OFFSET);
-            return ShmRecvResult{ShmRecvErr::BlockCorrupted};
+            return ShmRecvData{ShmRecvErr::BlockCorrupted};
         }
 
         uint64_t gen = meta->generation.load(std::memory_order_acquire);
         uint64_t tail = meta->tail_bytes.load(std::memory_order_acquire);
         uint64_t head = meta->head_bytes.load(std::memory_order_acquire);
 
-        if (head == tail) return ShmRecvResult{ShmRecvErr::NoRecords};
+        if (head == tail) return ShmRecvData{ShmRecvErr::NoRecords};
         if (head < tail) {
             ERR_PRINT("tail advanced passed head, requires re-init");
-            return ShmRecvResult{ShmRecvErr::TailCorruption};
+            return ShmRecvData{ShmRecvErr::TailCorruption};
         }
 
         // find next COMMITTED record, moving passed WRAP records we find
@@ -161,18 +162,18 @@ namespace eroil::shm {
             const uint32_t state = rec_hdr->state.load(std::memory_order_acquire);
             
             if (state == WRITING) {
-                return ShmRecvResult{ShmRecvErr::NotYetPublished};
+                return ShmRecvData{ShmRecvErr::NotYetPublished};
             }
 
             if (rec_hdr->magic != MAGIC_NUM) {
-                return ShmRecvResult{ShmRecvErr::BlockCorrupted};
+                return ShmRecvData{ShmRecvErr::BlockCorrupted};
             }
 
             // we cannot trust messages, flush the backlog and continue
             if (rec_hdr->epoch != gen) {
                 ERR_PRINT("flushing backlog due to invalid record generation");
                 flush_backlog();
-                return ShmRecvResult{ShmRecvErr::NoRecords};
+                return ShmRecvData{ShmRecvErr::NoRecords};
             }
 
             switch (state) {
@@ -187,7 +188,7 @@ namespace eroil::shm {
                     if (total_size < sizeof(RecordHeader) ||
                        ((total_size & 7u) != 0) ||
                        (total_size > ShmLayout::DATA_BLOCK_SIZE) ||
-                       (rec_hdr->payload_size != 0)) return ShmRecvResult{ShmRecvErr::BlockCorrupted};
+                       (rec_hdr->payload_size != 0)) return ShmRecvData{ShmRecvErr::BlockCorrupted};
 
                     // move tail_bytes passed the wrap record for next iteration
                     // update head incase someone allocated while we did this
@@ -200,19 +201,19 @@ namespace eroil::shm {
 
                 default: { // this should NEVER happen
                     ERR_PRINT("got unknown record hdr state=", state);
-                    return ShmRecvResult{ShmRecvErr::UnknownError};
+                    return ShmRecvData{ShmRecvErr::UnknownError};
                 }
             }
         }
 
         // nothing to read
-        if (!found) return ShmRecvResult{ShmRecvErr::NoRecords};
+        if (!found) return ShmRecvData{ShmRecvErr::NoRecords};
         
         // read header and data
         auto* rec_hdr = m_shm.map_to_type<RecordHeader>(get_header_offset(tail));
         if (rec_hdr == nullptr) {
             ERR_PRINT("rec_hdr was null, tail offset invalid, offset=", get_header_offset(tail));
-            return ShmRecvResult{ShmRecvErr::BlockCorrupted};
+            return ShmRecvData{ShmRecvErr::BlockCorrupted};
         }
 
         // validate best we can
@@ -220,15 +221,18 @@ namespace eroil::shm {
         if (total_size < sizeof(RecordHeader) ||
            ((total_size & 7u) != 0) ||
            (total_size > ShmLayout::DATA_BLOCK_SIZE) ||
-           (rec_hdr->payload_size == 0)) return ShmRecvResult{ShmRecvErr::BlockCorrupted};
+           (rec_hdr->payload_size == 0)) return ShmRecvData{ShmRecvErr::BlockCorrupted};
 
-        ShmRecvResult out;
+        ShmRecvData out;
         out.source_id = rec_hdr->source_id;
         out.label = rec_hdr->label;
         out.user_seq = rec_hdr->user_seq;
         out.buf_size = rec_hdr->payload_size;
         out.buf = std::make_unique<std::byte[]>(rec_hdr->payload_size);
-        m_shm.read(out.buf.get(), out.buf_size, get_data_offset(tail));
+        shm::ShmResult read_result = m_shm.read(out.buf.get(), out.buf_size, get_data_offset(tail));
+        if (!read_result.ok()) {
+            ERR_PRINT("shm read error=", read_result.code_to_string());
+        }
 
         // move tail_bytes passed the record we've just read
         const uint64_t new_tail = tail + static_cast<uint64_t>(total_size);

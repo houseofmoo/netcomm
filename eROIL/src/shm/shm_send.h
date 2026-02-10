@@ -7,7 +7,7 @@
 
 namespace eroil::shm {
     enum class ShmSendErr {
-        None,               // success
+        None = 0,           // success
         InvalidOffset,      // offset into header or meta invalid
         BlockNotInitialized,// try again or drop
         BlockReinitialized, // try again or drop
@@ -15,6 +15,40 @@ namespace eroil::shm {
         SizeTooLarge,       // hard error
         CouldNotAllocate,   // hard error
         AllocatorCorrupted  // fatal, maybe retry a few times
+    };
+
+    enum class ShmSendOp {
+        Send
+    };
+
+    struct ShmSendResult {
+        ShmSendErr code;
+        ShmSendOp op;
+
+        bool ok() const noexcept {
+            return code == ShmSendErr::None;
+        }
+
+        std::string_view code_to_string() const noexcept {
+            switch (code) {
+                case ShmSendErr::None: return "None";
+                case ShmSendErr::InvalidOffset: return "InvalidOffset";
+                case ShmSendErr::BlockNotInitialized: return "BlockNotInitialized";
+                case ShmSendErr::BlockReinitialized: return "BlockReinitialized";
+                case ShmSendErr::NotEnoughSpace: return "NotEnoughSpace";
+                case ShmSendErr::SizeTooLarge: return "SizeTooLarge";
+                case ShmSendErr::CouldNotAllocate: return "CouldNotAllocate";
+                case ShmSendErr::AllocatorCorrupted: return "AllocatorCorrupted";
+                default: return "Unknown - error is undefined";
+            }
+        }
+
+        std::string_view op_to_string() const noexcept {
+            switch (op) {
+                case ShmSendOp::Send: return "Send";
+                default: return "Unknown - op is undefined";
+            }
+        }
     };
  
     // shared memory we write labels to
@@ -33,10 +67,10 @@ namespace eroil::shm {
 
             bool open();
             void close();
-            ShmSendErr send(const NodeId id, 
-                            const Label label, 
-                            const uint32_t seq, 
-                            const size_t buf_size, 
-                            const std::byte* buf);
+            NO_DISCARD ShmSendResult send(const NodeId id, 
+                                          const Label label, 
+                                          const uint32_t seq, 
+                                          const size_t buf_size, 
+                                          const std::byte* buf);
     };
 }

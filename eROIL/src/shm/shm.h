@@ -7,7 +7,7 @@
 
 namespace eroil::shm {
     enum class ShmErr {
-        None,
+        None = 0,
         DoubleOpen,
         InvalidName,
         AlreadyExists,
@@ -28,6 +28,56 @@ namespace eroil::shm {
         InvalidOffset,
     };
 
+    enum class ShmOp {
+        Create,
+        Open,
+        Read,
+        Write,
+    };
+
+    struct ShmResult {
+        ShmErr code;
+        ShmOp op;
+
+        bool ok() const noexcept {
+            return code == ShmErr::None;
+        }
+
+        std::string_view code_to_string() const noexcept {
+            switch (code) {
+                case ShmErr::None: return "None";
+                case ShmErr::DoubleOpen: return "DoubleOpen";
+                case ShmErr::InvalidName: return "InvalidName";
+                case ShmErr::AlreadyExists: return "AlreadyExists";
+                case ShmErr::DoesNotExist: return "DoesNotExist";
+                case ShmErr::FileMapFailed: return "FileMapFailed";
+                case ShmErr::LayoutMismatch: return "LayoutMismatch";
+                case ShmErr::NotInitialized: return "NotInitialized";
+                case ShmErr::UnknownError: return "UnknownError";
+
+                case ShmErr::TooLarge: return "TooLarge";
+                case ShmErr::NotOpen: return "NotOpen";
+                case ShmErr::DuplicateSendEvent: return "DuplicateSendEvent";
+                case ShmErr::AddSendEventError: return "AddSendEventError";
+                case ShmErr::SetRecvEventError: return "SetRecvEventError";
+                case ShmErr::RecvFailed: return "RecvFailed";
+                case ShmErr::WouldBlock: return "WouldBlock";
+                case ShmErr::InvalidOffset: return "InvalidOffset";
+                default: return "Unknown - error is undefined";
+            }
+        }
+
+        std::string_view op_to_string() const noexcept {
+            switch (op) {
+                case ShmOp::Create: return "Create";
+                case ShmOp::Open: return "Open";
+                case ShmOp::Read: return "Read";
+                case ShmOp::Write: return "Write";
+                default: return "Unknown - op is undefined";
+            }
+        }
+    };
+
     class Shm {
         protected:
             int32_t m_id;
@@ -45,15 +95,15 @@ namespace eroil::shm {
             // platform dependent
             bool is_valid() const noexcept;
             std::string name() const noexcept;
-            ShmErr create();
-            ShmErr open();
+            NO_DISCARD ShmResult create();
+            NO_DISCARD ShmResult open();
             void close() noexcept;
 
             // shared implementation
             void memset(size_t offset, int32_t val, size_t bytes);
             size_t total_size() const noexcept;
-            ShmErr read(void* buf, const size_t size, const size_t offset) const noexcept;
-            ShmErr write(const void* buf, const size_t size, const size_t offset) noexcept;
+            NO_DISCARD ShmResult read(void* buf, const size_t size, const size_t offset) const noexcept;
+            NO_DISCARD ShmResult write(const void* buf, const size_t size, const size_t offset) noexcept;
             template <typename T>
             T* map_to_type(size_t offset) const { 
                 if (offset > m_total_size) return nullptr;
@@ -65,6 +115,6 @@ namespace eroil::shm {
             }
             
         private:
-            ShmErr create_or_open(const uint32_t attempts = 10, const uint32_t wait_ms = 100);
+            NO_DISCARD ShmResult create_or_open(const uint32_t attempts = 10, const uint32_t wait_ms = 100);
     };
 }

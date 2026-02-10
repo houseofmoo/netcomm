@@ -32,6 +32,6 @@ namespace eroil::wrk {
         private:
             bool stop_requested() const { return m_stop.load(std::memory_order_acquire); }
             void run();
-            std::pair<bool, shm::ShmRecvResult> get_next_record();
+            std::pair<bool, shm::ShmRecvData> get_next_record();
     };
 }

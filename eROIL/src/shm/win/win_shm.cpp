@@ -4,6 +4,7 @@
 #include "windows_hdr.h"
 #include "types/const_types.h"
 #include "shm/shm_header.h"
+#include <eROIL/print.h>
 
 namespace eroil::shm {
     // static HANDLE as_native(shm_handle h) noexcept {
@@ -69,12 +70,12 @@ namespace eroil::shm {
         return "Local\\eroil.node." + std::to_string(m_id);
     }
 
-    ShmErr Shm::create() {
-        if (is_valid()) return ShmErr::DoubleOpen;
+    ShmResult Shm::create() {
+        if (is_valid()) return { ShmErr::DoubleOpen, ShmOp::Create };
 
         std::wstring wname = to_windows_wstring(name());
         if (wname.empty()) {
-            return ShmErr::InvalidName;
+            return { ShmErr::InvalidName, ShmOp::Create };
         }
 
         m_handle = ::CreateFileMappingW(
@@ -88,29 +89,29 @@ namespace eroil::shm {
 
         if (m_handle == nullptr) {
             close();
-            return ShmErr::UnknownError;
+            return { ShmErr::UnknownError, ShmOp::Create };
         }
 
         if (::GetLastError() == ERROR_ALREADY_EXISTS) {
             close();
-            return ShmErr::AlreadyExists;;
+            return { ShmErr::AlreadyExists, ShmOp::Create };
         }
 
         m_view = ::MapViewOfFile(m_handle, FILE_MAP_ALL_ACCESS, 0, 0, 0);
         if (m_view == nullptr) {
             close();
-            return ShmErr::FileMapFailed;
+            return { ShmErr::FileMapFailed, ShmOp::Create };
         }
  
-        return ShmErr::None;
+            return { ShmErr::None, ShmOp::Create };
     }
 
-    ShmErr Shm::open() {
-        if (is_valid()) return ShmErr::DoubleOpen;
+    ShmResult Shm::open() {
+        if (is_valid()) return { ShmErr::DoubleOpen, ShmOp::Open };
 
         std::wstring wname = to_windows_wstring(name());
         if (wname.empty()) {
-            return ShmErr::InvalidName;
+            return { ShmErr::InvalidName, ShmOp::Open };
         }
 
          m_handle = ::OpenFileMappingW(
@@ -121,21 +122,22 @@ namespace eroil::shm {
 
         if (m_handle == nullptr) {
             DWORD e = ::GetLastError();
-            if (e == ERROR_FILE_NOT_FOUND) return ShmErr::DoesNotExist;
-            return ShmErr::UnknownError;
+            if (e == ERROR_FILE_NOT_FOUND) return { ShmErr::DoesNotExist, ShmOp::Open };
+            return { ShmErr::UnknownError, ShmOp::Open };
         }
 
         m_view = ::MapViewOfFile(m_handle, FILE_MAP_ALL_ACCESS, 0, 0, 0);
         if (m_view == nullptr) {
             close();
             m_handle = nullptr;
-            return ShmErr::FileMapFailed;
+            return { ShmErr::FileMapFailed, ShmOp::Open };
         }
    
-        return ShmErr::None;
+        return { ShmErr::None, ShmOp::Open };
     }
 
     void Shm::close() noexcept {
+        ERR_PRINT("closing shm block");
         if (m_view != nullptr) {
             ::UnmapViewOfFile(m_view);
             m_view = nullptr;

@@ -18,13 +18,14 @@ namespace eroil::shm {
         // senders only ever open a destination nodes shared memory block
         // never create it. try a few times before giving up
         for (int i = 0; i < 50; ++i) {
-            shm::ShmErr oerr = m_shm.open();
-            if (oerr == shm::ShmErr::None) {
+            shm::ShmResult open_result = m_shm.open();
+            if (open_result.ok()) {
                 return true;
             }
             std::this_thread::yield();
         }
 
+        ERR_PRINT("shm send block failed to open to nodeid=", m_dst_id);
         return false;
     }
 
@@ -33,30 +34,31 @@ namespace eroil::shm {
         m_event.close();
     }
 
-    ShmSendErr ShmSend::send(const NodeId id, 
-                             const Label label, 
-                             const uint32_t seq, 
-                             const size_t buf_size, 
-                             const std::byte* buf) {
+    ShmSendResult ShmSend::send(const NodeId id, 
+                                const Label label, 
+                                const uint32_t seq, 
+                                const size_t buf_size, 
+                                const std::byte* buf) {
 
         auto* hdr = m_shm.map_to_type<ShmHeader>(ShmLayout::HDR_OFFSET);
         if (hdr == nullptr) {
             ERR_PRINT("shm send header pointer offset invalid");
-            ERR_PRINT("    offset=", ShmLayout::HDR_OFFSET);
-            return ShmSendErr::InvalidOffset;
+            ERR_PRINT("    shm total size=", m_shm.total_size());
+            ERR_PRINT("    offset=", ShmLayout::HDR_OFFSET, " dstid=", m_dst_id, " label=", label);
+            return { ShmSendErr::InvalidOffset, ShmSendOp::Send };
         }
         
         // if not initialized, this message is lost (consumer is re-initing)
         if (hdr->state.load(std::memory_order_acquire) != SHM_READY) {
             ERR_PRINT("shm block not initialized for nodeid=", m_dst_id);
-            return ShmSendErr::BlockNotInitialized;
+            return { ShmSendErr::BlockNotInitialized, ShmSendOp::Send };
         }
 
         auto* meta = m_shm.map_to_type<ShmMetaData>(ShmLayout::META_DATA_OFFSET);
         if (meta == nullptr) {
             ERR_PRINT("shm send meta pointer offset invalid");
             ERR_PRINT("    offset=", ShmLayout::META_DATA_OFFSET);
-            return ShmSendErr::InvalidOffset;
+            return { ShmSendErr::InvalidOffset, ShmSendOp::Send };
         }
 
         uint64_t gen = meta->generation.load(std::memory_order_acquire);
@@ -68,7 +70,7 @@ namespace eroil::shm {
         if (reserved > ShmLayout::DATA_BLOCK_SIZE) {
             ERR_PRINT("tried to reserve more than allowed, reserved=", reserved, 
                       " allowed=", ShmLayout::DATA_BLOCK_SIZE, ", to nodeid=", m_dst_id);
-            return ShmSendErr::SizeTooLarge;
+            return { ShmSendErr::SizeTooLarge, ShmSendOp::Send };
         }
 
         bool reserved_success = false;
@@ -88,14 +90,14 @@ namespace eroil::shm {
             if (used + reserved > ShmLayout::DATA_BLOCK_SIZE) {
                 ERR_PRINT("not enough space available size=", reserved,
                           " to nodeid=", m_dst_id, " CONSUMER IS TOO SLOW!");
-                return ShmSendErr::NotEnoughSpace;
+                return { ShmSendErr::NotEnoughSpace, ShmSendOp::Send };
             }
 
             // logic error: some writer wrote a data record instead of wrap record and broke things
             const size_t head_offset = head % ShmLayout::DATA_BLOCK_SIZE;
             if (head_offset > ShmLayout::DATA_USABLE_LIMIT) {
                 ERR_PRINT("head pushed out of usable zone, allocator corrupted");
-                return ShmSendErr::AllocatorCorrupted;
+                return { ShmSendErr::AllocatorCorrupted, ShmSendOp::Send };
             }
 
             // current position + allocation would prevent a wrap header from being written, wrap now
@@ -144,13 +146,13 @@ namespace eroil::shm {
         // was never able to allocate space
         if (!reserved_success) {
             ERR_PRINT(" could not allocate space for label=", label, " to nodeid=", m_dst_id);
-            return ShmSendErr::CouldNotAllocate;
+            return { ShmSendErr::CouldNotAllocate, ShmSendOp::Send };
         }
         
         // if a re-init happened while we were allocating, abandon
         if (hdr->state.load(std::memory_order_acquire) != SHM_READY ||
             meta->generation.load(std::memory_order_acquire) != gen) {
-            return ShmSendErr::BlockReinitialized;
+            return { ShmSendErr::BlockReinitialized, ShmSendOp::Send };
         }
         
         // set writing and fill in header
@@ -158,7 +160,7 @@ namespace eroil::shm {
         if (rec_hdr == nullptr) { // if this happens someone changed something and broke everything
             ERR_PRINT("rec_hdr ptr null, head offset was invalid");
             ERR_PRINT("    offset=", get_header_offset(head));
-            return ShmSendErr::InvalidOffset;
+            return { ShmSendErr::InvalidOffset, ShmSendOp::Send };
         }
 
         rec_hdr->state.store(WRITING, std::memory_order_relaxed);
@@ -172,7 +174,10 @@ namespace eroil::shm {
         rec_hdr->source_id = id;
 
         // copy data immediately after record header
-        m_shm.write(buf, buf_size, get_data_offset(head));
+        shm::ShmResult write_result = m_shm.write(buf, buf_size, get_data_offset(head));
+        if (!write_result.ok()) {
+            ERR_PRINT("shm write failed, err=", write_result.code_to_string());
+        }
 
         // publish this record is ready
         rec_hdr->state.store(COMMITTED, std::memory_order_release);
@@ -181,8 +186,11 @@ namespace eroil::shm {
         meta->published_count.fetch_add(1, std::memory_order_relaxed);
 
         // notify
-        m_event.post();
+        evt::NamedSemResult post_result = m_event.post();
+        if (!post_result.ok()) {
+            ERR_PRINT("shm send notification failed, err=", post_result.code_to_string());
+        }
 
-        return ShmSendErr::None;
+        return { ShmSendErr::None, ShmSendOp::Send };
     }
 }

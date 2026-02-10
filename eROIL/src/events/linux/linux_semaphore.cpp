@@ -63,54 +63,54 @@ namespace eroil::evt {
         return *this;
     }
 
-    SemErr Semaphore::post() {
-        if (m_sem == nullptr) return SemErr::NotInitialized;
+    SemResult::Code Semaphore::post() {
+        if (m_sem == nullptr) return SemResult::Code::NotInitialized;
 
         if (sem_post(as_native(m_sem)) == -1) {
             int err = errno;
             switch (err) {
-                case EINVAL: return SemErr::NotInitialized;
-                case EOVERFLOW: return SemErr::MaxCountReached;
-                default: return SemErr::SysError; // unknown error
+                case EINVAL: return SemResult::Code::NotInitialized;
+                case EOVERFLOW: return SemResult::Code::MaxCountReached;
+                default: return SemResult::Code::SysError; // unknown error
             }
         }
 
-        return SemErr::None;
+        return SemResult::Code::None;
     }
 
-    SemErr Semaphore::try_wait() {
-        if (m_sem == nullptr) return SemErr::NotInitialized;
+    SemResult::Code Semaphore::try_wait() {
+        if (m_sem == nullptr) return SemResult::Code::NotInitialized;
 
         while (true) {
             if (sem_trywait(as_native(m_sem)) == 0) {
-                return SemErr::None;
+                return SemResult::Code::None;
             }
 
             const int err = errno;
             switch (err) {
                 case EINTR: continue; // interrupted before acquiring
-                case EAGAIN: return SemErr::WouldBlock;
-                case EINVAL: return SemErr::NotInitialized;
-                default: return SemErr::SysError;
+                case EAGAIN: return SemResult::Code::WouldBlock;
+                case EINVAL: return SemResult::Code::NotInitialized;
+                default: return SemResult::Code::SysError;
             }
         }
     }
 
-    SemErr Semaphore::wait(uint32_t milliseconds) {
-        if (m_sem == nullptr) return SemErr::NotInitialized;
+    SemResult::Code Semaphore::wait(uint32_t milliseconds) {
+        if (m_sem == nullptr) return SemResult::Code::NotInitialized;
 
         if (milliseconds == 0) {
             // infinite wait
             while (true) {
                 if (sem_wait(as_native(m_sem)) == 0) {
-                   return SemErr::None;
+                   return SemResult::Code::None;
                 }
                 
                 const int err = errno;
                 switch (err) {
                     case EINTR: continue; // interrupted before acquiring
-                    case EINVAL: return SemErr::NotInitialized;
-                    default: return SemErr::SysError;
+                    case EINVAL: return SemResult::Code::NotInitialized;
+                    default: return SemResult::Code::SysError;
                 }
             }
         } else {
@@ -128,9 +128,9 @@ namespace eroil::evt {
                 const int err = errno;
                 switch (err) {
                     case EINTR: continue; // interrupted before acquiring
-                    case ETIMEDOUT: return SemErr::Timeout;
-                    case EINVAL: return SemErr::NotInitialized;
-                    default: return SemErr::SysError;
+                    case ETIMEDOUT: return SemResult::Code::Timeout;
+                    case EINVAL: return SemResult::Code::NotInitialized;
+                    default: return SemResult::Code::SysError;
                 }
             }
 

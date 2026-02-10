@@ -37,22 +37,9 @@ namespace eroil::wrk {
                     m_send_q.push(job);
                 }
 
-                auto err = m_sem.post();
-                if (err != evt::SemErr::None) {
-                    switch (err) {
-                        case evt::SemErr::MaxCountReached: {
-                            ERR_PRINT("cannot signal anymore send jobs"); 
-                            break;
-                        }
-                        case evt::SemErr::SysError: {
-                            ERR_PRINT("semaphore post got system error");
-                            break;
-                        }
-                        default: {
-                            ERR_PRINT("semaphore post failed to unknown error, SemErr: ", std::to_string(static_cast<int>(err)));
-                            break;
-                        }
-                    }
+                evt::SemResult err = m_sem.post();
+                if (!err.ok()) {
+                    ERR_PRINT("sem.post() returned error: ", err.code_to_string());
                 }
             }
 
@@ -69,7 +56,10 @@ namespace eroil::wrk {
                 
                 bool was_stopping = m_stop.exchange(true, std::memory_order_acq_rel);
                 if (!was_stopping) {
-                    m_sem.post();
+                    evt::SemResult err = m_sem.post();
+                    if (!err.ok()) {
+                        ERR_PRINT("sem.post() returned error: ", err.code_to_string());
+                    }
                 }
 
                
@@ -90,9 +80,9 @@ namespace eroil::wrk {
 
             void run() {
                 while (!stop_requested()) {
-                    auto err = m_sem.wait();
-                    if (err != evt::SemErr::None) {
-                        ERR_PRINT("send worker got sem error waiting on work, err=", static_cast<int>(err));
+                    evt::SemResult err = m_sem.wait();
+                    if (!err.ok()) {
+                        ERR_PRINT("send worker got sem error waiting on work, err=", err.code_to_string());
                         std::this_thread::sleep_for(std::chrono::seconds(1));
                         continue;
                     }

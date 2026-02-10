@@ -93,11 +93,11 @@ namespace eroil::sock {
 
             // shared implementation
             SockResult open_and_listen(uint16_t port, const char* ip = "0.0.0.0") {
-                sock::SockResult err = open();
-                if (err.code != SockErr::None) return err;
+                sock::SockResult result = open();
+                if (!result.ok()) return result;
 
-                err = bind(port, ip);
-                if (err.code != SockErr::None) return err;
+                result = bind(port, ip);
+                if (!result.ok()) return result;
 
                 return listen(0);
             }

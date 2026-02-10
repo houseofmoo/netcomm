@@ -7,27 +7,67 @@
 #include "macros.h"
 
 namespace eroil::shm {
+
     enum class ShmRecvErr {
-        None,               // success
+        None = 0,           // success
         BlockNotInitialized,// hard error, we should only be running when the block is initialized
         NoRecords,          // wait for event
         NotYetPublished,    // try again later
-        
         TailCorruption,     // re-init
         BlockCorrupted,     // re-init
         UnknownError        // re-init
     };
 
+    enum class ShmRecvOp {
+        Recv
+    };
+
     struct ShmRecvResult {
-        ShmRecvErr err = ShmRecvErr::None;
+        ShmRecvErr code;
+        ShmRecvOp op;
+
+        bool ok() const noexcept {
+            return code == ShmRecvErr::None;
+        }
+
+        std::string_view code_to_string() const noexcept {
+            switch (code) {
+                case ShmRecvErr::None: return "None";
+                case ShmRecvErr::BlockNotInitialized: return "BlockNotInitialized";
+                case ShmRecvErr::NoRecords: return "NoRecords";
+                case ShmRecvErr::NotYetPublished: return "NotYetPublished";
+                case ShmRecvErr::TailCorruption: return "TailCorruption";
+                case ShmRecvErr::BlockCorrupted: return "BlockCorrupted";
+                case ShmRecvErr::UnknownError: return "UnknownError";
+                default: return "Unknown - error is undefined";
+            }
+        }
+
+        std::string_view op_to_string() const noexcept {
+            switch (op) {
+                case ShmRecvOp::Recv: return "Recv";
+                default: return "Unknown - op is undefined";
+            }
+        }
+    };
+
+    struct ShmRecvData {
+        ShmRecvResult result = { ShmRecvErr::None, ShmRecvOp::Recv };
         NodeId source_id = INVALID_NODE;
         Label label = INVALID_LABEL;
         uint32_t user_seq = 0;
         size_t buf_size = 0;
         std::unique_ptr<std::byte[]> buf = nullptr;
 
-        explicit ShmRecvResult() = default;
-        explicit ShmRecvResult(ShmRecvErr error) : err(error) {}
+        explicit ShmRecvData() = default;
+        explicit ShmRecvData(ShmRecvErr r) {
+            result.code = r;
+            result.op = ShmRecvOp::Recv;
+        }
+        explicit ShmRecvData(ShmRecvErr r, ShmRecvOp o) {
+            result.code = r;
+            result.op = o;
+        }
     };
 
     class ShmRecv {
@@ -49,8 +89,8 @@ namespace eroil::shm {
             void close();
             bool init_as_new();
             bool reinit();
-            evt::NamedSemErr wait();
-            ShmRecvResult recv();
+            NO_DISCARD evt::NamedSemResult wait();
+            NO_DISCARD ShmRecvData recv();
             void flush_backlog();
     };
 }

@@ -9,7 +9,7 @@ namespace eroil::wrk {
         static bool is_remote() noexcept { return false; }
 
         static bool send_one(shm::ShmSend& shm, io::SendJob& job) noexcept {
-            shm::ShmSendErr err = shm.send(
+            shm::ShmSendResult result = shm.send(
                 job.source_id, 
                 job.label, 
                 job.seq,
@@ -17,12 +17,12 @@ namespace eroil::wrk {
                 job.send_buffer.data.get()
             );
             
-            if (err != shm::ShmSendErr::None) {
+            if (!result.ok()) {
                 // TODO: is there something to handle here?
-                ERR_PRINT("shm send for label=", job.label, ", errorcode=", static_cast<int>(err));
+                ERR_PRINT("shm send for label=", job.label, ", error=", result.code_to_string());
             }
 
-            return err == shm::ShmSendErr::None;
+            return result.ok();
         }
     };
 
@@ -39,9 +39,9 @@ namespace eroil::wrk {
                 job.send_buffer.total_size
             );
             
-            if (result.code != sock::SockErr::None) {
+            if (!result.ok()) {
                 // TODO: is there something to handle here?
-                ERR_PRINT("socket send for label=", job.label, ", errorcode=", static_cast<int>(result.code));
+                ERR_PRINT("socket send for label=", job.label, ", error=", result.code_to_string());
             }
 
             return result.code == sock::SockErr::None;

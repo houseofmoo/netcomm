@@ -1,5 +1,6 @@
 #pragma once
 #include "types/const_types.h"
+#include <string_view>
 #include <eROIL/print.h>
 
 namespace eroil::sock {
@@ -52,6 +53,55 @@ namespace eroil::sock {
         SockOp op = SockOp::Open;
         int32_t sys_error = 0;     // WSAGetLastError() / errno
         int32_t bytes = 0;         // only meaningful for send/recv
+
+        bool ok() const noexcept {
+            return code == SockErr::None;
+        }
+
+        std::string_view code_to_string() const noexcept {
+            switch (code) {
+                case SockErr::None: return "None";
+                case SockErr::NotInitialized: return "NotInitialized";
+                case SockErr::InvalidHandle: return "InvalidHandle";
+                case SockErr::InvalidArgument: return "InvalidArgument";
+                case SockErr::NotOpen: return "NotOpen";
+                case SockErr::NotConnected: return "NotConnected";
+                case SockErr::AlreadyConnected: return "AlreadyConnected";
+                case SockErr::Closed: return "Closed";
+                case SockErr::Shutdown: return "Shutdown";
+                case SockErr::AddressInUse: return "AddressInUse";
+                case SockErr::AddressNotAvailable: return "AddressNotAvailable";
+                case SockErr::PermissionDenied: return "PermissionDenied";
+                case SockErr::ConnectionRefused: return "ConnectionRefused";
+                case SockErr::TimedOut: return "TimedOut";
+                case SockErr::Unreachable: return "Unreachable";
+                case SockErr::ResourceExhausted: return "ResourceExhausted";
+                case SockErr::WouldBlock: return "WouldBlock";
+                case SockErr::DoubleOpen: return "DoubleOpen";
+                case SockErr::InvalidIp: return "InvalidIp";
+                case SockErr::SizeZero: return "SizeZero";
+                case SockErr::SizeTooLarge: return "SizeTooLarge";
+                case SockErr::Unknown: return "Unknown";
+                default: return "Unknown - error is undefined";
+            }
+        }
+
+        std::string_view op_to_string() const noexcept {
+            switch (op) {
+                case SockOp::Configure: return "Configure";
+                case SockOp::Open: return "Open"; 
+                case SockOp::Bind: return "Bind";
+                case SockOp::Join: return "Join";
+                case SockOp::Listen: return "Listen"; 
+                case SockOp::Accept: return "Accept"; 
+                case SockOp::Connect: return "Connect"; 
+                case SockOp::Send: return "Send";
+                case SockOp::Recv: return "Recv"; 
+                case SockOp::Shutdown: return "Shutdown"; 
+                case SockOp::Close: return "Close";
+                default: return "Unknown - op is undefined";
+            }
+        }
     };
 
     SockErr map_err(int err) noexcept;

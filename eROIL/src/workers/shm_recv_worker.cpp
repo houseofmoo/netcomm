@@ -43,11 +43,11 @@ namespace eroil::wrk {
         try {
             uint32_t wait_err_count = 0;
             while (!stop_requested()) {
-                evt::NamedSemErr werr = m_shm->wait();
-                if (werr != evt::NamedSemErr::None) {
+                evt::NamedSemResult werr = m_shm->wait();
+                if (!werr.ok()) {
                     wait_err_count += 1;
                     if (wait_err_count > 10) {
-                        ERR_PRINT("recv worker wait() error 10 consecutive times, worker exits");
+                        ERR_PRINT("recv worker wait() error 10 consecutive times, worker exits, err=", werr.code_to_string());
                         evtlog::error(elog_kind::WaitError, elog_cat::ShmRecvWorker);
                         break;
                     }
@@ -107,18 +107,18 @@ namespace eroil::wrk {
         evtlog::info(elog_kind::Exit, elog_cat::ShmRecvWorker);
     }
 
-    std::pair<bool, shm::ShmRecvResult> ShmRecvWorker::get_next_record() {
+    std::pair<bool, shm::ShmRecvData> ShmRecvWorker::get_next_record() {
         time::Timer timer;
         while (true) {
-            shm::ShmRecvResult result = m_shm->recv();
+            shm::ShmRecvData data = m_shm->recv();
 
-            switch (result.err) {
+            switch (data.result.code) {
                 case shm::ShmRecvErr::None: {
-                    return { true, std::move(result) };
+                    return { true, std::move(data) };
                 }
                 
                 case shm::ShmRecvErr::NoRecords: { 
-                    return { false, std::move(result) };
+                    return { false, std::move(data) };
                 }
 
                 // next record isnt published, continue trying until we get it or timer expires
@@ -128,7 +128,7 @@ namespace eroil::wrk {
                         ERR_PRINT("shm recv worker flushing backlog due to publisher timeout");
                         m_shm->flush_backlog();
                         evtlog::warn(elog_kind::PublishTimeout, elog_cat::ShmRecvWorker);
-                        return { false, std::move(result) };
+                        return { false, std::move(data) };
                     }
                     std::this_thread::yield();
                     continue;
@@ -138,28 +138,28 @@ namespace eroil::wrk {
                     ERR_PRINT("shm recv worker block not initialized, worker exits");
                     m_stop.store(true, std::memory_order_release);
                     evtlog::error(elog_kind::BlockNotInitialized, elog_cat::ShmRecvWorker);
-                    return { false, std::move(result) };
+                    return { false, std::move(data) };
                 }
 
                 case shm::ShmRecvErr::TailCorruption: // fall through
                 case shm::ShmRecvErr::BlockCorrupted: {
-                    ERR_PRINT("shm recv worker re-initializing shared memory block due to corruption, err=", static_cast<int>(result.err));
+                    ERR_PRINT("shm recv worker re-initializing shared memory block due to corruption, err=", data.result.code_to_string());
                     m_shm->reinit();
                     evtlog::error(elog_kind::BlockCorruption, elog_cat::ShmRecvWorker);
-                    return { false, std::move(result) };
+                    return { false, std::move(data) };
                 }
             
                 case shm::ShmRecvErr::UnknownError: { 
                     ERR_PRINT("shm recv worker re-initializing shared memory block due to unknown error");
                     m_shm->reinit();
                     evtlog::error(elog_kind::UnknownError, elog_cat::ShmRecvWorker);
-                    return { false, std::move(result) };
+                    return { false, std::move(data) };
                 }
 
                 default: {
                     ERR_PRINT("recv worker got unhandled error case");
                     evtlog::error(elog_kind::UnhandledError, elog_cat::ShmRecvWorker);
-                    return { false, std::move(result) };
+                    return { false, std::move(data) };
                 }
             }
         }

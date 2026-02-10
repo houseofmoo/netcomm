@@ -19,6 +19,12 @@ namespace eroil {
         1) i want error prints to not be some arbitrary number that you have to look up what it means
         but adding somet kind of "to string" function is a royal pain in the ass
         wouldnt be an issue if there was a std function that converted enums to strings but there isnt!
+
+        maybe something like a "converters" directory? that takes errors and converts them to strings 
+        and we just dump all that garbage in one place?
+        or we move all errors into their own file and each as a function that is just a "to_string" for that error enum type
+        that is the simplest but cause cause errors to diverge if people dont maintain both lists
+        
         
     */
     class Manager {

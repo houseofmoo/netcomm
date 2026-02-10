@@ -18,42 +18,42 @@ namespace eroil::shm {
         return m_total_size; 
     }
 
-    ShmErr Shm::create_or_open(const uint32_t attempts, const uint32_t wait_ms) {
-        if (is_valid()) return ShmErr::DoubleOpen;
+    ShmResult Shm::create_or_open(const uint32_t attempts, const uint32_t wait_ms) {
+        if (is_valid()) return { ShmErr::DoubleOpen, ShmOp::Open };
 
-        ShmErr err = ShmErr::None;
+        ShmResult result;
         for (uint32_t i = 0; i < attempts; ++i) {
-            err = create();
-            if (err == ShmErr::None) return err;
+            result = create();
+            if (result.ok()) return result;
 
-            if (err != ShmErr::AlreadyExists) {
-                ERR_PRINT(" unexpected error from create() ", static_cast<int>(err));
-                return err;
+            if (result.code != ShmErr::AlreadyExists) {
+                ERR_PRINT(" unexpected error from shm create, err= ", result.code_to_string());
+                return result;
             }
 
-            err = open();
-            if (err == ShmErr::None) return err;
+            result = open();
+            if (result.ok()) return result;
 
             std::this_thread::sleep_for(std::chrono::milliseconds(wait_ms));
         }
-        return err;
+        return result;
     }
 
-    ShmErr Shm::read(void* buf, const size_t size, const size_t offset) const noexcept {
-        if (!is_valid()) return ShmErr::NotOpen;
-        if (size > m_total_size) return ShmErr::TooLarge;
-        if (offset + size > m_total_size) return ShmErr::InvalidOffset;
+    ShmResult Shm::read(void* buf, const size_t size, const size_t offset) const noexcept {
+        if (!is_valid()) return { ShmErr::NotOpen, ShmOp::Read };
+        if (size > m_total_size) return { ShmErr::TooLarge, ShmOp::Read };
+        if (offset + size > m_total_size) return { ShmErr::InvalidOffset, ShmOp::Read };
 
         std::memcpy(buf, static_cast<std::byte*>(m_view) + offset, size);
-        return ShmErr::None;
+        return { ShmErr::None, ShmOp::Read };
     }
 
-    ShmErr Shm::write(const void* buf, const size_t size, const size_t offset) noexcept {
-        if (!is_valid()) return ShmErr::NotOpen;
-        if (size > m_total_size) return ShmErr::TooLarge;
-        if (offset + size > m_total_size) return ShmErr::InvalidOffset;
+    ShmResult Shm::write(const void* buf, const size_t size, const size_t offset) noexcept {
+        if (!is_valid()) return { ShmErr::NotOpen, ShmOp::Write };
+        if (size > m_total_size) return{ ShmErr::TooLarge, ShmOp::Write };
+        if (offset + size > m_total_size) return { ShmErr::InvalidOffset, ShmOp::Write };
 
         std::memcpy(static_cast<std::byte*>(m_view) + offset, buf, size);
-        return ShmErr::None;
+        return { ShmErr::None, ShmOp::Write };
     }
 }

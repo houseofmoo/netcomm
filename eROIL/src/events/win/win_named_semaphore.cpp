@@ -13,16 +13,16 @@ namespace eroil::evt {
         return static_cast<sem_handle>(h);
     }
 
-    static NamedSemErr do_wait(sem_handle handle, DWORD timeout_ms) {
-        if (handle == nullptr) return NamedSemErr::NotInitialized;
-        DWORD rc = ::WaitForSingleObject(as_native(handle), timeout_ms);
-        switch (rc) {
-            case WAIT_OBJECT_0: return NamedSemErr::None;
-            case WAIT_TIMEOUT: return (timeout_ms == 0) ? NamedSemErr::WouldBlock : NamedSemErr::Timeout;
-            case WAIT_FAILED: return NamedSemErr::SysError;
-            default: return NamedSemErr::SysError;
-        }
-    }
+    // static NamedSemResult do_wait(sem_handle handle, DWORD timeout_ms) {
+    //     if (handle == nullptr) return NamedSemResult::Code::NotInitialized;
+    //     DWORD rc = ::WaitForSingleObject(as_native(handle), timeout_ms);
+    //     switch (rc) {
+    //         case WAIT_OBJECT_0: return NamedSemResult::Code::None;
+    //         case WAIT_TIMEOUT: return (timeout_ms == 0) ? NamedSemResult::Code::WouldBlock : NamedSemResult::Code::Timeout;
+    //         case WAIT_FAILED: return NamedSemResult::Code::SysError;
+    //         default: return NamedSemResult::Code::SysError;
+    //     }
+    // }
 
     static std::wstring to_windows_wstring(const std::string& s) {
         if (s.empty()) return {};
@@ -51,7 +51,8 @@ namespace eroil::evt {
     }
 
     NamedSemaphore::NamedSemaphore(NodeId id) : m_dst_id(id), m_sem(nullptr) {
-        if (open() != NamedSemErr::None) {
+        NamedSemResult result = open();
+        if (!result.ok()) {
             ERR_PRINT("failed to open named event m_dst_id=", id);
         }
     }
@@ -84,13 +85,13 @@ namespace eroil::evt {
         return "Local\\eroil.evt." + std::to_string(m_dst_id);
     }
 
-    NamedSemErr NamedSemaphore::open() {
-        if (m_sem != nullptr) return NamedSemErr::DoubleOpen;
+    NamedSemResult NamedSemaphore::open() {
+        if (m_sem != nullptr) return { NamedSemErr::DoubleOpen, NamedSemOp::Open };
 
         std::wstring wname = to_windows_wstring(name());
         if (wname.empty()) {
             m_sem = nullptr;
-            return NamedSemErr::InvalidName;
+            return { NamedSemErr::InvalidName, NamedSemOp::Open };
         }
 
         //const BOOL manual_reset = FALSE; // auto-reset
@@ -113,37 +114,50 @@ namespace eroil::evt {
 
         if (handle == nullptr) {
             m_sem = nullptr;
-            return NamedSemErr::OpenFailed;
+            return { NamedSemErr::OpenFailed, NamedSemOp::Open };
         }
 
         m_sem = from_native(handle);
-        return NamedSemErr::None;
+        return { NamedSemErr::None, NamedSemOp::Open };
     }
 
-    NamedSemErr NamedSemaphore::post() const {
-        if (m_sem == nullptr) return NamedSemErr::NotInitialized;
+    NamedSemResult NamedSemaphore::post() const {
+        if (m_sem == nullptr) return { NamedSemErr::NotInitialized, NamedSemOp::Post };
         if (!::ReleaseSemaphore(as_native(m_sem), 1, nullptr)) {
             DWORD e = ::GetLastError();
-            if (e == ERROR_TOO_MANY_POSTS) return NamedSemErr::MaxCount;
-            return NamedSemErr::SignalFailed;
+            if (e == ERROR_TOO_MANY_POSTS) return { NamedSemErr::MaxCount, NamedSemOp::Post };
+            return { NamedSemErr::SignalFailed, NamedSemOp::Post };
         }
 
-        // if (!::SetEvent(as_native(m_sem))) {
-        //     return NamedSemErr::SignalFailed;
-        // }
-        return NamedSemErr::None;
+        return { NamedSemErr::None, NamedSemOp::Post };
     }
 
-    NamedSemErr NamedSemaphore::try_wait() const {
-        return do_wait(m_sem, 0);
+    NamedSemResult NamedSemaphore::try_wait() const {
+        if (m_sem == nullptr) return { NamedSemErr::NotInitialized, NamedSemOp::TryWait };
+        DWORD rc = ::WaitForSingleObject(as_native(m_sem), 0);
+        switch (rc) {
+            case WAIT_OBJECT_0: return { NamedSemErr::None, NamedSemOp::TryWait };
+            case WAIT_TIMEOUT: return { NamedSemErr::WouldBlock, NamedSemOp::TryWait };
+            case WAIT_FAILED: return { NamedSemErr::SysError, NamedSemOp::TryWait };
+            default: return { NamedSemErr::SysError, NamedSemOp::TryWait };;
+        }
     }
 
-    NamedSemErr NamedSemaphore::wait(uint32_t milliseconds) const {
+    NamedSemResult NamedSemaphore::wait(uint32_t milliseconds) const {
+        if (m_sem == nullptr) return { NamedSemErr::NotInitialized, NamedSemOp::Wait };
+        
         DWORD timeout = static_cast<DWORD>(milliseconds);
         if (milliseconds == 0) {
             timeout = INFINITE;
         }
-        return do_wait(m_sem, timeout);
+
+        DWORD rc = ::WaitForSingleObject(as_native(m_sem), timeout);
+        switch (rc) {
+            case WAIT_OBJECT_0: return { NamedSemErr::None, NamedSemOp::Wait };
+            case WAIT_TIMEOUT: return { NamedSemErr::Timeout, NamedSemOp::Wait };
+            case WAIT_FAILED: return { NamedSemErr::SysError, NamedSemOp::Wait };
+            default: return { NamedSemErr::SysError, NamedSemOp::Wait };;
+        }
     }
 
     void NamedSemaphore::close() {
