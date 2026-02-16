@@ -44,7 +44,7 @@ namespace eroil::wrk {
                 ERR_PRINT("socket send for label=", job.label, ", error=", result.code_to_string());
             }
 
-            return result.code == sock::SockErr::None;
+            return result.ok();
         }
     };
 }

@@ -195,11 +195,11 @@ namespace eroil::rt {
 
     bool Router::upsert_socket(NodeId id, std::shared_ptr<sock::TCPClient> sock) {
         std::unique_lock lock(m_router_mtx);
-        return m_transports.upsert_socket(id, sock);
+        return m_transports.upsert_socket(id, std::move(sock));
     }
 
     std::shared_ptr<sock::TCPClient> Router::get_socket(NodeId id) const noexcept {
-        std::unique_lock lock(m_router_mtx);
+        std::shared_lock lock(m_router_mtx);
         return m_transports.get_socket(id);
     }
 

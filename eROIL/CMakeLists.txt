@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.15)
-project(eROIL LANGUAGES C CXX)
+project(eroil_network LANGUAGES C CXX)
 
 # what compiler we using
 message(STATUS "")
@@ -19,18 +19,18 @@ message(STATUS "==============================")
 message(STATUS "")
 
 # build as static lib
-add_library(eROIL STATIC)
+add_library(${PROJECT_NAME} STATIC)
 
 # require language standards per-target
-target_compile_features(eROIL PUBLIC cxx_std_17)
-set_target_properties(eROIL PROPERTIES
+target_compile_features(${PROJECT_NAME} PUBLIC cxx_std_17)
+set_target_properties(${PROJECT_NAME} PROPERTIES
     C_STANDARD 11
     C_STANDARD_REQUIRED YES
     C_EXTENSIONS NO
     CXX_EXTENSIONS NO
 )
 
-# set_target_properties(eROIL PROPERTIES
+# set_target_properties(${PROJECT_NAME} PROPERTIES
 #     C_STANDARD 11
 #     C_STANDARD_REQUIRED YES
 #     C_EXTENSIONS NO
@@ -43,7 +43,7 @@ set_target_properties(eROIL PROPERTIES
 option(EROIL_ELOG_ENABLED "Enable eROIL event logging" OFF)
 
 # macro defs
-target_compile_definitions(eROIL
+target_compile_definitions(${PROJECT_NAME}
     PUBLIC
         "EROIL_ELOG_ENABLED=$<IF:$<BOOL:${EROIL_ELOG_ENABLED}>,1,0>"
         # EROIL_ELOG_ENABLED=$<BOOL:${EROIL_ELOG_ENABLED}>
@@ -53,10 +53,10 @@ target_compile_definitions(eROIL
 )
 
 # source files
-target_sources(eROIL 
+target_sources(${PROJECT_NAME} 
     PRIVATE
         #platform independent sources
-        ${CMAKE_CURRENT_SOURCE_DIR}/src/api/root.cpp
+        ${CMAKE_CURRENT_SOURCE_DIR}/src/root.cpp
         ${CMAKE_CURRENT_SOURCE_DIR}/src/api/eroil_c.cpp
         ${CMAKE_CURRENT_SOURCE_DIR}/src/api/eroil_cpp.cpp
         ${CMAKE_CURRENT_SOURCE_DIR}/src/address/address.cpp
@@ -110,7 +110,7 @@ target_sources(eROIL
 )
 
 # local headers
-target_include_directories(eROIL 
+target_include_directories(${PROJECT_NAME} 
     PRIVATE
         ${CMAKE_CURRENT_SOURCE_DIR}/src
     PUBLIC
@@ -118,14 +118,14 @@ target_include_directories(eROIL
 )
 
 # the bare minimum for warnings
-# target_compile_options(eROIL PRIVATE
+# target_compile_options(${PROJECT_NAME} PRIVATE
 #     $<$<CXX_COMPILER_ID:MSVC>:/W4 /WX>
 #     $<$<NOT:$<CXX_COMPILER_ID:MSVC>>:-Wall -Wextra -Wpedantic -Werror>
 #     $<$<NOT:$<CXX_COMPILER_ID:MSVC>>:-Wunused-parameter -Wunused-variable>
 # )
 
 # extensive but reasonable warnings
-target_compile_options(eROIL PRIVATE
+target_compile_options(${PROJECT_NAME} PRIVATE
   $<$<COMPILE_LANGUAGE:CXX>:
     $<$<CXX_COMPILER_ID:MSVC>:
       /W4 /WX /permissive-
@@ -176,7 +176,7 @@ target_compile_options(eROIL PRIVATE
 )
 
 # external system libs
-target_link_libraries(eROIL 
+target_link_libraries(${PROJECT_NAME} 
     PRIVATE
         $<$<PLATFORM_ID:Windows>:ws2_32>
         $<$<PLATFORM_ID:Linux>:pthread>
