@@ -27,17 +27,10 @@ set_target_properties(${PROJECT_NAME} PROPERTIES
     C_STANDARD 11
     C_STANDARD_REQUIRED YES
     C_EXTENSIONS NO
+    CXX_STANDARD 17
+    CXX_STANDARD_REQUIRED YES
     CXX_EXTENSIONS NO
 )
-
-# set_target_properties(${PROJECT_NAME} PROPERTIES
-#     C_STANDARD 11
-#     C_STANDARD_REQUIRED YES
-#     C_EXTENSIONS NO
-#     CXX_STANDARD 17
-#     CXX_STANDARD_REQUIRED YES
-#     CXX_EXTENSIONS NO
-# )
 
 # options
 option(EROIL_ELOG_ENABLED "Enable eROIL event logging" OFF)
@@ -46,7 +39,6 @@ option(EROIL_ELOG_ENABLED "Enable eROIL event logging" OFF)
 target_compile_definitions(${PROJECT_NAME}
     PUBLIC
         "EROIL_ELOG_ENABLED=$<IF:$<BOOL:${EROIL_ELOG_ENABLED}>,1,0>"
-        # EROIL_ELOG_ENABLED=$<BOOL:${EROIL_ELOG_ENABLED}>
     PRIVATE
         $<$<PLATFORM_ID:Windows>:EROIL_WIN32>
         $<$<PLATFORM_ID:Linux>:EROIL_LINUX>
@@ -116,13 +108,6 @@ target_include_directories(${PROJECT_NAME}
     PUBLIC
         ${CMAKE_CURRENT_SOURCE_DIR}/include
 )
-
-# the bare minimum for warnings
-# target_compile_options(${PROJECT_NAME} PRIVATE
-#     $<$<CXX_COMPILER_ID:MSVC>:/W4 /WX>
-#     $<$<NOT:$<CXX_COMPILER_ID:MSVC>>:-Wall -Wextra -Wpedantic -Werror>
-#     $<$<NOT:$<CXX_COMPILER_ID:MSVC>>:-Wunused-parameter -Wunused-variable>
-# )
 
 # extensive but reasonable warnings
 target_compile_options(${PROJECT_NAME} PRIVATE
