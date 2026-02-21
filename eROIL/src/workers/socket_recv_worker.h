@@ -30,7 +30,7 @@ namespace eroil::wrk {
         private:
             bool stop_requested() const { return m_stop.load(std::memory_order_acquire); }
             void run();
-            bool recv_exact(void* dst, size_t n);
+            bool recv_exact(std::byte* dst, const size_t n);
             void disconnect_and_stop();
     };
 }

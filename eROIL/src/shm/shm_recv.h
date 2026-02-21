@@ -15,6 +15,7 @@ namespace eroil::shm {
         NotYetPublished,    // try again later
         TailCorruption,     // re-init
         BlockCorrupted,     // re-init
+        LabelTooLarge,      // label recvd larger than 
         UnknownError        // re-init
     };
 
@@ -57,7 +58,7 @@ namespace eroil::shm {
         Label label = INVALID_LABEL;
         uint32_t user_seq = 0;
         size_t buf_size = 0;
-        std::unique_ptr<std::byte[]> buf = nullptr;
+        std::byte* recv_buf = nullptr;
 
         explicit ShmRecvData() = default;
         explicit ShmRecvData(ShmRecvErr r) {
@@ -90,7 +91,7 @@ namespace eroil::shm {
             bool init_as_new();
             bool reinit();
             NO_DISCARD evt::NamedSemResult wait();
-            NO_DISCARD ShmRecvData recv();
+            NO_DISCARD ShmRecvData recv(std::byte* recv_buf, size_t max_size);
             void flush_backlog();
     };
 }

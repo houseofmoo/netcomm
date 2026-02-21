@@ -38,6 +38,7 @@ namespace eroil::evtlog {
         PublishTimeout,
         BlockNotInitialized,
         BlockCorruption,
+        LabelTooLarge,
 
         // subsribers / publishers
         AddLocalSendSubscriber,

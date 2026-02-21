@@ -36,21 +36,29 @@ namespace eroil::wrk {
 
     void SocketRecvWorker::run() {
         try {
+            // set up a temp buffer for label data that can hold max label size
+            // we dont resize the buff to max label size because with sockets we get to see
+            // the header before the payload and can resize as required then
             std::vector<std::byte> payload;
-            while (!stop_requested()) {
-                io::LabelHeader hdr{};
+            payload.reserve(MAX_LABEL_SIZE);
+            io::LabelHeader hdr{};
 
+            while (!stop_requested()) {
                 if (!m_sock->is_connected()) {
-                    ERR_PRINT("socket recv worker socket disconnected");
+                    ERR_PRINT("socket recv worker socket disconnected, worker exits");
                     break;
                 }
                 
-                if (!recv_exact(&hdr, sizeof(hdr))) {
-                    ERR_PRINT("socket recv failed to get expected header size");
+                if (!recv_exact(reinterpret_cast<std::byte*>(&hdr), sizeof(hdr))) {
+                    ERR_PRINT("socket recv failed to get expected header size, worker exits");
                     break;
                 }
                 
-                if (stop_requested()) break;
+                if (stop_requested()) {
+                    LOG("socket recv worker got stop request, worker exits");
+                    break;
+                }
+
                 EvtMark mark(elog_cat::SocketRecvWorker);
 
                 if (hdr.magic != MAGIC_NUM || hdr.version != VERSION) {
@@ -61,8 +69,8 @@ namespace eroil::wrk {
                     break;
                 }
                 
-                if (hdr.data_size > MAX_LABEL_SEND_SIZE) {
-                    ERR_PRINT("socket recv got header that indicates data size is > ", MAX_LABEL_SEND_SIZE);
+                if (hdr.data_size > MAX_LABEL_SIZE) {
+                    ERR_PRINT("socket recv got header that indicates data size is > ", MAX_LABEL_SIZE);
                     ERR_PRINT("    label=", hdr.label, ", sourceid=", hdr.source_id);
                     evtlog::error(elog_kind::InvalidDataSize, elog_cat::SocketRecvWorker, hdr.label, hdr.data_size);
                     disconnect_and_stop();
@@ -119,7 +127,7 @@ namespace eroil::wrk {
         PRINT("socket recv worker for nodeid=", m_peer_id, " exits");
     }
 
-    bool SocketRecvWorker::recv_exact(void* dst, size_t size) {
+    bool SocketRecvWorker::recv_exact(std::byte* dst, const size_t size) {
         if (stop_requested()) return false;
         sock::SockResult result = m_sock->recv_all(dst, size);
         switch (result.code) {

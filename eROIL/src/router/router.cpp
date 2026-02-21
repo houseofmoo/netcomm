@@ -238,7 +238,7 @@ namespace eroil::rt {
 
         {
             std::shared_lock lock(m_router_mtx);
-            DB_ASSERT(job->send_buffer.total_size <= MAX_LABEL_SEND_SIZE, "label too large to send");
+            DB_ASSERT(job->send_buffer.total_size <= MAX_LABEL_SIZE, "label too large to send");
 
             const SendRoute* route = m_routes.get_send_route(label);
             if (route == nullptr) {

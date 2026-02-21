@@ -95,8 +95,8 @@ inline int run_network_sim(int id, int seed, int num_nodes, bool show_send, bool
         return 1;
     }
 
-    LOG(" TEST.exe: spawning recv threads: ", recv_labels.size());
-    LOG(" TEST.exe: spawning send threads: ", send_labels.size() - 1);
+    LOG("TEST.exe: spawning recv threads: ", recv_labels.size());
+    LOG("TEST.exe: spawning send threads: ", send_labels.size() - 1);
 
     // open recvs
     for (auto& r : recv_labels) {

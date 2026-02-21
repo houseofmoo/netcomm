@@ -122,7 +122,7 @@ namespace eroil::shm {
         return m_event.wait();
     }
 
-    ShmRecvData ShmRecv::recv() {
+    ShmRecvData ShmRecv::recv(std::byte* recv_buf, size_t max_size) {
         auto* hdr  = m_shm.map_to_type<ShmHeader>(ShmLayout::HDR_OFFSET);
         if (hdr == nullptr) {
             ERR_PRINT("shm recv header pointer offset invalid");
@@ -217,15 +217,22 @@ namespace eroil::shm {
         if (total_size < sizeof(RecordHeader) ||
            ((total_size & 7u) != 0) ||
            (total_size > ShmLayout::DATA_BLOCK_SIZE) ||
-           (rec_hdr->payload_size == 0)) return ShmRecvData{ShmRecvErr::BlockCorrupted};
+           (rec_hdr->payload_size == 0))  { return ShmRecvData{ShmRecvErr::BlockCorrupted}; }
 
+        // if label is too large to fit in the provided buffer, return error
+        if (rec_hdr->payload_size > max_size) {
+            ERR_PRINT("recv buffer too small for next record, required size=", rec_hdr->payload_size);
+            return ShmRecvData{ShmRecvErr::LabelTooLarge};
+        }
+
+        // copy data to provided buffer
         ShmRecvData out;
         out.source_id = rec_hdr->source_id;
         out.label = rec_hdr->label;
         out.user_seq = rec_hdr->user_seq;
         out.buf_size = rec_hdr->payload_size;
-        out.buf = std::make_unique<std::byte[]>(rec_hdr->payload_size);
-        shm::ShmResult read_result = m_shm.read(out.buf.get(), out.buf_size, get_data_offset(tail));
+        out.recv_buf = recv_buf;
+        shm::ShmResult read_result = m_shm.read(out.recv_buf, out.buf_size, get_data_offset(tail));
         if (!read_result.ok()) {
             ERR_PRINT("shm read error=", read_result.code_to_string());
         }

@@ -41,7 +41,14 @@ namespace eroil::wrk {
 
     void ShmRecvWorker::run() {
         try {
+            // set up a temp buffer that can hold label header + max label size
+            // set recv buffer size to max possible size since we recv the label header
+            // and label data in one recv call and we want to always ensure we have enough
+            // space for the entire record in the buffer to avoid partial recv issues
+            std::vector<std::byte> recv_buf;
+            recv_buf.resize(MAX_LABEL_SIZE + sizeof(io::LabelHeader));
             uint32_t wait_err_count = 0;
+
             while (!stop_requested()) {
                 evt::NamedSemResult werr = m_shm->wait();
                 if (!werr.ok()) {
@@ -56,7 +63,7 @@ namespace eroil::wrk {
                 wait_err_count = 0;
 
                 if (stop_requested()) {
-                    LOG("shm recv worker got stop request, exiting");
+                    LOG("shm recv worker got stop request, worker exits");
                     break;
                 }
 
@@ -64,34 +71,34 @@ namespace eroil::wrk {
 
                 // consume data until no records
                 while (true) {
-                    auto [has_data, record] = get_next_record();
+                    auto [has_data, record] = get_next_record(recv_buf.data(), recv_buf.size());
                     if (!has_data) break;
 
-                    // validation on recv'd data header
                     if (record.buf_size < sizeof(io::LabelHeader)) {
                         ERR_PRINT("shm recv got a record that was too small to contain a label header");
                         evtlog::error(elog_kind::MalformedRecv, elog_cat::ShmRecvWorker);
                         continue;
                     }
 
-                    auto* hdr = reinterpret_cast<io::LabelHeader*>(record.buf.get());
+                    auto* hdr = reinterpret_cast<io::LabelHeader*>(record.recv_buf);
                     if (hdr->magic != MAGIC_NUM || hdr->version != VERSION) {
                         ERR_PRINT("shm recv got a header that did not have the correct magic and/or version");
                         evtlog::error(elog_kind::InvalidHeader, elog_cat::ShmRecvWorker);
                         continue;
                     }
 
-                    if (hdr->data_size > MAX_LABEL_SEND_SIZE) {
-                        ERR_PRINT("shm recv got header that indicates data size is > ", MAX_LABEL_SEND_SIZE);
+                    if (hdr->data_size > MAX_LABEL_SIZE) {
+                        ERR_PRINT("shm recv got header that indicates data size is > ", MAX_LABEL_SIZE);
                         ERR_PRINT("    label=", hdr->label, ", sourceid=", hdr->source_id);
                         evtlog::error(elog_kind::InvalidDataSize, elog_cat::ShmRecvWorker, hdr->label, hdr->data_size);
                         break;
                     }
 
+                    auto* data_ptr = record.recv_buf + sizeof(io::LabelHeader);
                     m_router.distribute_recvd_label(
                         static_cast<NodeId>(hdr->source_id),
                         static_cast<Label>(hdr->label),
-                        record.buf.get() + sizeof(io::LabelHeader),
+                        data_ptr,
                         static_cast<size_t>(hdr->data_size),
                         static_cast<size_t>(hdr->recv_offset)
                     );
@@ -107,10 +114,10 @@ namespace eroil::wrk {
         evtlog::info(elog_kind::Exit, elog_cat::ShmRecvWorker);
     }
 
-    std::pair<bool, shm::ShmRecvData> ShmRecvWorker::get_next_record() {
+    std::pair<bool, shm::ShmRecvData> ShmRecvWorker::get_next_record(std::byte* recv_buf, const size_t recv_buf_size) {
         time::Timer timer;
         while (true) {
-            shm::ShmRecvData data = m_shm->recv();
+            shm::ShmRecvData data = m_shm->recv(recv_buf, recv_buf_size);
 
             switch (data.result.code) {
                 case shm::ShmRecvErr::None: {
@@ -146,6 +153,12 @@ namespace eroil::wrk {
                     ERR_PRINT("shm recv worker re-initializing shared memory block due to corruption, err=", data.result.code_to_string());
                     m_shm->reinit();
                     evtlog::error(elog_kind::BlockCorruption, elog_cat::ShmRecvWorker);
+                    return { false, std::move(data) };
+                }
+
+                case shm::ShmRecvErr::LabelTooLarge: {
+                    ERR_PRINT("shm recv worker got a record with label size larger than recv buffer, record skipped");
+                    evtlog::error(elog_kind::LabelTooLarge, elog_cat::ShmRecvWorker);
                     return { false, std::move(data) };
                 }
             

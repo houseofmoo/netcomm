@@ -88,8 +88,8 @@ namespace eroil {
             return nullptr;
         }
 
-        if (data.buf_size > MAX_LABEL_SEND_SIZE) {
-            ERR_PRINT("got label size=", data.buf_size, " which is bigger than max=", MAX_LABEL_SEND_SIZE);
+        if (data.buf_size > MAX_LABEL_SIZE) {
+            ERR_PRINT("got label size=", data.buf_size, " which is bigger than max=", MAX_LABEL_SIZE);
             ERR_PRINT("open send request for label=", data.label, " ignored");
             return nullptr;
         }
@@ -187,8 +187,8 @@ namespace eroil {
             return nullptr;
         }
 
-        if (data.buf_size > MAX_LABEL_SEND_SIZE) {
-            ERR_PRINT("got label size=", data.buf_size, " which is bigger than max=", MAX_LABEL_SEND_SIZE);
+        if (data.buf_size > MAX_LABEL_SIZE) {
+            ERR_PRINT("got label size=", data.buf_size, " which is bigger than max=", MAX_LABEL_SIZE);
             ERR_PRINT("open recv request for label=", data.label, " ignored");
             return nullptr;
         }
