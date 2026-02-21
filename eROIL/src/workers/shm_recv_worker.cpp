@@ -87,10 +87,10 @@ namespace eroil::wrk {
                         continue;
                     }
 
-                    if (hdr->data_size > MAX_LABEL_SIZE) {
-                        ERR_PRINT("shm recv got header that indicates data size is > ", MAX_LABEL_SIZE);
+                    if (hdr->label_size > MAX_LABEL_SIZE) {
+                        ERR_PRINT("shm recv got header that indicates label size is > ", MAX_LABEL_SIZE);
                         ERR_PRINT("    label=", hdr->label, ", sourceid=", hdr->source_id);
-                        evtlog::error(elog_kind::InvalidDataSize, elog_cat::ShmRecvWorker, hdr->label, hdr->data_size);
+                        evtlog::error(elog_kind::InvalidLabelSize, elog_cat::ShmRecvWorker, hdr->label, hdr->label_size);
                         break;
                     }
 
@@ -99,7 +99,7 @@ namespace eroil::wrk {
                         static_cast<NodeId>(hdr->source_id),
                         static_cast<Label>(hdr->label),
                         data_ptr,
-                        static_cast<size_t>(hdr->data_size),
+                        static_cast<size_t>(hdr->label_size),
                         static_cast<size_t>(hdr->recv_offset)
                     );
                     evtlog::info(elog_kind::DataDistributed, elog_cat::ShmRecvWorker);
@@ -121,11 +121,11 @@ namespace eroil::wrk {
 
             switch (data.result.code) {
                 case shm::ShmRecvErr::None: {
-                    return { true, std::move(data) };
+                    return { true, data };
                 }
                 
                 case shm::ShmRecvErr::NoRecords: { 
-                    return { false, std::move(data) };
+                    return { false, data };
                 }
 
                 // next record isnt published, continue trying until we get it or timer expires
@@ -135,7 +135,7 @@ namespace eroil::wrk {
                         ERR_PRINT("shm recv worker flushing backlog due to publisher timeout");
                         m_shm->flush_backlog();
                         evtlog::warn(elog_kind::PublishTimeout, elog_cat::ShmRecvWorker);
-                        return { false, std::move(data) };
+                        return { false, data };
                     }
                     std::this_thread::yield();
                     continue;
@@ -145,7 +145,7 @@ namespace eroil::wrk {
                     ERR_PRINT("shm recv worker block not initialized, worker exits");
                     m_stop.store(true, std::memory_order_release);
                     evtlog::error(elog_kind::BlockNotInitialized, elog_cat::ShmRecvWorker);
-                    return { false, std::move(data) };
+                    return { false, data };
                 }
 
                 case shm::ShmRecvErr::TailCorruption: // fall through
@@ -153,26 +153,26 @@ namespace eroil::wrk {
                     ERR_PRINT("shm recv worker re-initializing shared memory block due to corruption, err=", data.result.code_to_string());
                     m_shm->reinit();
                     evtlog::error(elog_kind::BlockCorruption, elog_cat::ShmRecvWorker);
-                    return { false, std::move(data) };
+                    return { false, data };
                 }
 
                 case shm::ShmRecvErr::LabelTooLarge: {
                     ERR_PRINT("shm recv worker got a record with label size larger than recv buffer, record skipped");
                     evtlog::error(elog_kind::LabelTooLarge, elog_cat::ShmRecvWorker);
-                    return { false, std::move(data) };
+                    return { false, data };
                 }
             
                 case shm::ShmRecvErr::UnknownError: { 
                     ERR_PRINT("shm recv worker re-initializing shared memory block due to unknown error");
                     m_shm->reinit();
                     evtlog::error(elog_kind::UnknownError, elog_cat::ShmRecvWorker);
-                    return { false, std::move(data) };
+                    return { false, data };
                 }
 
                 default: {
                     ERR_PRINT("recv worker got unhandled error case");
                     evtlog::error(elog_kind::UnhandledError, elog_cat::ShmRecvWorker);
-                    return { false, std::move(data) };
+                    return { false, data };
                 }
             }
         }

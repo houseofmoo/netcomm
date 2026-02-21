@@ -69,18 +69,18 @@ namespace eroil::wrk {
                     break;
                 }
                 
-                if (hdr.data_size > MAX_LABEL_SIZE) {
-                    ERR_PRINT("socket recv got header that indicates data size is > ", MAX_LABEL_SIZE);
+                if (hdr.label_size > MAX_LABEL_SIZE) {
+                    ERR_PRINT("socket recv got header that indicates label size is > ", MAX_LABEL_SIZE);
                     ERR_PRINT("    label=", hdr.label, ", sourceid=", hdr.source_id);
-                    evtlog::error(elog_kind::InvalidDataSize, elog_cat::SocketRecvWorker, hdr.label, hdr.data_size);
+                    evtlog::error(elog_kind::InvalidLabelSize, elog_cat::SocketRecvWorker, hdr.label, hdr.label_size);
                     disconnect_and_stop();
                     break;
                 }
                 
-                if (hdr.data_size <= 0 && io::has_flag(hdr.flags, io::LabelFlag::Data)) {
-                    ERR_PRINT("socket recv got header that indicates data size is 0");
+                if (hdr.label_size <= 0 && io::has_flag(hdr.flags, io::LabelFlag::Data)) {
+                    ERR_PRINT("socket recv got header that indicates label size is 0");
                     ERR_PRINT("    label=", hdr.label, ", sourceid=", hdr.source_id);
-                    evtlog::error(elog_kind::InvalidDataSize, elog_cat::SocketRecvWorker, hdr.label, hdr.data_size);
+                    evtlog::error(elog_kind::InvalidLabelSize, elog_cat::SocketRecvWorker, hdr.label, hdr.label_size);
                     disconnect_and_stop();
                     break;
                 }
@@ -100,9 +100,9 @@ namespace eroil::wrk {
                     break;
                 }
 
-                payload.resize(hdr.data_size);
+                payload.resize(hdr.label_size);
                 if (!recv_exact(payload.data(), payload.size())) {
-                    ERR_PRINT("socket recv failed to get expected data size, size=", hdr.data_size);
+                    ERR_PRINT("socket recv failed to get expected data size, size=", hdr.label_size);
                     ERR_PRINT("    label=", hdr.label, ", sourceid=", hdr.source_id);
                     evtlog::error(elog_kind::RecvError, elog_cat::SocketRecvWorker);
                     break;

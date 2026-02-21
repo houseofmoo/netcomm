@@ -144,7 +144,7 @@ namespace eroil {
         hdr.source_id = m_id;
         hdr.flags = static_cast<uint16_t>(io::LabelFlag::Data);
         hdr.label = handle->data.label;
-        hdr.data_size = static_cast<uint32_t>(data_size);
+        hdr.label_size = static_cast<uint32_t>(data_size);
         hdr.recv_offset = static_cast<uint32_t>(recv_offset);
 
         // copy header

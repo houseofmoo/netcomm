@@ -30,7 +30,6 @@ namespace eroil {
     static constexpr std::size_t SHM_BLOCK_SIZE = 128 * MEGABYTE;
     static_assert(SHM_BLOCK_SIZE % 64 == 0);
 
-
     using std::uint8_t;
     using std::uint16_t;
     using std::uint32_t;

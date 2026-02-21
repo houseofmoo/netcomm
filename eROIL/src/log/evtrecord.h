@@ -33,7 +33,7 @@ namespace eroil::evtlog {
 
         // send/recv
         MalformedRecv,
-        InvalidDataSize,
+        InvalidLabelSize,
         DataDistributed,
         PublishTimeout,
         BlockNotInitialized,

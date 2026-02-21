@@ -319,7 +319,7 @@ namespace eroil::comm {
         hdr.source_id = m_id;
         hdr.flags = static_cast<uint16_t>(io::LabelFlag::Connect);
         hdr.label = 0;
-        hdr.data_size = 0;
+        hdr.label_size = 0;
 
         sock::SockResult err = sock->send_all(&hdr, sizeof(hdr));
         return map_sock_failures(err.code);
@@ -333,7 +333,7 @@ namespace eroil::comm {
         hdr.source_id = m_id,
         hdr.flags = static_cast<uint16_t>(io::LabelFlag::Ping),
         hdr.label = 0,
-        hdr.data_size = 0;
+        hdr.label_size = 0;
 
         sock::SockResult err = sock->send_all(&hdr, sizeof(hdr));
         return map_sock_failures(err.code);

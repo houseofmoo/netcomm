@@ -31,7 +31,7 @@ namespace eroil::io {
         int32_t source_id = INVALID_NODE;
         uint16_t flags = 0;
         int32_t label = INVALID_LABEL;
-        uint32_t data_size = 0;
+        uint32_t label_size = 0;
         uint32_t recv_offset = 0;
     };
 
