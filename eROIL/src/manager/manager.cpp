@@ -52,7 +52,7 @@ namespace eroil {
             return false;
         }
 
-        // estimate tsc frequency (100 ms sleep)
+        // estimate tsc frequency (short one time sleep to check ticks per sec)
         std::thread([]{
             plat::affinitize_current_thread_to_current_cpu();
             uint64_t tsc_hz = evtlog::estimate_tsc_hz();
@@ -74,22 +74,19 @@ namespace eroil {
 
     hndl::SendHandle* Manager::open_send(hndl::OpenSendData data) {
         if (data.label <= INVALID_LABEL) {
-            ERR_PRINT("got invalid label=", data.label, ", open send request ignored");
+            ERR_PRINT("got invalid label=", data.label);
+            ERR_PRINT("open send request for label=", data.label, " ignored");
             return nullptr;
         }
 
         if (data.buf == nullptr) {
-            ERR_PRINT("got invalid data buf for label=", data.label, ", open send request ignored");
+            ERR_PRINT("got invalid data buf for label=", data.label);
+            ERR_PRINT("open send request for label=", data.label, " ignored");
             return nullptr;
         }
 
-        if (data.buf_size <= 0) {
-            ERR_PRINT("got invalid data buf size=", data.buf_size, " for label=", data.label, ", open send request ignored");
-            return nullptr;
-        }
-
-        if (data.buf_size > MAX_LABEL_SIZE) {
-            ERR_PRINT("got label size=", data.buf_size, " which is bigger than max=", MAX_LABEL_SIZE);
+        if (data.buf_size <= 0 || data.buf_size > MAX_LABEL_SIZE) {
+            ERR_PRINT("got invalid data buf size=", data.buf_size, " maxsize=", MAX_LABEL_SIZE, " for label=", data.label);
             ERR_PRINT("open send request for label=", data.label, " ignored");
             return nullptr;
         }
@@ -168,27 +165,25 @@ namespace eroil {
 
     hndl::RecvHandle* Manager::open_recv(hndl::OpenReceiveData data) {
         if (data.label <= INVALID_LABEL) {
-            ERR_PRINT("got invalid label=", data.label, ", open recv request ignored");
+            ERR_PRINT("got invalid label=", data.label);
+            ERR_PRINT("open recv request for label=", data.label, " ignored");
             return nullptr;
         }
 
         if (data.buf == nullptr) {
-            ERR_PRINT("got invalid data buf for label=", data.label, ", open recv request ignored");
+            ERR_PRINT("got invalid data buf for label=", data.label);
+            ERR_PRINT("open recv request for label=", data.label, " ignored");
             return nullptr;
         }
 
-        if (data.buf_size <= 0) {
-            ERR_PRINT("got invalid data buf size=", data.buf_size, " for label=", data.label, ", open recv request ignored");
+        if (data.buf_size <= 0 || data.buf_size > MAX_LABEL_SIZE) {
+            ERR_PRINT("got invalid data buf size=", data.buf_size, " maxsize=", MAX_LABEL_SIZE, " for label=", data.label);
+            ERR_PRINT("open recv request for label=", data.label, " ignored");
             return nullptr;
         }
 
         if (data.buf_slots <= 0) {
-            ERR_PRINT("got invalid data buf slot count=", data.buf_slots, " for label=", data.label, ", open recv request ignored");
-            return nullptr;
-        }
-
-        if (data.buf_size > MAX_LABEL_SIZE) {
-            ERR_PRINT("got label size=", data.buf_size, " which is bigger than max=", MAX_LABEL_SIZE);
+            ERR_PRINT("got invalid data buf slot count=", data.buf_slots, " for label=", data.label);
             ERR_PRINT("open recv request for label=", data.label, " ignored");
             return nullptr;
         }
@@ -232,13 +227,18 @@ namespace eroil {
             recv_broadcast();
         }).detach();
         
-        LOG("udp multicast grecv thread started");
+        LOG("udp multicast recv thread started");
         return true;
     }
 
     void Manager::send_broadcast() {
         io::BroadcastMessage msg{};
         msg.id = m_id;
+
+        // dont start broadcasting for a few seconds to give us a chance
+        // to open all shared memory blocks before we start registering 
+        // subcribers with the router and sending out broadcasts about them
+        std::this_thread::sleep_for(std::chrono::milliseconds(5 * 1000));
 
         while (true) {
             {
@@ -298,13 +298,13 @@ namespace eroil {
             switch (addr.kind) {
                 case addr::RouteKind::Self: // fallthrough
                 case addr::RouteKind::Shm: {
-                    PRINT("adding local send subscriber, nodeid=", source_id, " label=", label);
+                    //PRINT("adding local send subscriber, nodeid=", source_id, " label=", label);
                     m_router.add_local_send_subscriber(label, size, source_id);
                     evtlog::info(elog_kind::AddLocalSendSubscriber, elog_cat::Router, source_id, label);
                     break;
                 }
                 case addr::RouteKind::Socket: {
-                    PRINT("adding remote send subscriber, nodeid=", source_id, " label=", label);
+                    //PRINT("adding remote send subscriber, nodeid=", source_id, " label=", label);
                     m_router.add_remote_send_subscriber(label, size, source_id);
                     evtlog::info(elog_kind::AddRemoteSendSubscriber, elog_cat::Router, source_id, label);
                     break;

@@ -112,7 +112,7 @@ namespace eroil::addr {
         PeerSet sets{};
         for (const auto& [id, info] : get_address_book()) {
             switch (info.kind) {
-                case addr::RouteKind::Self: // fallthrough
+                case addr::RouteKind::Self: // fallthrough, send labels to ourselves via shm
                 case addr::RouteKind::Shm: {
                      sets.local.push_back(info); 
                      break; 

@@ -103,7 +103,7 @@ namespace eroil::shm {
             return { ShmErr::FileMapFailed, ShmOp::Create };
         }
  
-            return { ShmErr::None, ShmOp::Create };
+        return { ShmErr::None, ShmOp::Create };
     }
 
     ShmResult Shm::open() {
@@ -137,7 +137,6 @@ namespace eroil::shm {
     }
 
     void Shm::close() noexcept {
-        ERR_PRINT("closing shm block");
         if (m_view != nullptr) {
             ::UnmapViewOfFile(m_view);
             m_view = nullptr;

@@ -105,8 +105,18 @@ namespace eroil::shm {
             return { ShmErr::UnknownError, ShmOp::Open };
         }
 
-        const size_t total = total_size();
+        struct stat st;
+        if (fstat(m_handle, &st) != 0) {
+            ::close(m_handle);
+            return { ShmErr::UnknownError, ShmOp::Open };
+        }
 
+        if ( static_cast<size_t>(st.st_size) != total_size()) {
+            ::close(m_handle);
+            return { ShmErr::SizeMismatch, ShmOp::Open };
+        }
+
+        const size_t total = total_size();
         m_view = ::mmap(nullptr, total, PROT_READ | PROT_WRITE, MAP_SHARED, m_handle, 0);
         if (m_view == MAP_FAILED) {
             ::close(m_handle);

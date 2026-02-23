@@ -126,12 +126,12 @@ namespace eroil::rt {
         std::unique_lock lock(m_router_mtx);
 
         if (!m_transports.has_send_shm(dst_id)) {
-            ERR_PRINT(": missing shm to nodeid=", dst_id);
+            LOG("cannot not add local subscriber, shm send to nodeid=", dst_id, " has not yet been established");
             return;
         }
 
         if (!m_routes.add_local_send_subscriber(label, size, dst_id)) {
-            ERR_PRINT(": failed to add local send subscriber for label=", label, " to_id=", dst_id);
+            ERR_PRINT("failed to add local send subscriber for label=", label, " to_id=", dst_id);
             return;
         }
     }
@@ -140,12 +140,12 @@ namespace eroil::rt {
         std::unique_lock lock(m_router_mtx);
 
         if (!m_transports.has_socket(to_id)) {
-            ERR_PRINT(": missing socket to NodeId=", to_id);
+            LOG("cannot add remote subscriber, socket to nodeid=", to_id, " is disconnected or not yet established");
             return;
         }
 
         if (!m_routes.add_remote_send_subscriber(label, label_size, to_id)) {
-            ERR_PRINT(": failed to add remote send subscriber for label=", label, " to_id=", to_id);
+            ERR_PRINT("failed to add remote send subscriber for label=", label, " to_id=", to_id);
             return;
         }
     }

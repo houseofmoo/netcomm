@@ -95,8 +95,8 @@ inline int run_network_sim(int id, int seed, int num_nodes, bool show_send, bool
         return 1;
     }
 
-    LOG("TEST.exe: spawning recv threads: ", recv_labels.size());
-    LOG("TEST.exe: spawning send threads: ", send_labels.size() - 1);
+    //LOG("TEST.exe: spawning recv threads: ", recv_labels.size());
+    //LOG("TEST.exe: spawning send threads: ", send_labels.size() - 1);
 
     // open recvs
     for (auto& r : recv_labels) {
@@ -194,7 +194,10 @@ inline int add_remove_labels_test(int id) {
 
 inline void small_test(int id) {
     bool success = init_manager(id);
-    LOG("manager init success: ", success);
+    if (!success) {
+        ERR_PRINT("manager init failed");
+        return;
+    }
 
     if (id == 0) {
         auto recv = std::make_shared<RecvLabel>(make_recv_label(0, 1024));
@@ -231,7 +234,7 @@ inline void small_test(int id) {
             LOG("sent: ", count);
             count += 1;
             std::memcpy(send->buf.get(), &count, sizeof(count));
-            std::this_thread::sleep_for(std::chrono::milliseconds(1000));
+            std::this_thread::sleep_for(std::chrono::milliseconds(10 * 1000));
         }
         close_send_label(handle);
         LOG("exit");

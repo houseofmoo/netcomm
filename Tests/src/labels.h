@@ -49,6 +49,16 @@ struct RecvLabel {
             ::WaitForSingleObject(sem, INFINITE);
         }
     }
+
+    bool timed_wait() {
+        if (sem != nullptr) {
+            if (::WaitForSingleObject(sem, 10 * 1000) == WAIT_TIMEOUT) {
+                return false;
+            }
+            return true;
+        }
+        return false;
+    }
 };
 
 inline RecvLabel make_recv_label(int id, int size) {

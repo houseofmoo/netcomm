@@ -10,7 +10,7 @@
 
 
 inline void do_send(std::shared_ptr<SendLabel> label, const bool show_send) {
-    PRINT("opening send label for: ", label->id);
+    //PRINT("opening send label for: ", label->id);
     auto handle = open_send_label(label->id, label->buf.get(), label->size, 1, nullptr, nullptr, 0);
 
     int count = 0;
@@ -31,7 +31,7 @@ inline void do_send(std::shared_ptr<SendLabel> label, const bool show_send) {
 }
 
 inline void do_timed_send(std::shared_ptr<SendLabel> label) {
-    PRINT("opening send label for: ", label->id);
+    //PRINT("opening send label for: ", label->id);
     auto handle = open_send_label(label->id, label->buf.get(), label->size, 1, nullptr, nullptr, 0);
 
     int count = 0;
@@ -56,14 +56,19 @@ inline void do_timed_send(std::shared_ptr<SendLabel> label) {
 }
 
 inline void do_recv(std::shared_ptr<RecvLabel> label, const bool show_recvd) {
-    PRINT("opening recv label for: ", label->id);
+    //PRINT("opening recv label for: ", label->id);
     auto handle = open_recv_label(label->id, label->buf.get(), label->size, 1, nullptr, label->sem, nullptr, 0, 2);
     int count = 0;
     int prev_count = 0;
     bool first_recv = true;
 
     while (true) {
-        label->wait();
+        //label->wait();
+        if (!label->timed_wait()) {
+            ERR_PRINT("timed out waiting for label: ", label->id);
+            continue;
+        }
+        
         std::memcpy(&count, label->buf.get(), sizeof(count));
 
         if (prev_count + 1 != count) {
@@ -82,7 +87,7 @@ inline void do_recv(std::shared_ptr<RecvLabel> label, const bool show_recvd) {
 }
 
 inline void do_timed_recv(std::shared_ptr<RecvLabel> label) {
-    PRINT("opening recv label for: ", label->id);
+    //PRINT("opening recv label for: ", label->id);
     auto handle = open_recv_label(label->id, label->buf.get(), label->size, 1, nullptr, label->sem, nullptr, 0, 2);
     int count = 0;
     int prev_count = 0;

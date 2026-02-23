@@ -13,7 +13,7 @@ namespace eroil::shm {
         AlreadyExists,
         DoesNotExist,
         FileMapFailed,
-        LayoutMismatch,
+        SizeMismatch,
         NotInitialized,
         UnknownError,
 
@@ -51,7 +51,7 @@ namespace eroil::shm {
                 case ShmErr::AlreadyExists: return "AlreadyExists";
                 case ShmErr::DoesNotExist: return "DoesNotExist";
                 case ShmErr::FileMapFailed: return "FileMapFailed";
-                case ShmErr::LayoutMismatch: return "LayoutMismatch";
+                case ShmErr::SizeMismatch: return "SizeMismatch";
                 case ShmErr::NotInitialized: return "NotInitialized";
                 case ShmErr::UnknownError: return "UnknownError";
 

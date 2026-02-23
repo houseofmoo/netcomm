@@ -33,7 +33,7 @@ namespace eroil::shm {
     static_assert(std::atomic<uint64_t>::is_always_lock_free);
 
     enum RecordFlag : uint32_t { DROPPED = 1u << 0 };
-    enum RecordState : uint32_t { WRITING = 0, COMMITTED = 1, WRAP = 2, /*CONSUMED = 3*/ };
+    enum RecordState : uint32_t { WRITING = 0, COMMITTED = 1, WRAP = 2 };
 
     struct alignas(8) RecordHeader {
         std::atomic<uint32_t> state{0};

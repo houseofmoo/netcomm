@@ -25,7 +25,6 @@ namespace eroil::shm {
             std::this_thread::yield();
         }
 
-        ERR_PRINT("shm send block failed to open to nodeid=", m_dst_id);
         return false;
     }
 

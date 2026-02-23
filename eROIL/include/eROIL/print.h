@@ -39,6 +39,14 @@ namespace print {
     }
 
     template <typename... Args>
+    inline void error_print(Args&&... args) noexcept {
+        std::lock_guard<std::mutex> lock(detail::__mtx);
+        std::cerr << "[ " << detail::__id << " ] ERROR ";
+        ((std::cerr << std::forward<Args>(args)), ...);
+        std::cerr << std::endl;
+    }
+
+    template <typename... Args>
     inline void info_print(Args&&... args) noexcept {
         std::lock_guard<std::mutex> lock(detail::__mtx);
         std::clog << "[ " << detail::__id << " ] INFO: ";
@@ -49,10 +57,12 @@ namespace print {
 
 #if !defined(NDEBUG) // debug
     #define PRINT(...) print::db_print(__VA_ARGS__)
-    #define ERR_PRINT(...) print::error_print(FUNC_SIG, __VA_ARGS__)
+    #define ERR_VERBOSE(...) print::error_print(FUNC_SIG, __VA_ARGS__)
+    #define ERR_PRINT(...) print::error_print(__VA_ARGS__)
     #define LOG(...) print::info_print(__VA_ARGS__)
 #else // release
     #define PRINT(...) do { (void)0; } while (0)
-    #define ERR_PRINT(...) print::error_print(FUNC_SIG, __VA_ARGS__)
+    #define ERR_VERBOSE(...) print::error_print(FUNC_SIG, __VA_ARGS__)
+    #define ERR_PRINT(...) print::error_print(__VA_ARGS__)
     #define LOG(...) print::info_print(__VA_ARGS__)
 #endif

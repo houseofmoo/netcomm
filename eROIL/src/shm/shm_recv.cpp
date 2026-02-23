@@ -20,13 +20,39 @@ namespace eroil::shm {
         //      block exists but invalid -> reset it
         //      block exists but valid -> reset it
         shm::ShmResult create_result = m_shm.create();
-        if (!create_result.ok()) {
-            return init_as_new();
+        switch (create_result.code) {
+            case ShmErr::None: { return init_as_new(); }
+            case ShmErr::AlreadyExists: { break; } // try to open it below
+            case ShmErr::DoubleOpen:    // fallthrough
+            case ShmErr::InvalidName:   // fallthrough
+            case ShmErr::UnknownError:  // fallthrough
+            case ShmErr::FileMapFailed: { 
+                ERR_PRINT(" shm create err=", create_result.code_to_string()); 
+                return false; 
+            }
+            default: {
+                ERR_PRINT("shm create unknown error=", create_result.code_to_string());
+                return false;
+            }
         }
 
+        // block existed, opening it instead
         shm::ShmResult open_result = m_shm.open();
-        if (!open_result.ok()) {
-            return reinit();
+        switch (open_result.code) {
+            case ShmErr::None: { return reinit(); }
+            case ShmErr::DoubleOpen:    // fallthrough
+            case ShmErr::InvalidName:   // fallthrough
+            case ShmErr::DoesNotExist:  // fallthrough
+            case ShmErr::UnknownError:  // fallthrough    
+            case ShmErr::SizeMismatch:  // fallthrough
+            case ShmErr::FileMapFailed: {
+                ERR_PRINT(" shm open err=", open_result.code_to_string()); 
+                return false; 
+            }
+            default: {
+                ERR_PRINT("shm open unknown error=", open_result.code_to_string());
+                return false;
+            }
         }
 
         // failed to open
@@ -49,10 +75,10 @@ namespace eroil::shm {
         hdr->state.store(SHM_INITING, std::memory_order_relaxed);
         hdr->magic = MAGIC_NUM;
         hdr->version = VERSION;
-        hdr->total_size = SHM_BLOCK_SIZE;
+        hdr->total_size = m_shm.total_size();
 
         // zero data block - probably redundant but just to be sure
-        m_shm.memset(sizeof(ShmHeader), 0, SHM_BLOCK_SIZE - sizeof(ShmHeader));
+        m_shm.memset(sizeof(ShmHeader), 0, m_shm.total_size() - sizeof(ShmHeader));
         
         auto* meta = m_shm.map_to_type<ShmMetaData>(ShmLayout::META_DATA_OFFSET);
         if (meta == nullptr) {
