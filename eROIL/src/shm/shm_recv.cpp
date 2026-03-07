@@ -27,11 +27,11 @@ namespace eroil::shm {
             case ShmErr::InvalidName:   // fallthrough
             case ShmErr::UnknownError:  // fallthrough
             case ShmErr::FileMapFailed: { 
-                ERR_PRINT(" shm create err=", create_result.code_to_string()); 
+                ERR_PRINT("shm create err=", create_result.code_to_string()); 
                 return false; 
             }
             default: {
-                ERR_PRINT("shm create unknown error=", create_result.code_to_string());
+                ERR_PRINT("shm create unknown err=", create_result.code_to_string());
                 return false;
             }
         }
@@ -46,11 +46,11 @@ namespace eroil::shm {
             case ShmErr::UnknownError:  // fallthrough    
             case ShmErr::SizeMismatch:  // fallthrough
             case ShmErr::FileMapFailed: {
-                ERR_PRINT(" shm open err=", open_result.code_to_string()); 
+                ERR_PRINT("shm open err=", open_result.code_to_string()); 
                 return false; 
             }
             default: {
-                ERR_PRINT("shm open unknown error=", open_result.code_to_string());
+                ERR_PRINT("shm open unknown err=", open_result.code_to_string());
                 return false;
             }
         }
@@ -72,6 +72,7 @@ namespace eroil::shm {
             ERR_PRINT("    offset=", ShmLayout::META_DATA_OFFSET);
             return false;
         }
+
         hdr->state.store(SHM_INITING, std::memory_order_relaxed);
         hdr->magic = MAGIC_NUM;
         hdr->version = VERSION;
@@ -120,7 +121,7 @@ namespace eroil::shm {
         hdr->state.store(SHM_INITING, std::memory_order_release);
         if (hdr->magic != MAGIC_NUM ||
             hdr->version != VERSION ||
-            hdr->total_size != SHM_BLOCK_SIZE) {
+            hdr->total_size != m_shm.total_size()) {
             return init_as_new();
         }
 
