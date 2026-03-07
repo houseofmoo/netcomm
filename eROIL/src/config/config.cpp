@@ -33,7 +33,7 @@ namespace eroil::cfg {
         cfg.id = id;
         cfg.mode = ManagerMode::Normal;
 
-        auto kv = parse_kv_file(std::string(MANAGE_CONFIG_FILE_PATH));
+        std::unordered_map<std::string, std::string> kv = parse_kv_file(std::string(MANAGE_CONFIG_FILE_PATH));
 
         // get mode
         if (kv.count("mode")) {

@@ -173,7 +173,7 @@ namespace eroil::evtlog {
         }
 
         void EventLog::write_evtlog() noexcept {
-            for (const auto& rec : g_event_log.m_evt_logs) {
+            for (const evtlog::EventRecord& rec : g_event_log.m_evt_logs) {
                 // confirm this value is not currently being written to
                 const uint32_t seq = rec.commit_seq.load(std::memory_order_acquire);
                 if (seq == 0) { continue; }
@@ -225,7 +225,7 @@ namespace eroil::evtlog {
                 return;
             }
 
-            for (const auto& rec : g_event_log.m_evt_logs) {
+            for (const evtlog::EventRecord& rec : g_event_log.m_evt_logs) {
                 // confirm this value is not currently being written to
                 const uint32_t seq = rec.commit_seq.load(std::memory_order_acquire);
                 if (seq == 0) { continue; }

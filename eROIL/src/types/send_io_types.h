@@ -11,8 +11,8 @@
 #include "handles.h"
 #include "const_types.h"
 #include "label_io_types.h"
-#include "assertion.h"
 #include "macros.h"
+#include "assertion.h"
 #include "comm/write_iosb.h"
 
 namespace eroil::io {

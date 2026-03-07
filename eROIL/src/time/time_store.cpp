@@ -15,7 +15,7 @@ namespace eroil::time {
 
     void TimeStore::insert(std::string name, uint64_t duration_us) {
         std::lock_guard lock(m_mtx);
-        auto& vec = m_store.try_emplace(std::move(name)).first->second;
+        std::vector<Sample>& vec = m_store.try_emplace(std::move(name)).first->second;
         vec.push_back(Sample{ duration_us });
     }
 
@@ -50,7 +50,7 @@ namespace eroil::time {
 
         for (const auto& [name, times] : m_store) {
             file << name << " timings (us):\n";
-            for (const auto& duration : times) {
+            for (const Sample& duration : times) {
                 file << duration.us << "\n";
             }
             file << "\n";

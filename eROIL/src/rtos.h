@@ -23,7 +23,7 @@ namespace eroil::rtos {
         const auto ns = std::chrono::time_point_cast<std::chrono::nanoseconds>(now).time_since_epoch();
         
         const auto sec = std::chrono::duration_cast<std::chrono::seconds>(ns);
-        const auto nsec = ns - sec;
+        const std::chrono::nanoseconds nsec = ns - sec;
 
         out.uiMsb = static_cast<unsigned int>(sec.count());
         out.uiLsb = static_cast<unsigned int>(nsec.count());

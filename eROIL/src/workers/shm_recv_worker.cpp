@@ -131,7 +131,7 @@ namespace eroil::wrk {
                 // next record isnt published, continue trying until we get it or timer expires
                 case shm::ShmRecvErr::NotYetPublished: { 
                     timer.start(); // if already started this is no-op
-                    if (timer.duration() > MAX_TIMEOUT_MS) {
+                    if (timer.elapsed() > MAX_TIMEOUT_MS) {
                         ERR_PRINT("shm recv worker flushing backlog due to publisher timeout");
                         m_shm->flush_backlog();
                         evtlog::warn(elog_kind::PublishTimeout, elog_cat::ShmRecvWorker);

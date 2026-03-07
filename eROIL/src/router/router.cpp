@@ -6,6 +6,7 @@
 #include <eROIL/print.h>
 #include <algorithm>
 #include "comm/write_iosb.h"
+#include "assertion.h"
 
 namespace eroil::rt {
     // open/close send/recv
@@ -343,7 +344,7 @@ namespace eroil::rt {
         }
 
         // write to subscribers buffers
-        for (const auto& sub : subscribers) {
+        for (const std::shared_ptr<hndl::RecvHandle>& sub : subscribers) {
             if (sub == nullptr) {
                 ERR_PRINT("got null subscriber for label=", label);
                 continue;

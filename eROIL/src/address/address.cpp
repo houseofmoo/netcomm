@@ -39,14 +39,14 @@ namespace eroil::addr {
     bool init_address_book(NodeId my_id) {
         LOG("initializing address book");
 
-        auto csv_rows = parse_csv_file(std::string(PEER_IP_FILE_PATH));
+        std::vector<std::vector<std::string>> csv_rows = parse_csv_file(std::string(PEER_IP_FILE_PATH));
         if (csv_rows.size() <= 0) {
             ERR_PRINT("no node information, file did not exist or was empty/unparsable");
             return false;
         }
 
         // build addr book
-        for (auto row : csv_rows) {
+        for (std::vector<std::string> row : csv_rows) {
             const NodeId id = static_cast<NodeId>(std::stoi(row[0]));
             if (id <= INVALID_NODE) {
                 ERR_PRINT("foudn invalid node, skipping");
@@ -82,7 +82,7 @@ namespace eroil::addr {
             return false;
         }
         
-        auto& self = it->second;
+        addr::NodeAddress& self = it->second;
         for (auto& [id, addr] : address_book) {
             if (addr.id == self.id) {
                 addr.kind = RouteKind::Self;

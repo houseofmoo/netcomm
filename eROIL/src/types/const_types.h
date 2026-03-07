@@ -2,7 +2,6 @@
 #include <cstddef>
 #include <cstdint>
 #include <string_view>
-#include "assertion.h"
 
 namespace eroil {
     constexpr std::string_view MANAGE_CONFIG_FILE_PATH = "etc/manager.cfg";

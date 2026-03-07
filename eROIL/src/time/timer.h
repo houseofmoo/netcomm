@@ -1,6 +1,7 @@
 #pragma once
 #include <cstdint>
 #include <chrono>
+#include "macros.h"
 
 namespace eroil::time {
     class Timer {
@@ -11,6 +12,8 @@ namespace eroil::time {
         public:
             Timer() : m_start{}, m_running{false} {}
             ~Timer() = default;
+            EROIL_NO_COPY(Timer)
+            EROIL_NO_MOVE(Timer)
 
             void start() {
                 if (!m_running) {
@@ -23,11 +26,23 @@ namespace eroil::time {
                 m_running = false;
             }
 
-            int64_t duration() {
+            int64_t elapsed() {
                 auto dur = std::chrono::duration_cast<std::chrono::milliseconds>(
                     std::chrono::steady_clock::now() - m_start
                 ).count();
                 return static_cast<int64_t>(dur);
+            }
+
+            bool operator>(int64_t duration_ms) {
+                return elapsed() > duration_ms;
+            }
+
+            bool operator<(int64_t duration_ms) {
+                return elapsed() < duration_ms;
+            }
+
+            bool operator==(int64_t duration_ms) {
+                return elapsed() == duration_ms;
             }
     };
 }
