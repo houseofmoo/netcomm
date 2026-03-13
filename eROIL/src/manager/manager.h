@@ -26,6 +26,9 @@ namespace eroil {
             space unavailble. If there is no consumer of the messages written to a shared memory block
             (if a node dies) then the block will fill with messages with no room for new messages. we 
             need a way to throttle senders in this case until the consumer thread for a node is restarted
+
+            2) Collapse socket receive workers to a single thread using epoll on linux. This will be a linux only
+            solution, so it will be a seperate worker that handles ALL socket received when on linux
     */
 
     class Manager {
