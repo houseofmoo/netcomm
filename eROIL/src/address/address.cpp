@@ -4,7 +4,7 @@
 #include <sstream>
 #include <vector>
 
-#include <eROIL/print.h>
+#include "safe_print.h"
 
 namespace eroil::addr {
     static std::unordered_map<NodeId, NodeAddress> address_book;

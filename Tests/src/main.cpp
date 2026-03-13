@@ -36,6 +36,8 @@ int main(int argc, char** argv) {
     (void)argv;
     (void)id;
 
+    print::set_id(id);
+
     int num_nodes = get_node_count();
     (void)num_nodes;
 

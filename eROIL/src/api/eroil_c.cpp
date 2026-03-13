@@ -1,6 +1,6 @@
 #include <string>
 #include <eROIL/eroil_c.h>
-#include <eROIL/print.h>
+#include "safe_print.h"
 #include "types/handles.h"
 #include "types/const_types.h"
 #include "root.h"

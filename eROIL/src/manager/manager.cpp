@@ -4,7 +4,7 @@
 #include <thread>
 #include <chrono>
 #include <algorithm>
-#include <eROIL/print.h>
+#include "safe_print.h"
 #include "types/const_types.h"
 #include "time/timer.h"
 #include "platform/platform.h"

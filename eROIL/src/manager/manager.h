@@ -18,14 +18,14 @@ namespace eroil {
     /*
         NOTES:
             1) currently we do not check if an existing shared memory block is the correct/expected 
-            size on windows since windows does not have a clean way of doing this that is reliable.
-            this is checked on linux builds since there is a api to do this reliably.
+            size on windows since windows does not have a relaible api from windows. But this is
+            checked on linux (linux is the only place is actually matters!)
 
         TODO:
-            1) Right now, if a node dies, there is the potential of of writers to start complaining cause
-            the shared memory block will quickly run out of memory and then all senders will start spamming
-            errros about not enough space in shared memory block. we need a way to throttle senders in this case
-            until the node is resumed
+            1) Right now, if a node dies there is the potential of writers to start erroring due to
+            space unavailble. If there is no consumer of the messages written to a shared memory block
+            (if a node dies) then the block will fill with messages with no room for new messages. we 
+            need a way to throttle senders in this case until the consumer thread for a node is restarted
     */
 
     class Manager {

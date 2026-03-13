@@ -3,7 +3,7 @@
 #include <filesystem>
 #include <thread>
 #include <string>
-#include <eROIL/print.h>
+#include "safe_print.h"
 
 namespace eroil::time {
     TimeStore time_store;

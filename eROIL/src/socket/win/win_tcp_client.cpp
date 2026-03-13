@@ -3,7 +3,7 @@
 #include "windows_hdr.h"
 #include <winsock2.h>
 #include <ws2tcpip.h>
-#include <eROIL/print.h>
+#include "safe_print.h"
 #include "address/address.h"
 
 namespace eroil::sock {

@@ -2,7 +2,7 @@
 #include <thread>
 #include <cstring>
 #include <memory>
-#include <eROIL/print.h>
+#include "safe_print.h"
 
 namespace eroil::shm {
     ShmSend::ShmSend(NodeId dst_id) : m_dst_id(dst_id), m_shm(dst_id, SHM_BLOCK_SIZE), m_event(dst_id) {}

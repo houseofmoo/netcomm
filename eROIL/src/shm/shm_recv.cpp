@@ -1,7 +1,7 @@
 #include "shm_recv.h"
 #include <cstring>
 #include <memory>
-#include <eROIL/print.h>
+#include "safe_print.h"
 
 namespace eroil::shm {
     ShmRecv::ShmRecv(NodeId id) : m_id(id), m_shm(id, SHM_BLOCK_SIZE), m_event(id) {}

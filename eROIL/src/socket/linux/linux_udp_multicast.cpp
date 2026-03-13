@@ -11,7 +11,7 @@
 #include <cstring>
 #include <utility>
 
-#include <eROIL/print.h>
+#include "safe_print.h"
 
 namespace eroil::sock {
     bool UDPMulticastSocket::handle_valid() const noexcept {

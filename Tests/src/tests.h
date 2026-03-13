@@ -7,7 +7,7 @@
 #include <chrono>
 #include <fstream>
 
-#include <eROIL/print.h>
+#include "safe_print.h"
 #include <eROIL/eroil_cpp.h>
 #include "io.h"
 #include "labels.h"

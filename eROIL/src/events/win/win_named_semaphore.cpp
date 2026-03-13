@@ -2,7 +2,7 @@
 
 #include "events/named_semaphore.h"
 #include "windows_hdr.h"
-#include <eROIL/print.h>
+#include "safe_print.h"
 
 namespace eroil::evt {
     static HANDLE as_native(sem_handle p) noexcept {

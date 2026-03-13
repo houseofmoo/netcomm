@@ -4,7 +4,7 @@
 #include <sstream>
 #include <iomanip>
 #include "windows_hdr.h"
-#include <eROIL/print.h>
+#include "safe_print.h"
 
 namespace eroil::plat {
     static_assert(std::is_same_v<sem_handle, HANDLE>);

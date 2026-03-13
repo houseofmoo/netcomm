@@ -1,7 +1,7 @@
 #pragma once
 #include "types/const_types.h"
 #include <string_view>
-#include <eROIL/print.h>
+#include "safe_print.h"
 
 namespace eroil::sock {
     enum class SockErr: uint8_t {

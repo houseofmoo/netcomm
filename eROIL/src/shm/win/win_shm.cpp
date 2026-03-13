@@ -4,7 +4,7 @@
 #include "windows_hdr.h"
 #include "types/const_types.h"
 #include "shm/shm_header.h"
-#include <eROIL/print.h>
+#include "safe_print.h"
 
 namespace eroil::shm {
     // static HANDLE as_native(shm_handle h) noexcept {

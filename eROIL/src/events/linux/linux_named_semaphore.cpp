@@ -1,7 +1,7 @@
 #if defined(EROIL_LINUX)
 
 #include "events/named_semaphore.h"
-#include <eROIL/print.h>
+#include "safe_print.h"
 
 #include <semaphore.h>
 #include <fcntl.h>      // O_CREAT

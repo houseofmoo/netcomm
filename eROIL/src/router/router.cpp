@@ -3,7 +3,7 @@
 #include <atomic>
 #include <cstring>
 #include <mutex>
-#include <eROIL/print.h>
+#include "safe_print.h"
 #include <algorithm>
 #include "comm/write_iosb.h"
 #include "assertion.h"

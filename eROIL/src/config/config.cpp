@@ -3,7 +3,7 @@
 #include <fstream>
 #include <filesystem>
 #include <unordered_map>
-#include <eROIL/print.h>
+#include "safe_print.h"
 
 namespace eroil::cfg {
     std::unordered_map<std::string, std::string> parse_kv_file(const std::string& path) {

@@ -1,6 +1,6 @@
 #include "route_table.h"
 #include <algorithm>
-#include <eROIL/print.h>
+#include "safe_print.h"
 #include "types/label_io_types.h"
 
 namespace eroil::rt {

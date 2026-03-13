@@ -1,7 +1,7 @@
 #include "shm.h"
 #include <thread>
 #include <chrono>
-#include <eROIL/print.h>
+#include "safe_print.h"
 #include <cstring>
 
 namespace eroil::shm {

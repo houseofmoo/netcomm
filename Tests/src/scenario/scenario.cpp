@@ -7,7 +7,7 @@
 #include <array>
 #include <filesystem>
 #include "labels.h"
-#include <eROIL/print.h>
+#include "safe_print.h"
 
 struct ScenarioLabel {
     int id;

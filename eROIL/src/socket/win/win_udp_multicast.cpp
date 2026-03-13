@@ -4,7 +4,7 @@
 #include <winsock2.h>
 #include <ws2tcpip.h>
 #include <utility>
-#include <eROIL/print.h>
+#include "safe_print.h"
 
 namespace eroil::sock {
     static SOCKET as_native(socket_handle h) noexcept {

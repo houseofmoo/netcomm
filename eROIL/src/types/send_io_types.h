@@ -3,7 +3,7 @@
 #include <vector>
 #include <atomic>
 #include <mutex>
-#include <eROIL/print.h>
+#include "safe_print.h"
 #include "rtos.h"
 #include "platform/platform.h"
 #include "shm/shm_send.h"

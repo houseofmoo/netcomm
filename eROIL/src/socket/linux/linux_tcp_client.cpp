@@ -8,7 +8,7 @@
 #include <arpa/inet.h>
 #include <errno.h>
 
-#include <eROIL/print.h>
+#include "safe_print.h"
 
 namespace eroil::sock {
     TCPClient::TCPClient() : TCPSocket(), m_dest_id(INVALID_NODE) {}
